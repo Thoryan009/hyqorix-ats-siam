@@ -639,12 +639,12 @@ async function openBillsReceivableLedger() {
     const account = await fetchBillsReceivableLedgerAccount()
     const accountId = Number(account?.id)
     if (!accountId) {
-      toast.error('Bills Receivable Ledger is not available.')
+      toast.error('Sale Receivable is not available.')
       return
     }
     router.push(`/finance/accounts/${accountId}/ledger`)
   } catch (error) {
-    toast.error(error?.message || 'Failed to open Bills Receivable Ledger.')
+    toast.error(error?.message || 'Failed to open Sale Receivable.')
   }
 }
 

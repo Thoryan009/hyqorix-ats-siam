@@ -92,7 +92,7 @@ class FinanceAccountController extends Controller
             new FinanceAccountResource($account),
             'fetched',
             200,
-            'Bills Receivable account'
+            'Sale Receivable account'
         );
     }
 
