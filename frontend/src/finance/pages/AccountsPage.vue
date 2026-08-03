@@ -593,7 +593,7 @@ const quickActions = [
     onClick: openSaleLedger,
   },
   {
-    label: 'Bills Receivable Ledger',
+    label: 'Sale Receivable',
     icon: 'fa fa-file-text-o',
     onClick: openBillsReceivableLedger,
   },

@@ -236,7 +236,7 @@ class FinanceAccountService extends BaseCachedService
             'code' => self::BILLS_RECEIVABLE_ACCOUNT_CODE,
         ]);
 
-        $account->account_name = 'Bills Receivable Ledger';
+        $account->account_name = 'Sale Receivable';
         $account->account_type = null;
         $account->status = 'active';
 

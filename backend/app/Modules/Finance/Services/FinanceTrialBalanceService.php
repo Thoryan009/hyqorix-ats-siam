@@ -18,7 +18,7 @@ class FinanceTrialBalanceService
         'capital' => 'Capital Account',
         'agent_advanced' => 'Agent Advanced',
         'sale' => 'Sale',
-        'bills_receivable' => 'Bills Receivable',
+        'bills_receivable' => 'Sale Receivable',
         'income_receivable' => 'Income Receivable',
         'direct_expense' => 'Direct Expense Accounts',
         'client_recruitment' => 'Client Recruitment Accounts',
@@ -294,7 +294,7 @@ class FinanceTrialBalanceService
         }
 
         if ($category === 'bills_receivable') {
-            return 'Bills Receivable';
+            return 'Sale Receivable';
         }
 
         $name = trim((string) ($account->account_name ?? $account->account_label ?? ''));
