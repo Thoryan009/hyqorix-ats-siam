@@ -426,13 +426,20 @@ class FinanceAccountMovementService
                 $remarks
             );
 
-            // Sale income ledger:
+            // Sale income ledger (accrual):
             // - Candidate: credit when Deployment Charge is first raised (due or first cash).
-            // - Agent/client: credit collected amount for cash/bank/balance/expense_link.
+            // - Agent/client due: credit when receivable is raised (pairs Bills Receivable DR).
+            // - Agent/client cash/bank/balance/expense_link: credit collected amount only when
+            //   not settling a prior due (Sale already recognized at due raise).
             $saleIncomeAmount = 0.0;
             if ($payerType === 'candidate') {
                 $saleIncomeAmount = $newlyBilledCandidateSale;
-            } elseif (in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link'], true)) {
+            } elseif ($paymentMethod === 'due' && in_array($payerType, ['agent', 'client'], true)) {
+                $saleIncomeAmount = $amount;
+            } elseif (
+                in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link'], true)
+                && $billsReceivableSettleAmount <= 0
+            ) {
                 $saleIncomeAmount = $amount;
             }
 

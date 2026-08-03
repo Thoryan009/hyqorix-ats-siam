@@ -656,7 +656,7 @@ class FinanceAccountService extends BaseCachedService
     }
 
     /**
-     * Credit Sale ledger for recognized sale collections (cash/bank/balance/expense_link).
+     * Credit Sale ledger for recognized sale income (due raise or cash/bank/balance/expense_link).
      */
     public function recordSaleIncomeEntry(
         float $amount,
@@ -733,11 +733,12 @@ class FinanceAccountService extends BaseCachedService
     }
 
     /**
-     * Agent/client cash-basis: recognized receipts credit Sale.
+     * Agent/client accrual: credit Sale on due raise, or on cash/bank/balance/expense_link
+     * when there is no prior due for that application (avoids double-count on settle).
      */
     private function backfillAgentClientSaleEntries(): void
     {
-        $recognizedMethods = ['cash', 'bank', 'balance', 'expense_link'];
+        $cashMethods = ['cash', 'bank', 'balance', 'expense_link'];
 
         $collections = FinanceSaleCollection::query()
             ->where(function ($query) {
@@ -745,17 +746,45 @@ class FinanceAccountService extends BaseCachedService
                     ->whereNull('payer_type')
                     ->orWhereRaw('LOWER(COALESCE(payer_type, "")) != ?', ['candidate']);
             })
-            ->where(function ($query) use ($recognizedMethods) {
-                foreach ($recognizedMethods as $method) {
-                    $query->orWhereRaw('LOWER(COALESCE(payment_method, "")) = ?', [$method]);
-                }
-            })
             ->orderBy('collection_date')
             ->orderBy('id')
             ->get();
 
+        $appsWithDue = [];
+        $appsWithCash = [];
+        foreach ($collections as $row) {
+            $applicationId = (int) ($row->application_id ?? 0);
+            if ($applicationId <= 0) {
+                continue;
+            }
+
+            $method = strtolower(trim((string) ($row->payment_method ?? '')));
+            if ($method === 'due') {
+                $appsWithDue[$applicationId] = true;
+            } elseif (in_array($method, $cashMethods, true)) {
+                $appsWithCash[$applicationId] = true;
+            }
+        }
+
         $grouped = [];
         foreach ($collections as $row) {
+            $method = strtolower(trim((string) ($row->payment_method ?? '')));
+            $applicationId = (int) ($row->application_id ?? 0);
+
+            if (in_array($method, $cashMethods, true)) {
+                // Settling a prior due: Sale was (or will be) recognized on the due row.
+                if ($applicationId > 0 && isset($appsWithDue[$applicationId])) {
+                    continue;
+                }
+            } elseif ($method === 'due') {
+                // Historical cash-basis already credited Sale on settle — skip due.
+                if ($applicationId > 0 && isset($appsWithCash[$applicationId])) {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+
             $typeTxnId = (int) ($row->finance_account_type_transaction_id ?? 0);
             $voucherNo = trim((string) ($row->voucher_no ?? $row->entry_no ?? ''));
             $groupKey = $typeTxnId > 0
@@ -788,6 +817,7 @@ class FinanceAccountService extends BaseCachedService
             $methodLabel = match (strtolower($group['payment_method'])) {
                 'cash' => 'Cash',
                 'bank' => 'Bank',
+                'due' => 'Due',
                 'balance' => 'Adjust from Balance',
                 'expense_link' => 'Expense Link',
                 default => ucfirst((string) $group['payment_method']),
