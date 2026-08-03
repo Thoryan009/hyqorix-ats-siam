@@ -4,6 +4,13 @@ import { isExpenseCostAccountCategory } from '@/finance/data/expenseHeadAccountL
 
 export function isExpenseAccountBill(entry = {}) {
   entry = entry ?? {}
+
+  // Every bill is tied to an expense head that posts to an expense ledger.
+  // Manual / due bills may omit linked account ids until approval sync.
+  if (entry.head_id || entry.expense_head_id) {
+    return true
+  }
+
   if (entry.expense_cost_type && isExpenseCostAccountsType(entry.expense_cost_type)) {
     return Boolean(entry.expense_cost_account_id)
   }

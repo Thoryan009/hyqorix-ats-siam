@@ -107,6 +107,9 @@ class FinanceTrialBalanceService
         // Backfill per-head expense payable ledgers for approved due bills.
         $this->accountService->backfillMissingExpensePayableEntries();
 
+        // Ensure due bills missing linked expense account ids are repaired for payable queues.
+        $this->billEntryService->backfillMissingBillExpenseAccountLinks();
+
         // Ensure collected client/operating income appears on income-head ledgers for TB.
         $this->incomeCollectionService->backfillMissingIncomeHeadCredits();
 

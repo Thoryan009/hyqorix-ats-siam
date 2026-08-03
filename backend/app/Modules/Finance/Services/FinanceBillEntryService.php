@@ -312,6 +312,10 @@ class FinanceBillEntryService extends BaseCachedService
                         ->findOrFail($expenseAccount->id);
 
                     $this->assertActiveFinanceAccount($expenseAccount);
+
+                    // Persist expense ledger link so Bills Payable / reports can filter the bill.
+                    $billEntry->update($this->buildExpenseAccountLinkFields($expenseAccount, $billEntry));
+                    $billEntry->refresh();
                 }
 
                 $paymentAccount = null;
@@ -1229,6 +1233,94 @@ class FinanceBillEntryService extends BaseCachedService
         }
 
         return ExpenseHead::query()->find($headId);
+    }
+
+    /**
+     * Map a resolved expense ledger onto bill linked/cost account fields.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildExpenseAccountLinkFields(
+        FinanceAccount $expenseAccount,
+        FinanceBillEntry $billEntry
+    ): array {
+        $accountCategory = (string) ($expenseAccount->category ?? '');
+        $costType = match ($accountCategory) {
+            'direct_expense' => 'direct_cost',
+            'client_recruitment' => 'client_recruitment_cost',
+            'operating_expense' => 'operating_cost',
+            default => trim((string) ($billEntry->expense_cost_type ?? $billEntry->linked_account_category ?? '')),
+        };
+
+        $accountName = $this->accountLabel($expenseAccount);
+        $fields = [];
+
+        if (!(int) ($billEntry->linked_account_id ?? 0)) {
+            $fields['linked_account_id'] = $expenseAccount->id;
+            $fields['linked_account_name'] = $accountName;
+            $fields['linked_account_category'] = $costType !== ''
+                ? $costType
+                : ($billEntry->linked_account_category ?: $accountCategory);
+            $fields['linked_account_type'] = $billEntry->linked_account_type;
+        }
+
+        if (!(int) ($billEntry->expense_cost_account_id ?? 0)) {
+            $fields['expense_cost_account_id'] = $expenseAccount->id;
+            $fields['expense_cost_account_name'] = $accountName;
+            if ($costType !== '') {
+                $fields['expense_cost_type'] = $costType;
+            }
+            if (trim((string) ($billEntry->expense_cost_category_name ?? '')) === '') {
+                $fields['expense_cost_category_name'] = match ($costType) {
+                    'direct_cost' => 'Direct Expense',
+                    'client_recruitment_cost' => 'Client Recruitment',
+                    'operating_cost' => 'Operating Expense',
+                    default => null,
+                };
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Fill missing expense account links on existing approved due bills.
+     */
+    public function backfillMissingBillExpenseAccountLinks(): int
+    {
+        $bills = FinanceBillEntry::query()
+            ->where('status', 'approved')
+            ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
+            ->where(function ($query) {
+                $query
+                    ->whereNull('linked_account_id')
+                    ->orWhereNull('expense_cost_account_id');
+            })
+            ->orderBy('id')
+            ->get();
+
+        $updated = 0;
+
+        foreach ($bills as $bill) {
+            $expenseAccount = $this->resolveExpenseAccountForBill($bill);
+            if (!$expenseAccount) {
+                continue;
+            }
+
+            $fields = $this->buildExpenseAccountLinkFields($expenseAccount, $bill);
+            if ($fields === []) {
+                continue;
+            }
+
+            $bill->update($fields);
+            $updated++;
+        }
+
+        if ($updated > 0) {
+            $this->flushCache();
+        }
+
+        return $updated;
     }
 
     private function createBillPaymentTransaction(
