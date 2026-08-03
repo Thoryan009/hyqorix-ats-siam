@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-5">
-    <div class="flex flex-wrap gap-2">
+    <div v-if="!transactionOnly" class="flex flex-wrap gap-2">
       <button
         v-for="type in paymentModes"
         :key="type.id"
@@ -29,7 +29,10 @@
       </button>
     </div>
 
-    <div v-if="isBillsToPayMode" class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <div
+      v-if="!transactionOnly && isBillsToPayMode"
+      class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+    >
       <div class="mb-4 border-b border-gray-100 pb-3">
         <h3 class="text-base font-semibold text-gray-800">Bills To Pay</h3>
         <p class="mt-1 text-sm text-gray-500">
@@ -40,7 +43,7 @@
     </div>
 
     <div
-      v-else-if="isBillsPayableMode"
+      v-else-if="!transactionOnly && isBillsPayableMode"
       class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
     >
       <div class="mb-4 border-b border-gray-100 pb-3">
@@ -58,7 +61,7 @@
       class="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]"
     >
     <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <h3 class="mb-4 text-base font-semibold text-gray-800">Make Payment</h3>
+      <h3 class="mb-4 text-base font-semibold text-gray-800">Other Transaction</h3>
 
       <BaseForm :onSubmit="handleSubmit">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -369,6 +372,7 @@ const emit = defineEmits(['saved'])
 
 const props = defineProps({
   initialMode: { type: String, default: '' },
+  transactionOnly: { type: Boolean, default: false },
 })
 
 const route = useRoute()
@@ -380,7 +384,7 @@ const paymentStore = useExpensePaymentStore()
 
 const submitLoading = ref(false)
 const activePaymentMode = ref(
-  props.initialMode === TRANSACTION_MODE
+  props.transactionOnly || props.initialMode === TRANSACTION_MODE
     ? TRANSACTION_MODE
     : props.initialMode === BILLS_PAYABLE_MODE
       ? BILLS_PAYABLE_MODE
@@ -389,15 +393,18 @@ const activePaymentMode = ref(
 const paymentModes = [
   { id: BILLS_TO_PAY_MODE, label: 'Bills To Pay', icon: 'fa fa-clock-o' },
   { id: BILLS_PAYABLE_MODE, label: 'Bills Payable', icon: 'fa fa-file-text-o' },
-  { id: TRANSACTION_MODE, label: 'Other Payment', icon: 'fa fa-exchange' },
 ]
 const accountCategoryOptions = accountTransactionCategoryOptions
 const transactionTypeOptions = accountTransactionTypes.map((type) => ({
   id: type.id,
   name: type.label,
 }))
-const isBillsToPayMode = computed(() => activePaymentMode.value === BILLS_TO_PAY_MODE)
-const isBillsPayableMode = computed(() => activePaymentMode.value === BILLS_PAYABLE_MODE)
+const isBillsToPayMode = computed(
+  () => !props.transactionOnly && activePaymentMode.value === BILLS_TO_PAY_MODE
+)
+const isBillsPayableMode = computed(
+  () => !props.transactionOnly && activePaymentMode.value === BILLS_PAYABLE_MODE
+)
 const pendingBillCount = computed(() => paymentStore.pendingBillCount)
 const payableBillCount = computed(() => paymentStore.payableBillCount)
 
@@ -592,37 +599,27 @@ const toAccountBalance = computed(() =>
 
 function setPaymentMode(modeId) {
   activePaymentMode.value = modeId
-  if (modeId === TRANSACTION_MODE) {
-    setTransactionType(form.transaction_type || accountTransactionTypes[0]?.id || 'loan')
-  }
 
   const query = { ...route.query, tab: 'transaction_entry' }
-  if (modeId === BILLS_TO_PAY_MODE) {
-    query.payment_mode = 'bills_to_pay'
-  } else if (modeId === BILLS_PAYABLE_MODE) {
+  if (modeId === BILLS_PAYABLE_MODE) {
     query.payment_mode = 'bills_payable'
   } else {
-    query.payment_mode = 'transaction'
+    query.payment_mode = 'bills_to_pay'
   }
   router.replace({ query })
 }
 
 watch(
-  () => props.initialMode,
-  (mode) => {
-    if (mode === TRANSACTION_MODE) {
+  () => [props.initialMode, props.transactionOnly],
+  ([mode, transactionOnly]) => {
+    if (transactionOnly || mode === TRANSACTION_MODE) {
       activePaymentMode.value = TRANSACTION_MODE
+      setTransactionType(form.transaction_type || accountTransactionTypes[0]?.id || 'loan')
       return
     }
 
     if (mode === BILLS_PAYABLE_MODE) {
       activePaymentMode.value = BILLS_PAYABLE_MODE
-      return
-    }
-
-    if (mode && accountTransactionTypes.some((item) => item.id === mode)) {
-      activePaymentMode.value = TRANSACTION_MODE
-      setTransactionType(mode)
       return
     }
 
@@ -742,7 +739,10 @@ async function handleSubmit() {
 }
 
 onMounted(async () => {
-  if (!route.query.payment_mode) {
+  if (props.transactionOnly) {
+    activePaymentMode.value = TRANSACTION_MODE
+    setTransactionType(form.transaction_type || accountTransactionTypes[0]?.id || 'loan')
+  } else if (!route.query.payment_mode || route.query.payment_mode === 'transaction') {
     setPaymentMode(BILLS_TO_PAY_MODE)
   }
 

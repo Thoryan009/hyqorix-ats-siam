@@ -66,6 +66,13 @@
           @saved="goToTransactions"
         />
 
+        <TransactionEntryPanel
+          v-else-if="activeTab === 'other_transaction'"
+          initial-mode="transaction"
+          transaction-only
+          @saved="goToTransactions"
+        />
+
         <template v-else>
           <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50/80 p-4">
             <h4 class="mb-1 text-sm font-semibold text-gray-900">Receive Type</h4>
@@ -141,8 +148,9 @@ const activeTab = ref('transaction_entry')
 const receiveType = ref('job')
 
 const pageTabs = [
-  { id: 'transaction_entry', label: 'Make Payment', icon: 'fa fa-exchange'},
+  { id: 'transaction_entry', label: 'Make Payment', icon: 'fa fa-credit-card' },
   { id: 'sale_entry', label: 'Receive Payment', icon: 'fa fa-money' },
+  { id: 'other_transaction', label: 'Other Transaction', icon: 'fa fa-exchange' },
 ]
 
 const receiveTypes = [
@@ -154,15 +162,19 @@ const receiveTypes = [
 const tabMeta = {
   transaction_entry: {
     title: 'Make Payment',
-    description:
-      'Record loan and advanced payments, or pay pending expense bills',
-    subtitle: 'Transaction types and bills to pay',
+    description: 'Pay pending expense bills or settle approved due bills payable',
+    subtitle: 'Bills to pay and bills payable',
   },
   sale_entry: {
     title: 'Receive Payment',
     description:
       'Collect gross income by payer, PL income, or settle due bills receivable',
     subtitle: 'Gross income, PL income, and bills receivable',
+  },
+  other_transaction: {
+    title: 'Other Transaction',
+    description: 'Record loan, advanced, and other account type transactions',
+    subtitle: 'Transfer between accounts or adjust balances',
   },
 }
 
@@ -182,7 +194,6 @@ const receiveTypeMeta = {
 }
 
 const routePaymentMode = computed(() => {
-  if (route.query.payment_mode === 'transaction') return 'transaction'
   if (route.query.payment_mode === 'bills_payable') return 'bills_payable'
   if (route.query.payment_mode === 'bills_to_pay') return 'bills_to_pay'
   return 'bills_to_pay'
@@ -194,6 +205,9 @@ const activeTabMeta = computed(() => {
       ...tabMeta.sale_entry,
       ...(receiveTypeMeta[receiveType.value] ?? receiveTypeMeta.job),
     }
+  }
+  if (activeTab.value === 'other_transaction') {
+    return tabMeta.other_transaction
   }
   if (activeTab.value === 'transaction_entry' && routePaymentMode.value === 'bills_to_pay') {
     return {
@@ -208,13 +222,6 @@ const activeTabMeta = computed(() => {
       description:
         'Approved due bills posted to expense accounts (direct, client recruitment, operating)',
       subtitle: 'Outstanding payables on expense account ledgers',
-    }
-  }
-  if (activeTab.value === 'transaction_entry' && routePaymentMode.value === 'transaction') {
-    return {
-      title: 'Make Payment — Other Payment',
-      description: 'Record loan, advanced, and other account type transactions',
-      subtitle: 'Transfer between accounts or adjust balances',
     }
   }
   return tabMeta[activeTab.value] ?? tabMeta.sale_entry
@@ -408,9 +415,8 @@ const setActiveTab = (tabId) => {
     delete query.receive_type
   }
   if (tabId === 'transaction_entry') {
-    if (!query.payment_mode) {
-      query.payment_mode = 'bills_to_pay'
-    }
+    query.payment_mode =
+      route.query.payment_mode === 'bills_payable' ? 'bills_payable' : 'bills_to_pay'
   } else {
     delete query.payment_mode
   }
@@ -484,6 +490,15 @@ const applyRouteTab = () => {
     return
   }
 
+  // Legacy: Other Transaction lived under Make Payment
+  if (tab === 'transaction_entry' && route.query.payment_mode === 'transaction') {
+    activeTab.value = 'other_transaction'
+    const query = { ...route.query, tab: 'other_transaction' }
+    delete query.payment_mode
+    router.replace({ query })
+    return
+  }
+
   if (pageTabs.some((item) => item.id === tab)) {
     activeTab.value = tab
     if (tab === 'sale_entry') {
@@ -505,6 +520,9 @@ const applyRouteTab = () => {
   } else if (route.query.receive_type === 'bills_receivable') {
     activeTab.value = 'sale_entry'
     receiveType.value = 'bills_receivable'
+  } else if (route.query.payment_mode === 'transaction') {
+    activeTab.value = 'other_transaction'
+    receiveType.value = 'job'
   } else {
     activeTab.value = 'transaction_entry'
     receiveType.value = 'job'
