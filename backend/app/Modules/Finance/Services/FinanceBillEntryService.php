@@ -384,6 +384,25 @@ class FinanceBillEntryService extends BaseCachedService
                             true
                         );
                     }
+
+                    // Due bills: CR {Head} Payable so Trial Balance shows the liability.
+                    if ($isDuePayment) {
+                        $expenseHead = $this->resolveExpenseHeadForBill($billEntry, $expenseAccount);
+                        if ($expenseHead) {
+                            $this->accountService->recordExpensePayableEntry(
+                                $expenseHead,
+                                $amount,
+                                'cr',
+                                $paymentDate,
+                                $voucherNo,
+                                $typeTransactionId,
+                                $expenseBillParticular !== '' ? $expenseBillParticular : 'Due payable',
+                                'Due',
+                                $approvalRemarks ?: $remarks ?: 'Bill approved as due',
+                                (string) ($billEntry->client_name ?? '')
+                            );
+                        }
+                    }
                 }
 
                 if ($paymentAccount) {
@@ -552,6 +571,26 @@ class FinanceBillEntryService extends BaseCachedService
                     $typeTransactionId,
                     true
                 );
+
+                // Clear {Head} Payable liability for the settled amount.
+                $expenseHead = $this->resolveExpenseHeadForBill($billEntry, $expenseAccount);
+                if ($expenseHead) {
+                    $settleVoucherNo = $voucherNo !== ''
+                        ? sprintf('%s-P%s', $voucherNo, $typeTransactionId ?: now()->timestamp)
+                        : sprintf('BILL-PAY-%d', $billEntry->id);
+                    $this->accountService->recordExpensePayableEntry(
+                        $expenseHead,
+                        $payAmount,
+                        'dr',
+                        $paymentDate,
+                        $settleVoucherNo,
+                        $typeTransactionId,
+                        $ledgerParticular,
+                        $paymentMethodLabel,
+                        $ledgerRemarks,
+                        (string) ($billEntry->client_name ?? '')
+                    );
+                }
 
                 if ($paymentAccount) {
                     // Payment account ledger: DR (cash/bank out).
@@ -1160,6 +1199,7 @@ class FinanceBillEntryService extends BaseCachedService
 
         $existing = FinanceAccount::query()
             ->where('expense_head_id', $headId)
+            ->whereIn('category', self::EXPENSE_ACCOUNT_CATEGORIES)
             ->where('status', 'active')
             ->first();
 
@@ -1173,6 +1213,22 @@ class FinanceBillEntryService extends BaseCachedService
         }
 
         return $this->accountService->ensureExpenseHeadAccount($expenseHead);
+    }
+
+    private function resolveExpenseHeadForBill(
+        FinanceBillEntry $billEntry,
+        ?FinanceAccount $expenseAccount = null
+    ): ?ExpenseHead {
+        $headId = (int) ($billEntry->expense_head_id ?? 0);
+        if ($headId <= 0 && $expenseAccount) {
+            $headId = (int) ($expenseAccount->expense_head_id ?? 0);
+        }
+
+        if ($headId <= 0) {
+            return null;
+        }
+
+        return ExpenseHead::query()->find($headId);
     }
 
     private function createBillPaymentTransaction(

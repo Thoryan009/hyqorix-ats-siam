@@ -20,6 +20,7 @@ class FinanceTrialBalanceService
         'sale' => 'Sale',
         'bills_receivable' => 'Sale Receivable',
         'income_receivable' => 'Income Receivable',
+        'expense_payable' => 'Expense Payable',
         'direct_expense' => 'Direct Expense Accounts',
         'client_recruitment' => 'Client Recruitment Accounts',
         'operating_expense' => 'Operating Expense Accounts',
@@ -42,6 +43,7 @@ class FinanceTrialBalanceService
         'main',
         'bills_receivable',
         'income_receivable',
+        'expense_payable',
         'agent_advanced',
         'staff',
         'vendor',
@@ -101,6 +103,9 @@ class FinanceTrialBalanceService
 
         // Backfill income-head receivable ledgers for prior PL Income dues.
         $this->accountService->backfillMissingIncomeReceivableEntries();
+
+        // Backfill per-head expense payable ledgers for approved due bills.
+        $this->accountService->backfillMissingExpensePayableEntries();
 
         // Ensure collected client/operating income appears on income-head ledgers for TB.
         $this->incomeCollectionService->backfillMissingIncomeHeadCredits();
@@ -311,7 +316,7 @@ class FinanceTrialBalanceService
         }
 
         $code = trim((string) ($account->code ?? ''));
-        if ($code !== '' && !in_array($category, ['main', 'capital', 'agent_advanced', 'sale', 'bills_receivable', 'income_receivable'], true)) {
+        if ($code !== '' && !in_array($category, ['main', 'capital', 'agent_advanced', 'sale', 'bills_receivable', 'income_receivable', 'expense_payable'], true)) {
             return "{$name} ({$code})";
         }
 

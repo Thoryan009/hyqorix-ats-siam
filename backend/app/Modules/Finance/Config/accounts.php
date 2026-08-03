@@ -8,6 +8,7 @@ return [
         'sale',
         'bills_receivable',
         'income_receivable',
+        'expense_payable',
         'direct_expense',
         'client_recruitment',
         'operating_expense',

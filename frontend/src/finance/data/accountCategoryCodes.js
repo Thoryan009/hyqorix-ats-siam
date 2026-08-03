@@ -5,6 +5,7 @@ export const ACCOUNT_CATEGORIES = {
   SALE: 'sale',
   BILLS_RECEIVABLE: 'bills_receivable',
   INCOME_RECEIVABLE: 'income_receivable',
+  EXPENSE_PAYABLE: 'expense_payable',
   DIRECT_EXPENSE: 'direct_expense',
   CLIENT_RECRUITMENT: 'client_recruitment',
   OPERATING_EXPENSE: 'operating_expense',

@@ -11,6 +11,7 @@ use App\Modules\Finance\Models\FinanceAccountTransaction;
 use App\Modules\Finance\Models\FinanceAccountTypeTransaction;
 use App\Modules\Finance\Models\FinanceSaleCollection;
 use App\Modules\Finance\Models\FinanceIncomeCollection;
+use App\Modules\Finance\Models\FinanceBillEntry;
 use App\Modules\Finance\Models\IncomeHead;
 use App\Modules\Finance\Repositories\FinanceAccountRepository;
 use App\Modules\JobList\Helpers\JobListPayerHelper;
@@ -30,6 +31,7 @@ class FinanceAccountService extends BaseCachedService
     public const BILLS_RECEIVABLE_CATEGORY = 'bills_receivable';
     public const BILLS_RECEIVABLE_ACCOUNT_CODE = 'BILLS_RECEIVABLE';
     public const INCOME_RECEIVABLE_CATEGORY = 'income_receivable';
+    public const EXPENSE_PAYABLE_CATEGORY = 'expense_payable';
 
     public function __construct(protected FinanceAccountRepository $repository)
     {
@@ -90,6 +92,12 @@ class FinanceAccountService extends BaseCachedService
             if (($data['category'] ?? null) === self::INCOME_RECEIVABLE_CATEGORY) {
                 throw ValidationException::withMessages([
                     'category' => ['Income Receivable ledgers are system-managed and cannot be created manually.'],
+                ]);
+            }
+
+            if (($data['category'] ?? null) === self::EXPENSE_PAYABLE_CATEGORY) {
+                throw ValidationException::withMessages([
+                    'category' => ['Expense Payable ledgers are system-managed and cannot be created manually.'],
                 ]);
             }
 
@@ -437,6 +445,175 @@ class FinanceAccountService extends BaseCachedService
         }
 
         return $name.' Receivable';
+    }
+
+    /**
+     * Per expense-head payable account (Medical Payable, Air Ticket Payable, …).
+     */
+    public function ensureExpensePayableAccount(ExpenseHead $expenseHead): FinanceAccount
+    {
+        $expenseHead->loadMissing('expenseCategory');
+
+        return $this->mutate(function () use ($expenseHead) {
+            $account = $this->model->firstOrNew([
+                'category' => self::EXPENSE_PAYABLE_CATEGORY,
+                'expense_head_id' => $expenseHead->id,
+            ]);
+
+            $headName = trim((string) $expenseHead->name);
+            $account->account_name = $this->expensePayableAccountName($headName);
+            $account->expense_category_id = $expenseHead->expense_category_id;
+            $account->code = 'PAY-EH-'.$expenseHead->id;
+            $account->status = 'active';
+
+            if (!$account->exists) {
+                $account->balance = 0;
+                $account->opening_balance = 0;
+            }
+
+            $account->save();
+
+            return $account;
+        });
+    }
+
+    public function recordExpensePayableEntry(
+        ExpenseHead $expenseHead,
+        float $amount,
+        string $side,
+        string $entryDate,
+        string $voucherNo,
+        ?int $typeTransactionId = null,
+        string $particular = '',
+        string $paymentMethod = '',
+        string $remarks = '',
+        string $clientName = '',
+    ): void {
+        if ($amount <= 0) {
+            return;
+        }
+
+        $side = strtolower($side) === 'dr' ? 'dr' : 'cr';
+        $account = $this->ensureExpensePayableAccount($expenseHead);
+        $voucherNo = trim($voucherNo);
+        $particular = trim($particular) !== ''
+            ? trim($particular)
+            : $account->account_name;
+
+        $existingEntry = null;
+        if ($typeTransactionId || $voucherNo !== '') {
+            $existingEntry = FinanceAccountLedgerEntry::query()
+                ->where('finance_account_id', $account->id)
+                ->where(function ($query) use ($typeTransactionId, $voucherNo, $side) {
+                    if ($typeTransactionId) {
+                        $query->where('finance_account_type_transaction_id', $typeTransactionId)
+                            ->where($side === 'dr' ? 'dr_amount' : 'cr_amount', '>', 0);
+                    }
+                    if ($voucherNo !== '') {
+                        $query->orWhere(function ($inner) use ($voucherNo, $side) {
+                            $inner->where('voucher_no', $voucherNo)
+                                ->where($side === 'dr' ? 'dr_amount' : 'cr_amount', '>', 0);
+                        });
+                    }
+                })
+                ->first();
+        }
+
+        if ($existingEntry) {
+            return;
+        }
+
+        FinanceAccountLedgerEntry::create([
+            'finance_account_id' => $account->id,
+            'finance_account_type_transaction_id' => $typeTransactionId,
+            'entry_date' => $entryDate,
+            'particular' => $particular,
+            'voucher_no' => $voucherNo !== '' ? $voucherNo : null,
+            'client_name' => $clientName !== '' ? $clientName : null,
+            'dr_amount' => $side === 'dr' ? $amount : 0,
+            'discount' => 0,
+            'cr_amount' => $side === 'cr' ? $amount : 0,
+            'payment_method' => $paymentMethod,
+            'remarks' => $remarks !== '' ? $remarks : null,
+        ]);
+
+        // Liability: CR increases payable balance; DR decreases it.
+        $delta = $side === 'cr' ? $amount : -$amount;
+        $account->balance = round((float) $account->balance + $delta, 2);
+        $account->save();
+    }
+
+    private function expensePayableAccountName(string $headName): string
+    {
+        $name = trim($headName);
+        if ($name === '') {
+            return 'Expense Payable';
+        }
+
+        if (preg_match('/payable$/i', $name)) {
+            return $name;
+        }
+
+        return $name.' Payable';
+    }
+
+    /**
+     * Backfill expense payable CR/DR from approved due bills and partial settlements.
+     */
+    public function backfillMissingExpensePayableEntries(): void
+    {
+        $dueBills = FinanceBillEntry::query()
+            ->with('expenseHead')
+            ->where('status', 'approved')
+            ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
+            ->orderBy('approved_at')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($dueBills as $bill) {
+            $head = $bill->expenseHead;
+            if (!$head) {
+                continue;
+            }
+
+            $amount = round((float) ($bill->amount ?? 0), 2);
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $voucherNo = trim((string) ($bill->voucher_no ?? $bill->reference_no ?? ''));
+            $entryDate = $bill->approved_at?->format('Y-m-d')
+                ?: ($bill->payment_date?->format('Y-m-d') ?? now()->toDateString());
+
+            $this->recordExpensePayableEntry(
+                $head,
+                $amount,
+                'cr',
+                $entryDate,
+                $voucherNo !== '' ? $voucherNo : 'BILL-DUE-'.$bill->id,
+                null,
+                trim((string) ($bill->particular ?? '')) ?: 'Due payable',
+                'Due',
+                (string) ($bill->remarks ?? $bill->approval_remarks ?? ''),
+                (string) ($bill->client_name ?? $bill->linked_account_name ?? '')
+            );
+
+            $paidAmount = round((float) ($bill->paid_amount ?? 0), 2);
+            if ($paidAmount > 0) {
+                $this->recordExpensePayableEntry(
+                    $head,
+                    $paidAmount,
+                    'dr',
+                    $entryDate,
+                    ($voucherNo !== '' ? $voucherNo : 'BILL-DUE-'.$bill->id).'-PAID',
+                    null,
+                    trim((string) ($bill->particular ?? '')) ?: 'Partial payable payment',
+                    'Partial',
+                    (string) ($bill->remarks ?? $bill->approval_remarks ?? ''),
+                    (string) ($bill->client_name ?? $bill->linked_account_name ?? '')
+                );
+            }
+        }
     }
 
     /**
@@ -1460,6 +1637,12 @@ class FinanceAccountService extends BaseCachedService
         if ($financeAccount->category === self::INCOME_RECEIVABLE_CATEGORY) {
             throw ValidationException::withMessages([
                 'category' => ['Income Receivable ledger cannot be deleted.'],
+            ]);
+        }
+
+        if ($financeAccount->category === self::EXPENSE_PAYABLE_CATEGORY) {
+            throw ValidationException::withMessages([
+                'category' => ['Expense Payable ledger cannot be deleted.'],
             ]);
         }
 
