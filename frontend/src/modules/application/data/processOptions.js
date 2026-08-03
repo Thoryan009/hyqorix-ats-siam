@@ -1,0 +1,16 @@
+export const processOptions = [
+  { id: 'hiring_list', name: 'Hiring List' },
+  { id: 'offer_extended', name: 'Offer Extended' },
+  { id: 'visa_authorization', name: 'Visa Authorization' },
+  { id: 'medical_test', name: 'Medical Test' },
+  { id: 'police_clearance', name: 'Police Clearance' },
+  { id: 'trade_test', name: 'Trade Test' },
+  { id: 'biometric_enrollment', name: 'Biometric Enrollment' },
+  { id: 'embassy_submission', name: 'Embassy Submission' },
+  { id: 'bmet_training', name: 'BMET Training' },
+  { id: 'bmet_biometric_enrollment', name: 'BMET Biometric Enrollment' },
+  { id: 'immigration_clearance', name: 'Immigration Clearance' },
+  { id: 'pta_request', name: 'PTA Request' },
+  { id: 'onboarding', name: 'Onboarding' },
+  { id: 'tra_process', name: 'TRA Process' },
+]

@@ -1,0 +1,1303 @@
+<?php
+
+namespace App\Modules\Finance\Services;
+
+use App\Modules\Application\Models\Application;
+use App\Modules\Employee\Models\Employee;
+use App\Modules\Finance\Models\ExpenseCategory;
+use App\Modules\Finance\Models\ExpenseHead;
+use App\Modules\Finance\Models\FinanceAccount;
+use App\Modules\Finance\Models\FinanceAccountLedgerEntry;
+use App\Modules\Finance\Models\FinanceAccountTypeTransaction;
+use App\Modules\Finance\Models\FinanceBillEntry;
+use App\Modules\Finance\Repositories\FinanceBillEntryRepository;
+use App\Modules\JobList\Models\JobList;
+use App\Modules\WorkOrder\Models\WorkOrder;
+use App\Services\BaseCachedService;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class FinanceBillEntryService extends BaseCachedService
+{
+    public function __construct(
+        protected FinanceBillEntryRepository $repository,
+        private readonly FinanceAccountService $accountService,
+        private readonly FinanceAccountTypeTransactionService $typeTransactionService,
+    ) {
+        parent::__construct(new FinanceBillEntry());
+    }
+
+    public function getPaginatedDataWithCache(array $filters = [])
+    {
+        return $this->remember(
+            $this->filtersCacheKey($filters),
+            fn () => $this->repository->getPaginatedData($filters)
+        );
+    }
+
+    public function getBillEntry(FinanceBillEntry $billEntry): FinanceBillEntry
+    {
+        return $this->remember(
+            $this->byIdCacheKey($billEntry->id),
+            fn () => $billEntry->load(['expenseCategory', 'expenseHead'])
+        );
+    }
+
+    public function createBillEntry(array $data): FinanceBillEntry
+    {
+        return $this->mutate(function () use ($data) {
+            $payload = $this->buildCreatePayload($data);
+
+            if (empty($payload['request_no'])) {
+                $payload['request_no'] = $this->nextRequestNo(Carbon::parse($payload['payment_date']));
+            }
+
+            return FinanceBillEntry::query()->create($payload);
+        });
+    }
+
+    /**
+     * @return FinanceBillEntry[]
+     */
+    public function createBillEntryBatch(array $data): array
+    {
+        return $this->mutate(function () use ($data) {
+            $applicationIds = collect($data['application_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if (empty($applicationIds)) {
+                throw ValidationException::withMessages([
+                    'application_ids' => ['Please select at least one candidate application.'],
+                ]);
+            }
+
+            $basePayload = $this->buildCreatePayload($data, false);
+            $batchRef = trim((string) ($data['batch_ref'] ?? $data['reference_no'] ?? ''));
+            if ($batchRef === '') {
+                $batchRef = 'BATCH-' . str_pad((string) (FinanceBillEntry::max('id') + 1), 4, '0', STR_PAD_LEFT);
+            }
+
+            $paymentDate = $basePayload['payment_date'];
+            $requestNo = trim((string) ($data['request_no'] ?? ''));
+            if ($requestNo === '') {
+                $requestNo = $this->nextRequestNo(Carbon::parse($paymentDate));
+            }
+
+            $entries = [];
+
+            $this->assertNoDuplicateApplicationBills(
+                $applicationIds,
+                (int) $basePayload['expense_head_id']
+            );
+
+            DB::transaction(function () use ($applicationIds, $basePayload, $batchRef, $data, $requestNo, &$entries) {
+                foreach ($applicationIds as $applicationId) {
+                    $applicationMeta = $this->resolveApplicationMeta($applicationId);
+                    $paymentDate = $basePayload['payment_date'];
+
+                    $particular = trim((string) ($data['particular'] ?? ''));
+                    if ($particular === '') {
+                        $category = ExpenseCategory::find($basePayload['expense_category_id']);
+                        $head = ExpenseHead::find($basePayload['expense_head_id']);
+                        $particular = sprintf(
+                            '%s - %s - %s (%s)',
+                            $category?->name ?? 'Expense',
+                            $head?->name ?? 'Head',
+                            $applicationMeta['candidate_name'],
+                            $applicationMeta['passport_no']
+                        );
+                    }
+
+                    $entries[] = FinanceBillEntry::query()->create([
+                        ...$basePayload,
+                        ...$applicationMeta,
+                        'particular' => $particular,
+                        'batch_ref' => $batchRef,
+                        'request_no' => $requestNo,
+                        'voucher_no' => $this->nextVoucherNo('BILL', Carbon::parse($paymentDate)),
+                    ]);
+                }
+            });
+
+            return collect($entries)->map(fn (FinanceBillEntry $entry) => $entry->load(['expenseCategory', 'expenseHead']))->all();
+        });
+    }
+
+    /**
+     * Multiple expense-head lines, each with its own voucher/bill number.
+     * Lines share batch_ref so they stay linked as one submission.
+     *
+     * @return FinanceBillEntry[]
+     */
+    public function createMultiHeadBillEntries(array $data): array
+    {
+        return $this->mutate(function () use ($data) {
+            $lines = collect($data['lines'] ?? [])
+                ->filter(fn ($line) => !empty($line['head_id']) && (float) ($line['amount'] ?? 0) > 0)
+                ->values()
+                ->all();
+
+            if (empty($lines)) {
+                throw ValidationException::withMessages([
+                    'lines' => ['Please add at least one expense head with amount.'],
+                ]);
+            }
+
+            $categoryId = (int) ($data['category_id'] ?? 0);
+            $category = ExpenseCategory::find($categoryId);
+            if (!$category) {
+                throw ValidationException::withMessages([
+                    'category_id' => ['Selected expense category is invalid.'],
+                ]);
+            }
+
+            $paymentDate = $data['payment_date'] ?? now()->toDateString();
+            $paymentCarbon = Carbon::parse($paymentDate);
+
+            $batchRef = trim((string) ($data['batch_ref'] ?? $data['reference_no'] ?? ''));
+            if ($batchRef === '') {
+                $batchRef = $this->nextVoucherNo('BATCH', $paymentCarbon);
+            }
+
+            $requestNo = trim((string) ($data['request_no'] ?? ''));
+            if ($requestNo === '') {
+                $requestNo = $this->nextRequestNo($paymentCarbon);
+            }
+
+            $entries = [];
+
+            DB::transaction(function () use (
+                $lines,
+                $data,
+                $category,
+                $categoryId,
+                $paymentDate,
+                $batchRef,
+                $requestNo,
+                &$entries
+            ) {
+                foreach ($lines as $line) {
+                    $lineBillNo = trim((string) (
+                        $line['voucher_no']
+                            ?? $line['bill_no']
+                            ?? $line['reference_no']
+                            ?? ''
+                    ));
+                    $lineBillNo = $lineBillNo !== '' ? $lineBillNo : null;
+
+                    $linePayload = [
+                        ...$data,
+                        'category_id' => $categoryId,
+                        'head_id' => (int) $line['head_id'],
+                        'amount' => (float) $line['amount'],
+                        'payment_date' => $paymentDate,
+                        'reference_no' => $lineBillNo ?? '',
+                        'batch_ref' => $batchRef,
+                        'particular' => trim((string) ($line['particular'] ?? '')),
+                        'linked_account_category' => $line['linked_account_category'] ?? null,
+                        'linked_account_id' => $line['linked_account_id'] ?? null,
+                        'linked_account_name' => $line['linked_account_name'] ?? null,
+                        'linked_account_type' => $line['linked_account_type'] ?? null,
+                        'expense_cost_type' => $line['expense_cost_type'] ?? null,
+                        'expense_cost_account_id' => $line['expense_cost_account_id'] ?? null,
+                        'expense_cost_account_name' => $line['expense_cost_account_name'] ?? null,
+                        'expense_cost_category_name' => $line['expense_cost_category_name'] ?? null,
+                    ];
+
+                    $payload = $this->buildCreatePayload($linePayload, false);
+
+                    if (trim((string) ($payload['particular'] ?? '')) === '') {
+                        $head = ExpenseHead::find((int) $line['head_id']);
+                        $payload['particular'] = sprintf('%s - %s', $category->name, $head?->name ?? 'Head');
+                    }
+
+                    $payload['voucher_no'] = $lineBillNo;
+                    $payload['reference_no'] = $lineBillNo;
+                    $payload['batch_ref'] = $batchRef;
+                    $payload['request_no'] = $requestNo;
+
+                    $entries[] = FinanceBillEntry::query()->create($payload);
+                }
+            });
+
+            return collect($entries)->map(fn (FinanceBillEntry $entry) => $entry->load(['expenseCategory', 'expenseHead']))->all();
+        });
+    }
+
+    public function updateBillEntry(FinanceBillEntry $billEntry, array $data): FinanceBillEntry
+    {
+        if ($billEntry->status === 'approved') {
+            throw ValidationException::withMessages([
+                'status' => ['Approved bills cannot be edited.'],
+            ]);
+        }
+
+        return $this->mutate(function () use ($billEntry, $data) {
+            $billEntry->update([
+                'amount' => (float) $data['amount'],
+                'particular' => trim((string) ($data['particular'] ?? $billEntry->particular)),
+                'reference_no' => trim((string) ($data['reference_no'] ?? '')),
+                'remarks' => trim((string) ($data['remarks'] ?? '')),
+                'approval_remarks' => trim((string) ($data['approval_remarks'] ?? $billEntry->approval_remarks ?? '')),
+            ]);
+
+            return $billEntry->fresh(['expenseCategory', 'expenseHead']);
+        });
+    }
+
+    public function approveBillEntry(FinanceBillEntry $billEntry, array $data): FinanceBillEntry
+    {
+        if ($billEntry->status === 'approved') {
+            throw ValidationException::withMessages([
+                'status' => ['This bill entry is already approved.'],
+            ]);
+        }
+
+        if ($billEntry->status === 'submitted') {
+            throw ValidationException::withMessages([
+                'status' => ['This bill must be approved by a manager before payment.'],
+            ]);
+        }
+
+        if ($billEntry->status !== 'pending') {
+            throw ValidationException::withMessages([
+                'status' => ['Only manager-approved bills can be paid from Bills To Pay.'],
+            ]);
+        }
+
+        return $this->mutate(function () use ($billEntry, $data) {
+            $paymentMethod = strtolower((string) ($data['payment_method'] ?? $billEntry->payment_method ?? 'cash'));
+
+            return DB::transaction(function () use ($billEntry, $data, $paymentMethod) {
+                $amount = round((float) $data['amount'], 2);
+                $paymentDate = $billEntry->payment_date?->format('Y-m-d') ?? now()->toDateString();
+                $particular = trim((string) ($data['particular'] ?? $billEntry->particular));
+                $referenceNo = trim((string) ($data['reference_no'] ?? $billEntry->reference_no ?? ''));
+                $remarks = trim((string) ($data['remarks'] ?? $billEntry->remarks ?? ''));
+                $approvalRemarks = trim((string) ($data['approval_remarks'] ?? ''));
+                $voucherNo = trim((string) ($data['voucher_no'] ?? ''));
+                if ($voucherNo === '') {
+                    $voucherNo = $billEntry->voucher_no ?: $referenceNo ?: $this->nextVoucherNo('BILL', Carbon::parse($paymentDate));
+                }
+                $paymentFields = $this->resolvePaymentAccountFields($data, $paymentMethod);
+                $manualApprovalFields = $this->resolveManualApprovalFields($billEntry, $data);
+
+                $billEntry->update([
+                    'amount' => $amount,
+                    'particular' => $particular,
+                    'reference_no' => $referenceNo,
+                    'voucher_no' => $voucherNo,
+                    'remarks' => $remarks,
+                    'approval_remarks' => $approvalRemarks,
+                    'payment_method' => $paymentMethod,
+                    'paid_amount' => $paymentMethod === 'due' ? 0 : $amount,
+                    'status' => 'approved',
+                    'approved_at' => now(),
+                    'approved_by' => trim((string) ($data['approved_by'] ?? 'Accountant')),
+                    'rejected_at' => null,
+                    ...$paymentFields,
+                    ...$manualApprovalFields,
+                ]);
+
+                $expenseAccount = $this->resolveExpenseAccountForBill($billEntry);
+                if ($expenseAccount) {
+                    $expenseAccount = FinanceAccount::query()
+                        ->lockForUpdate()
+                        ->findOrFail($expenseAccount->id);
+
+                    $this->assertActiveFinanceAccount($expenseAccount);
+                }
+
+                $paymentAccount = null;
+                if ($paymentMethod !== 'due' && !empty($paymentFields['payment_account_id'])) {
+                    $paymentAccount = FinanceAccount::query()
+                        ->lockForUpdate()
+                        ->findOrFail((int) $paymentFields['payment_account_id']);
+
+                    $this->assertActiveFinanceAccount($paymentAccount);
+
+                    if ((float) $paymentAccount->balance < $amount) {
+                        throw ValidationException::withMessages([
+                            'amount' => ['Insufficient balance in the selected payment account.'],
+                        ]);
+                    }
+                }
+
+                $typeTransaction = $this->createBillPaymentTransaction(
+                    $amount,
+                    $paymentDate,
+                    $particular,
+                    $referenceNo,
+                    $approvalRemarks ?: $remarks,
+                    $voucherNo,
+                    $paymentAccount,
+                    $expenseAccount,
+                    $paymentFields
+                );
+                $typeTransactionId = $typeTransaction?->id;
+
+                $isDuePayment = $paymentMethod === 'due';
+                $expenseBillParticular = $particular !== '' ? $particular : 'Bill approved';
+                $paymentMethodLabel = $this->resolveBillPaymentMethodLabel($paymentMethod, $paymentFields);
+
+                if (!$isDuePayment && !$paymentAccount) {
+                    throw ValidationException::withMessages([
+                        'payment_account_id' => ['Payment account is required for cash or bank bill payments.'],
+                    ]);
+                }
+
+                if ($expenseAccount) {
+                    // Expense head ledger: DR bill charge, then CR settlement when paid by cash/bank
+                    // (same pattern as agent Deployment Charge + collection). Due stays DR-only.
+                    $this->postBillLedgerEntry(
+                        $expenseAccount,
+                        $billEntry->id,
+                        $amount,
+                        $paymentDate,
+                        $expenseBillParticular,
+                        $voucherNo,
+                        $billEntry->client_name ?? '',
+                        $isDuePayment ? null : $paymentMethodLabel,
+                        $approvalRemarks ?: $remarks ?: 'Bill approved',
+                        $typeTransactionId,
+                        false
+                    );
+
+                    if (!$isDuePayment) {
+                        $this->postBillLedgerEntry(
+                            $expenseAccount,
+                            $billEntry->id,
+                            $amount,
+                            $paymentDate,
+                            $expenseBillParticular,
+                            $voucherNo,
+                            $billEntry->client_name ?? '',
+                            $paymentMethodLabel,
+                            $approvalRemarks ?: 'Bill payment approved',
+                            $typeTransactionId,
+                            true
+                        );
+                    }
+                }
+
+                if ($paymentAccount) {
+                    // Main cash/bank ledger: DR only (cash out). No CR on main account.
+                    $this->postBillLedgerEntry(
+                        $paymentAccount,
+                        $billEntry->id,
+                        $amount,
+                        $paymentDate,
+                        $particular,
+                        $voucherNo,
+                        $billEntry->linked_account_name ?? $billEntry->expense_cost_account_name ?? '',
+                        $paymentMethodLabel ?? ucfirst($paymentMethod),
+                        $approvalRemarks ?: 'Bill payment approved',
+                        $typeTransactionId,
+                        false
+                    );
+                }
+
+                $this->accountService->flushCache();
+                $this->typeTransactionService->flushCache();
+
+                return $billEntry->fresh(['expenseCategory', 'expenseHead']);
+            });
+        });
+    }
+
+    public function payPayableBillEntry(FinanceBillEntry $billEntry, array $data): FinanceBillEntry
+    {
+        if ($billEntry->status !== 'approved') {
+            throw ValidationException::withMessages([
+                'status' => ['Only approved bills can be paid from Bills Payable.'],
+            ]);
+        }
+
+        if (strtolower((string) $billEntry->payment_method) !== 'due') {
+            throw ValidationException::withMessages([
+                'payment_method' => ['This bill has already been settled or is not a due payable.'],
+            ]);
+        }
+
+        $expenseAccount = $this->resolveExpenseAccountForBill($billEntry);
+        if (!$expenseAccount) {
+            throw ValidationException::withMessages([
+                'account_id' => ['No expense account is linked to this bill.'],
+            ]);
+        }
+
+        return $this->mutate(function () use ($billEntry, $data, $expenseAccount) {
+            $paymentMethod = strtolower((string) ($data['payment_method'] ?? 'cash'));
+            if ($paymentMethod === 'due') {
+                throw ValidationException::withMessages([
+                    'payment_method' => ['Select cash, bank, or income link to settle this payable bill.'],
+                ]);
+            }
+
+            if (!in_array($paymentMethod, ['cash', 'bank', 'income_link'], true)) {
+                throw ValidationException::withMessages([
+                    'payment_method' => ['Please select a valid payment method (Cash, Bank, or Income Link).'],
+                ]);
+            }
+
+            return DB::transaction(function () use ($billEntry, $data, $expenseAccount, $paymentMethod) {
+                $billTotal = round((float) $billEntry->amount, 2);
+                $alreadyPaid = round((float) ($billEntry->paid_amount ?? 0), 2);
+                $remaining = round(max($billTotal - $alreadyPaid, 0), 2);
+                $payAmount = round((float) ($data['pay_amount'] ?? $data['amount'] ?? 0), 2);
+
+                if ($payAmount <= 0) {
+                    throw ValidationException::withMessages([
+                        'pay_amount' => ['Please enter a valid payment amount.'],
+                    ]);
+                }
+
+                if ($payAmount > $remaining) {
+                    throw ValidationException::withMessages([
+                        'pay_amount' => ["Payment amount cannot exceed the remaining payable balance of {$remaining}."],
+                    ]);
+                }
+
+                $paymentDate = $billEntry->payment_date?->format('Y-m-d') ?? now()->toDateString();
+                $particular = trim((string) ($data['particular'] ?? $billEntry->particular));
+                $referenceNo = trim((string) ($data['reference_no'] ?? $billEntry->reference_no ?? ''));
+                $remarks = trim((string) ($data['remarks'] ?? $billEntry->remarks ?? ''));
+                $approvalRemarks = trim((string) ($data['approval_remarks'] ?? ''));
+                $voucherNo = trim((string) ($data['voucher_no'] ?? ''));
+                if ($voucherNo === '') {
+                    $voucherNo = $billEntry->voucher_no ?: $referenceNo ?: $this->nextVoucherNo('BILL', Carbon::parse($paymentDate));
+                }
+
+                $isIncomeLink = $paymentMethod === 'income_link';
+                $incomeAccount = null;
+                $paymentAccount = null;
+                $paymentFields = [];
+
+                $expenseAccount = FinanceAccount::query()
+                    ->lockForUpdate()
+                    ->findOrFail($expenseAccount->id);
+                $this->assertActiveFinanceAccount($expenseAccount);
+
+                if ($isIncomeLink) {
+                    $incomeAccount = $this->accountService->resolveBillsPayableLinkedIncomeAccount();
+                    $paymentFields = [
+                        'payment_account_category' => $incomeAccount->category,
+                        'payment_account_type' => null,
+                        'payment_account_id' => $incomeAccount->id,
+                        'payment_account_name' => $this->accountLabel($incomeAccount),
+                    ];
+                } else {
+                    $paymentFields = $this->resolvePaymentAccountFields($data, $paymentMethod);
+
+                    if (empty($paymentFields['payment_account_id'])) {
+                        throw ValidationException::withMessages([
+                            'payment_account_id' => ['Payment account is required to settle this payable bill.'],
+                        ]);
+                    }
+
+                    $paymentAccount = FinanceAccount::query()
+                        ->lockForUpdate()
+                        ->findOrFail((int) $paymentFields['payment_account_id']);
+                    $this->assertActiveFinanceAccount($paymentAccount);
+
+                    if ((float) $paymentAccount->balance < $payAmount) {
+                        throw ValidationException::withMessages([
+                            'pay_amount' => ['Insufficient balance in the selected payment account.'],
+                        ]);
+                    }
+                }
+
+                $paymentMethodLabel = $this->resolveBillPaymentMethodLabel($paymentMethod, $paymentFields);
+                $isFullyPaid = round($alreadyPaid + $payAmount, 2) >= $billTotal;
+                $ledgerParticular = $particular !== ''
+                    ? $particular
+                    : ($isFullyPaid ? 'Bill payable settled' : 'Partial payable bill payment');
+                $ledgerRemarks = $approvalRemarks !== ''
+                    ? $approvalRemarks
+                    : ($isFullyPaid
+                        ? ($isIncomeLink ? 'Payable bill settled via income link' : 'Payable bill settled')
+                        : ($isIncomeLink ? 'Partial payable bill via income link' : 'Partial payable bill payment'));
+
+                $counterpartyAccount = $paymentAccount ?? $incomeAccount;
+                $typeTransaction = $this->createBillPaymentTransaction(
+                    $payAmount,
+                    $paymentDate,
+                    $ledgerParticular,
+                    $referenceNo,
+                    $ledgerRemarks,
+                    $voucherNo,
+                    $counterpartyAccount,
+                    $expenseAccount,
+                    $paymentFields
+                );
+                $typeTransactionId = $typeTransaction?->id;
+
+                // Expense head ledger: CR for the payment / settle amount.
+                $this->postBillLedgerEntry(
+                    $expenseAccount,
+                    $billEntry->id,
+                    $payAmount,
+                    $paymentDate,
+                    $ledgerParticular,
+                    $voucherNo,
+                    $billEntry->client_name ?? '',
+                    $paymentMethodLabel,
+                    $ledgerRemarks,
+                    $typeTransactionId,
+                    true
+                );
+
+                if ($paymentAccount) {
+                    // Payment account ledger: DR (cash/bank out).
+                    $this->postBillLedgerEntry(
+                        $paymentAccount,
+                        $billEntry->id,
+                        $payAmount,
+                        $paymentDate,
+                        $ledgerParticular,
+                        $voucherNo,
+                        $billEntry->linked_account_name ?? $billEntry->expense_cost_account_name ?? '',
+                        $paymentMethodLabel ?? ucfirst($paymentMethod),
+                        $ledgerRemarks,
+                        $typeTransactionId,
+                        false
+                    );
+                }
+
+                if ($incomeAccount) {
+                    // Linked income head ledger: CR (liability written back / settle without cash).
+                    $this->postBillLedgerEntry(
+                        $incomeAccount,
+                        $billEntry->id,
+                        $payAmount,
+                        $paymentDate,
+                        $ledgerParticular,
+                        $voucherNo,
+                        $billEntry->linked_account_name ?? $billEntry->expense_cost_account_name ?? '',
+                        $paymentMethodLabel,
+                        $ledgerRemarks,
+                        $typeTransactionId,
+                        true
+                    );
+                }
+
+                $updateData = [
+                    'paid_amount' => round($alreadyPaid + $payAmount, 2),
+                    'approval_remarks' => $approvalRemarks,
+                ];
+
+                if ($isFullyPaid) {
+                    $updateData = array_merge($updateData, [
+                        'particular' => $particular,
+                        'reference_no' => $referenceNo,
+                        'voucher_no' => $voucherNo,
+                        'remarks' => $remarks,
+                        'payment_method' => $paymentMethod,
+                        ...$paymentFields,
+                    ]);
+                }
+
+                $billEntry->update($updateData);
+
+                $this->accountService->flushCache();
+                $this->typeTransactionService->flushCache();
+
+                return $billEntry->fresh(['expenseCategory', 'expenseHead']);
+            });
+        });
+    }
+
+    public function managerApproveBillEntry(FinanceBillEntry $billEntry, array $data): FinanceBillEntry
+    {
+        if ($billEntry->status === 'approved') {
+            throw ValidationException::withMessages([
+                'status' => ['This bill entry is already paid/approved.'],
+            ]);
+        }
+
+        if ($billEntry->status === 'pending') {
+            throw ValidationException::withMessages([
+                'status' => ['This bill is already manager-approved and waiting in Bills To Pay.'],
+            ]);
+        }
+
+        if ($billEntry->status === 'rejected') {
+            throw ValidationException::withMessages([
+                'status' => ['Rejected bills cannot be manager-approved.'],
+            ]);
+        }
+
+        if ($billEntry->status !== 'submitted') {
+            throw ValidationException::withMessages([
+                'status' => ['Only submitted bills can be approved by a manager.'],
+            ]);
+        }
+
+        return $this->mutate(function () use ($billEntry, $data) {
+            $billEntry->update([
+                'approval_remarks' => trim((string) ($data['approval_remarks'] ?? $billEntry->approval_remarks ?? '')),
+                'status' => 'pending',
+                'manager_approved_at' => now(),
+                'manager_approved_by' => trim((string) ($data['approved_by'] ?? 'Manager')),
+                'rejected_at' => null,
+            ]);
+
+            return $billEntry->fresh(['expenseCategory', 'expenseHead']);
+        });
+    }
+
+    /**
+     * Manager-approve multiple submitted bill entries that belong to the same batch.
+     *
+     * @param  array<int, int>  $ids
+     * @return array<int, FinanceBillEntry>
+     */
+    public function managerApproveBillEntryBatch(array $ids, array $data): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+
+        if (count($ids) < 1) {
+            throw ValidationException::withMessages([
+                'ids' => ['Select at least one bill entry to approve.'],
+            ]);
+        }
+
+        return $this->mutate(function () use ($ids, $data) {
+            return DB::transaction(function () use ($ids, $data) {
+                $entries = FinanceBillEntry::query()
+                    ->with(['expenseCategory', 'expenseHead'])
+                    ->whereIn('id', $ids)
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($entries->count() !== count($ids)) {
+                    throw ValidationException::withMessages([
+                        'ids' => ['One or more selected bill entries were not found.'],
+                    ]);
+                }
+
+                $batchKeys = $entries->map(fn (FinanceBillEntry $entry) => $this->resolveBillBatchKey($entry))->unique()->values();
+
+                if ($batchKeys->count() !== 1) {
+                    throw ValidationException::withMessages([
+                        'ids' => ['Bulk approve is only allowed for bills from the same batch.'],
+                    ]);
+                }
+
+                foreach ($entries as $entry) {
+                    if ($entry->status !== 'submitted') {
+                        throw ValidationException::withMessages([
+                            'ids' => ["Bill #{$entry->voucher_no} is not submitted and cannot be bulk-approved."],
+                        ]);
+                    }
+                }
+
+                $approvedBy = trim((string) ($data['approved_by'] ?? 'Manager'));
+                $approvalRemarks = trim((string) ($data['approval_remarks'] ?? ''));
+                $now = now();
+
+                foreach ($entries as $entry) {
+                    $entry->update([
+                        'approval_remarks' => $approvalRemarks !== ''
+                            ? $approvalRemarks
+                            : trim((string) ($entry->approval_remarks ?? '')),
+                        'status' => 'pending',
+                        'manager_approved_at' => $now,
+                        'manager_approved_by' => $approvedBy,
+                        'rejected_at' => null,
+                    ]);
+                }
+
+                return FinanceBillEntry::query()
+                    ->with(['expenseCategory', 'expenseHead'])
+                    ->whereIn('id', $ids)
+                    ->orderBy('id')
+                    ->get()
+                    ->all();
+            });
+        });
+    }
+
+    public function resolveBillBatchKey(FinanceBillEntry $entry): string
+    {
+        $requestNo = trim((string) ($entry->request_no ?? ''));
+        if ($requestNo !== '') {
+            return 'req:' . $requestNo;
+        }
+
+        $batchRef = trim((string) ($entry->batch_ref ?? ''));
+        if ($batchRef !== '') {
+            return 'batch:' . $batchRef;
+        }
+
+        return 'id:' . $entry->id;
+    }
+
+    public function rejectBillEntry(FinanceBillEntry $billEntry, array $data): FinanceBillEntry
+    {
+        if ($billEntry->status === 'approved') {
+            throw ValidationException::withMessages([
+                'status' => ['Approved bills cannot be rejected.'],
+            ]);
+        }
+
+        if (!in_array($billEntry->status, ['submitted', 'pending'], true)) {
+            throw ValidationException::withMessages([
+                'status' => ['Only submitted or pending bills can be rejected.'],
+            ]);
+        }
+
+        return $this->mutate(function () use ($billEntry, $data) {
+            $billEntry->update([
+                'amount' => (float) ($data['amount'] ?? $billEntry->amount),
+                'particular' => trim((string) ($data['particular'] ?? $billEntry->particular)),
+                'reference_no' => trim((string) ($data['reference_no'] ?? $billEntry->reference_no ?? '')),
+                'remarks' => trim((string) ($data['remarks'] ?? $billEntry->remarks ?? '')),
+                'approval_remarks' => trim((string) ($data['approval_remarks'] ?? '')),
+                'status' => 'rejected',
+                'rejected_at' => now(),
+                'approved_by' => trim((string) ($data['approved_by'] ?? 'Manager')),
+                'approved_at' => null,
+            ]);
+
+            return $billEntry->fresh(['expenseCategory', 'expenseHead']);
+        });
+    }
+
+    public function getSummary(): array
+    {
+        return [
+            'total_count' => $this->repository->countByStatus(),
+            'submitted_count' => $this->repository->countByStatus('submitted'),
+            'pending_count' => $this->repository->countByStatus('pending'),
+            'approved_count' => $this->repository->countByStatus('approved'),
+            'rejected_count' => $this->repository->countByStatus('rejected'),
+        ];
+    }
+
+    public function getTotalPaidByHead(int $headId): float
+    {
+        return $this->repository->sumAmountByHead($headId);
+    }
+
+    private function buildCreatePayload(array $data, bool $generateVoucher = true): array
+    {
+        $categoryId = (int) ($data['category_id'] ?? $data['expense_category_id'] ?? 0);
+        $headId = (int) ($data['head_id'] ?? $data['expense_head_id'] ?? 0);
+        $paymentDate = $data['payment_date'] ?? now()->toDateString();
+
+        $category = ExpenseCategory::find($categoryId);
+        $head = ExpenseHead::find($headId);
+
+        if (!$category || !$head || (int) $head->expense_category_id !== $categoryId) {
+            throw ValidationException::withMessages([
+                'head_id' => ['Selected expense head is invalid.'],
+            ]);
+        }
+
+        if (strtolower((string) $head->status) !== 'active') {
+            throw ValidationException::withMessages([
+                'head_id' => ['Selected expense head is not active.'],
+            ]);
+        }
+
+        $referenceNo = trim((string) ($data['reference_no'] ?? ''));
+        $voucherNo = $referenceNo !== '' ? $referenceNo : ($generateVoucher ? $this->nextVoucherNo('BILL', Carbon::parse($paymentDate)) : null);
+
+        $payload = [
+            'expense_category_id' => $categoryId,
+            'expense_head_id' => $headId,
+            'amount' => (float) $data['amount'],
+            'payment_method' => $data['payment_method'] ?? 'cash',
+            'payment_date' => $paymentDate,
+            'particular' => trim((string) ($data['particular'] ?? sprintf('%s - %s', $category->name, $head->name))),
+            'reference_no' => $referenceNo,
+            'voucher_no' => $voucherNo,
+            'batch_ref' => trim((string) ($data['batch_ref'] ?? '')) ?: null,
+            'request_no' => trim((string) ($data['request_no'] ?? '')) ?: null,
+            'remarks' => trim((string) ($data['remarks'] ?? '')),
+            'receipt_path' => $data['receipt_path'] ?? null,
+            'status' => $this->resolveCreateStatus($data),
+            'is_manual_request' => $this->resolveCreateStatus($data) === 'pending',
+            'approval_remarks' => '',
+            'linked_account_category' => $data['linked_account_category'] ?? null,
+            'linked_account_id' => !empty($data['linked_account_id']) ? (int) $data['linked_account_id'] : null,
+            'linked_account_name' => $data['linked_account_name'] ?? null,
+            'linked_account_type' => $data['linked_account_type'] ?? null,
+            'expense_cost_type' => $data['expense_cost_type'] ?? null,
+            'expense_cost_account_id' => !empty($data['expense_cost_account_id']) ? (int) $data['expense_cost_account_id'] : null,
+            'expense_cost_account_name' => $data['expense_cost_account_name'] ?? null,
+            'expense_cost_category_name' => $data['expense_cost_category_name'] ?? null,
+            ...$this->resolveRequestedByFields($data),
+        ];
+
+        $applicationId = (int) ($data['application_id'] ?? 0);
+        if ($applicationId > 0) {
+            $this->assertNoDuplicateApplicationBills([$applicationId], $headId);
+            $payload = [...$payload, ...$this->resolveApplicationMeta($applicationId)];
+        }
+
+        $demandLetterId = (int) ($data['demand_letter_id'] ?? $data['work_order_id'] ?? 0);
+        if ($demandLetterId > 0) {
+            $payload = [...$payload, ...$this->resolveDemandLetterMeta($demandLetterId)];
+        }
+
+        return $payload;
+    }
+
+    private function resolveCreateStatus(array $data): string
+    {
+        $status = strtolower(trim((string) ($data['status'] ?? 'submitted')));
+
+        return in_array($status, ['submitted', 'pending'], true) ? $status : 'submitted';
+    }
+
+    private function resolveApplicationMeta(int $applicationId): array
+    {
+        $application = Application::query()
+            ->with(['jobList.client.user', 'currentProcess.process'])
+            ->find($applicationId);
+
+        if (!$application) {
+            throw ValidationException::withMessages([
+                'application_id' => ['Selected application was not found.'],
+            ]);
+        }
+
+        $job = $application->jobList;
+        $candidateName = trim(($application->given_name ?? '') . ' ' . ($application->sur_name ?? ''));
+
+        return [
+            'application_id' => $application->id,
+            'job_list_id' => $application->job_list_id,
+            'candidate_name' => $candidateName,
+            'passport_no' => $application->passport_no,
+            'application_status' => $application->resolved_current_process ?? $application->application_status,
+            'job_name' => $job?->name,
+            'job_code' => $job?->job_code,
+            'client_name' => $job?->client?->user?->name ?? '',
+        ];
+    }
+
+    private function resolveDemandLetterMeta(int $workOrderId): array
+    {
+        $workOrder = WorkOrder::query()
+            ->with(['client.user', 'client.country'])
+            ->find($workOrderId);
+
+        if (!$workOrder) {
+            throw ValidationException::withMessages([
+                'demand_letter_id' => ['Selected demand letter was not found.'],
+            ]);
+        }
+
+        return [
+            'work_order_id' => $workOrder->id,
+            'demand_letter' => $workOrder->work_order_id,
+            'client_name' => $workOrder->client?->user?->name ?? '',
+            'demand_letter_country' => $workOrder->client?->country?->name ?? '',
+        ];
+    }
+
+    private function resolveRequestedByFields(array $data): array
+    {
+        $user = Auth::user();
+
+        return [
+            'requested_by_id' => $data['requested_by_id'] ?? $user?->id,
+            'requested_by_name' => trim((string) ($data['requested_by_name'] ?? $user?->name ?? '')),
+            'requested_by_email' => trim((string) ($data['requested_by_email'] ?? $user?->email ?? '')),
+            'requested_by_type' => trim((string) ($data['requested_by_type'] ?? $user?->type ?? '')),
+            'requested_at' => now(),
+        ];
+    }
+
+    /**
+     * Manually requested bills skip the manager approval screen, so the approving
+     * accountant must record which manager approved the bill offline.
+     */
+    private function resolveManualApprovalFields(FinanceBillEntry $billEntry, array $data): array
+    {
+        if (!$billEntry->is_manual_request) {
+            return [];
+        }
+
+        $managerId = (int) ($data['manual_approval_manager_id'] ?? 0);
+        if ($managerId <= 0) {
+            throw ValidationException::withMessages([
+                'manual_approval_manager_id' => ['Please select the manager who approved this manual bill.'],
+            ]);
+        }
+
+        $manager = Employee::query()->with('user')->find($managerId);
+        if (!$manager || (int) $manager->manager_approval !== 1) {
+            throw ValidationException::withMessages([
+                'manual_approval_manager_id' => ['Selected employee is not an approval manager.'],
+            ]);
+        }
+
+        $fields = [
+            'manual_approval_manager_id' => $manager->id,
+            'manual_approval_manager_name' => trim((string) $manager->user?->name),
+        ];
+
+        if (!empty($data['manual_approval_path'])) {
+            $fields['manual_approval_path'] = $data['manual_approval_path'];
+        }
+
+        return $fields;
+    }
+
+    private function resolvePaymentAccountFields(array $data, string $paymentMethod): array
+    {
+        if ($paymentMethod === 'due') {
+            return [
+                'payment_account_category' => null,
+                'payment_account_type' => null,
+                'payment_account_id' => null,
+                'payment_account_name' => null,
+            ];
+        }
+
+        return [
+            'payment_account_category' => $data['payment_account_category'] ?? null,
+            'payment_account_type' => $data['payment_account_type'] ?? null,
+            'payment_account_id' => !empty($data['payment_account_id']) ? (int) $data['payment_account_id'] : null,
+            'payment_account_name' => $data['payment_account_name'] ?? null,
+        ];
+    }
+
+    /**
+     * @param  int[]  $applicationIds
+     */
+    private function assertNoDuplicateApplicationBills(array $applicationIds, int $headId): void
+    {
+        if ($headId <= 0 || empty($applicationIds)) {
+            return;
+        }
+
+        $duplicateIds = FinanceBillEntry::query()
+            ->where('expense_head_id', $headId)
+            ->whereIn('application_id', $applicationIds)
+            ->whereIn('status', ['submitted', 'pending', 'approved'])
+            ->pluck('application_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($duplicateIds)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'application_ids' => [
+                'One or more selected candidates already have a submitted, pending, or approved bill for this expense head.',
+            ],
+        ]);
+    }
+
+    private function nextVoucherNo(string $prefix = 'BILL', ?Carbon $date = null): string
+    {
+        $date = $date ?? now();
+        $sequence = $this->nextSequenceForColumn($prefix, 'voucher_no', $date) + 1;
+
+        return sprintf('%s-%03d/%s', $prefix, $sequence, $date->format('y'));
+    }
+
+    private function nextRequestNo(?Carbon $date = null): string
+    {
+        $date = $date ?? now();
+        $sequence = $this->nextSequenceForColumn('REQ', 'request_no', $date) + 1;
+
+        return sprintf('REQ-%03d/%s', $sequence, $date->format('y'));
+    }
+
+    private function nextSequenceForColumn(string $prefix, string $column, Carbon $date): int
+    {
+        return FinanceBillEntry::query()
+            ->where($column, 'like', "{$prefix}-%/%")
+            ->whereYear('payment_date', $date->year)
+            ->count();
+    }
+
+    private function nextVoucherSequence(string $prefix = 'BILL', ?Carbon $date = null): int
+    {
+        $date = $date ?? now();
+
+        return $this->nextSequenceForColumn($prefix, 'voucher_no', $date);
+    }
+
+    private const EXPENSE_ACCOUNT_CATEGORIES = [
+        'direct_expense',
+        'client_recruitment',
+        'operating_expense',
+    ];
+
+    /**
+     * Ensure approved bills have expense-head ledger DR (+ CR when paid by cash/bank).
+     * Needed when older payments only hit cash/bank, or DR was posted without settlement CR.
+     */
+    public function backfillApprovedBillExpenseLedgers(?string $toDate = null): int
+    {
+        $query = FinanceBillEntry::query()
+            ->where('status', 'approved')
+            ->whereNotNull('expense_head_id');
+
+        if ($toDate) {
+            $query->whereDate('payment_date', '<=', $toDate);
+        }
+
+        $posted = 0;
+
+        foreach ($query->get() as $billEntry) {
+            $expenseAccount = $this->resolveExpenseAccountForBill($billEntry);
+            if (!$expenseAccount) {
+                continue;
+            }
+
+            $amount = round((float) $billEntry->amount, 2);
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $paymentDate = $billEntry->payment_date?->format('Y-m-d') ?? now()->toDateString();
+            $particular = trim((string) ($billEntry->particular ?? '')) ?: 'Bill approved';
+            $voucherNo = trim((string) ($billEntry->voucher_no ?? ''))
+                ?: trim((string) ($billEntry->reference_no ?? ''))
+                ?: sprintf('BILL-%03d', $billEntry->id);
+            $paymentMethod = strtolower((string) ($billEntry->payment_method ?? ''));
+            $isDuePayment = $paymentMethod === 'due';
+            $paymentMethodLabel = !$isDuePayment && $paymentMethod !== ''
+                ? ucfirst($paymentMethod)
+                : null;
+
+            $expenseAccount = FinanceAccount::query()->find($expenseAccount->id);
+            if (!$expenseAccount) {
+                continue;
+            }
+
+            $hasExpenseDebit = FinanceAccountLedgerEntry::query()
+                ->where('finance_bill_entry_id', $billEntry->id)
+                ->where('finance_account_id', $expenseAccount->id)
+                ->where('dr_amount', '>', 0)
+                ->exists();
+
+            if (!$hasExpenseDebit) {
+                $this->postBillLedgerEntry(
+                    $expenseAccount,
+                    $billEntry->id,
+                    $amount,
+                    $paymentDate,
+                    $particular,
+                    $voucherNo,
+                    $billEntry->client_name ?? '',
+                    $paymentMethodLabel,
+                    'Backfilled expense charge',
+                    null,
+                    false
+                );
+                $posted++;
+            }
+
+            // Cash/bank paid bills also need CR against the DR on the expense ledger.
+            if (!$isDuePayment) {
+                $hasExpenseCredit = FinanceAccountLedgerEntry::query()
+                    ->where('finance_bill_entry_id', $billEntry->id)
+                    ->where('finance_account_id', $expenseAccount->id)
+                    ->where('cr_amount', '>', 0)
+                    ->exists();
+
+                if (!$hasExpenseCredit) {
+                    $this->postBillLedgerEntry(
+                        $expenseAccount,
+                        $billEntry->id,
+                        $amount,
+                        $paymentDate,
+                        $particular,
+                        $voucherNo,
+                        $billEntry->client_name ?? '',
+                        $paymentMethodLabel,
+                        'Backfilled expense payment settlement',
+                        null,
+                        true
+                    );
+                    $posted++;
+                }
+            }
+        }
+
+        if ($posted > 0) {
+            $this->accountService->flushCache();
+        }
+
+        return $posted;
+    }
+
+    private function resolveExpenseAccountForBill(FinanceBillEntry $billEntry): ?FinanceAccount
+    {
+        $accountId = (int) ($billEntry->linked_account_id ?: $billEntry->expense_cost_account_id ?: 0);
+
+        if ($accountId > 0) {
+            $account = FinanceAccount::query()->find($accountId);
+            if (
+                $account
+                && in_array((string) $account->category, self::EXPENSE_ACCOUNT_CATEGORIES, true)
+            ) {
+                return $account;
+            }
+        }
+
+        $headId = (int) ($billEntry->expense_head_id ?? 0);
+        if ($headId <= 0) {
+            return null;
+        }
+
+        $existing = FinanceAccount::query()
+            ->where('expense_head_id', $headId)
+            ->where('status', 'active')
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $expenseHead = ExpenseHead::query()->find($headId);
+        if (!$expenseHead) {
+            return null;
+        }
+
+        return $this->accountService->ensureExpenseHeadAccount($expenseHead);
+    }
+
+    private function createBillPaymentTransaction(
+        float $amount,
+        string $paymentDate,
+        string $particular,
+        string $referenceNo,
+        string $remarks,
+        string $voucherNo,
+        ?FinanceAccount $paymentAccount,
+        ?FinanceAccount $expenseAccount,
+        array $paymentFields
+    ): ?FinanceAccountTypeTransaction {
+        if (!$paymentAccount && !$expenseAccount) {
+            return null;
+        }
+
+        $resolvedParticular = $particular !== '' ? $particular : 'Bill Payment';
+
+        if ($paymentAccount && $expenseAccount) {
+            return FinanceAccountTypeTransaction::query()->create([
+                'transaction_type' => 'bill_payment',
+                'amount' => $amount,
+                'transaction_date' => $paymentDate,
+                'particular' => $resolvedParticular,
+                'reference_no' => $referenceNo ?: null,
+                'remarks' => $remarks !== '' ? $remarks : 'Bill payment approved',
+                'voucher_no' => $voucherNo,
+                'from_account_category' => $paymentAccount->category,
+                'from_main_account_type' => (string) ($paymentFields['payment_account_type'] ?? ''),
+                'from_account_id' => $paymentAccount->id,
+                'from_account_label' => $this->accountLabel($paymentAccount),
+                'to_account_category' => $expenseAccount->category,
+                'to_main_account_type' => '',
+                'to_account_id' => $expenseAccount->id,
+                'to_account_label' => $this->accountLabel($expenseAccount),
+            ]);
+        }
+
+        $account = $paymentAccount ?? $expenseAccount;
+
+        return FinanceAccountTypeTransaction::query()->create([
+            'transaction_type' => 'bill_payment',
+            'amount' => $amount,
+            'transaction_date' => $paymentDate,
+            'particular' => $resolvedParticular,
+            'reference_no' => $referenceNo ?: null,
+            'remarks' => $remarks !== '' ? $remarks : 'Bill approved',
+            'voucher_no' => $voucherNo,
+            'account_category' => $account->category,
+            'main_account_type' => (string) ($paymentFields['payment_account_type'] ?? ''),
+            'account_id' => $account->id,
+            'account_label' => $this->accountLabel($account),
+        ]);
+    }
+
+    private function accountLabel(FinanceAccount $account): string
+    {
+        $code = trim((string) $account->code);
+        $name = trim((string) ($account->account_name ?? $account->account_label ?? ''));
+
+        if ($name === '') {
+            $name = trim((string) ($account->account_type ?? 'Account'));
+        }
+
+        return $code !== '' ? "{$name} — {$code}" : $name;
+    }
+
+    private function assertActiveFinanceAccount(FinanceAccount $account): void
+    {
+        if ($account->status !== 'active') {
+            throw ValidationException::withMessages([
+                'account_id' => ['Selected account is not active.'],
+            ]);
+        }
+    }
+
+    private function postBillLedgerEntry(
+        FinanceAccount $account,
+        int $billEntryId,
+        float $amount,
+        string $entryDate,
+        string $particular,
+        string $voucherNo,
+        string $clientName,
+        ?string $paymentMethod,
+        string $remarks,
+        ?int $typeTransactionId = null,
+        bool $isCredit = false
+    ): void {
+        if ($amount <= 0) {
+            return;
+        }
+
+        FinanceAccountLedgerEntry::create([
+            'finance_account_id' => $account->id,
+            'finance_bill_entry_id' => $billEntryId,
+            'finance_account_type_transaction_id' => $typeTransactionId,
+            'entry_date' => $entryDate,
+            'particular' => $particular,
+            'voucher_no' => $voucherNo,
+            'client_name' => $clientName,
+            'dr_amount' => $isCredit ? 0 : $amount,
+            'discount' => 0,
+            'cr_amount' => $isCredit ? $amount : 0,
+            'payment_method' => $paymentMethod,
+            'remarks' => $remarks,
+        ]);
+
+        $delta = $isCredit ? $amount : -$amount;
+        $account->update([
+            'balance' => round((float) $account->balance + $delta, 2),
+        ]);
+    }
+
+    private function resolveBillPaymentMethodLabel(string $paymentMethod, array $paymentFields): ?string
+    {
+        return match ($paymentMethod) {
+            'due' => null,
+            'cash' => 'Cash',
+            'bank' => 'Bank',
+            'income_link' => 'Income Link',
+            default => ($type = trim((string) ($paymentFields['payment_account_type'] ?? ''))) !== ''
+                ? $type
+                : ucfirst($paymentMethod),
+        };
+    }
+}

@@ -1,0 +1,297 @@
+export default {
+  application: {
+    module: 'Application',
+    management: 'Applicant Management',
+    applicant: 'Applicant',
+    add: 'Add Applicant',
+    edit: 'Edit Applicant',
+    view: 'View Applicant Details',
+    delete: 'Delete Applicant',
+    summary: 'Applicant Summary',
+
+    hiring_list: 'Hiring List',
+    waiting_list: 'Waiting List',
+    rejected_list: 'Rejected List',
+    application_list: 'Application List',
+    short_list: 'Short List',
+    ats: 'ATS',
+
+    app_id: 'APP ID',
+    image: 'Applicant Image',
+    name: 'Applicant Name',
+    place_of_birth: 'Place of Birth',
+    required: 'Required',
+    passport: 'Passport',
+
+    remove: 'Remove',
+
+    // bulk upload
+    bulk_upload: 'Bulk Upload',
+    csv_upload_guidelines: 'CSV Upload Guidelines',
+    every_csv_record_must_include_given_name_and_sur_name:
+      'Every CSV record must include Given Name and Sur Name. Other columns can be left blank.',
+    user_must_select_a_job_before_uploading_the_csv:
+      'User must select a Job before uploading the CSV.',
+    all_workers_will_be_associated_with_selected_job:
+      'All workers in the CSV will be associated with the selected job.',
+    duplicate_passport_number_record_will_be_skipped:
+      'If duplicate data is found with the same Passport Number, the record will be skipped.',
+    download_sample_csv: 'Download Sample CSV',
+    job_required: 'Job (Required)',
+
+    search_by_country_name: 'Search by country name',
+    select_a_job: 'Select a job',
+    search_by_demand_letter_or_client: 'Search by Demand Letter or Client',
+    search_by_process_name: 'Search by Process Name',
+    search_by_d_letter: 'Search by D. Letter',
+    enter_passport_no_or_search: 'Enter Passport No or Search',
+    search_candidate_by_name_or_passport_no: 'Search candidate by name or passport no',
+    agent_required: 'Agent (Required)',
+    select_an_agent: 'Select an agent',
+    click_to_select_csv_file: 'Click to select CSV file',
+    only_csv_files_are_allowed: 'Only CSV files are allowed',
+    upload: 'Upload',
+    uploading: 'Uploading...',
+
+    // passport details
+    passport_details: 'Passport Details',
+    upload_passport: 'Upload Passport',
+    processing: 'Processing...',
+    passport_preview: 'Passport Preview',
+    hover_to_zoom: 'Hover to zoom',
+    no_passport_uploaded: 'No passport uploaded',
+    passport_number_exists: 'This passport number already exists.',
+    passport_extract_failed: 'Failed to extract passport information.',
+    select_passport_first: 'Please select a passport file first.',
+    passport_number_placeholder: 'eg A1234567',
+    given_name: 'Given Name',
+    surname: 'Surname',
+    father_name: "Father's Name",
+    mother_name: "Mother's Name",
+    nid_number: 'NID Number',
+    date_of_birth: 'Date of Birth',
+    sex: 'Sex',
+    nationality: 'Nationality',
+    address: 'Address',
+    date_of_issue: 'Date of Issue',
+    date_of_expiry: 'Date of Expiry',
+    passport_link: 'Passport Link',
+    given_name_placeholder: 'eg Rahim',
+    surname_placeholder: 'eg Ahmed',
+    father_name_placeholder: 'eg Rahim',
+    mother_name_placeholder: 'eg Rahim',
+    mobile_placeholder: 'eg +8801712345678',
+    nid_number_placeholder: 'eg 1998123456789',
+    address_placeholder: 'eg 123 Main Street, Dhaka, Bangladesh',
+
+    // personal informatiom
+    subject: 'Subject',
+    total_qualifications: 'Total Qualifications',
+    personal_information: 'Personal Information',
+
+    upload_photo: 'Upload Photo',
+    optional: 'Optional',
+    email_placeholder: 'eg example@mail.com',
+    select_marital_status: 'Select Marital Status',
+    driving_license_number: 'Driving License Number',
+    driving_license_placeholder: 'eg DL12345678',
+    height_ft: 'Height (ft)',
+    height_placeholder: 'eg 5.8 (ft)',
+    weight_kg: 'Weight (kg)',
+    weight_placeholder: 'eg 75 (kg)',
+    jpg_png_max_400kb: 'JPG, PNG • Max 400KB',
+
+    // educational information
+    education_experience: 'Education & Experience',
+    experience: 'Experience',
+    bd_experience: 'BD Experience',
+    overseas_experience: 'Overseas Experience',
+    add_experience: 'Add Experience',
+    remove_experience: 'Remove Experience',
+    experience_type: 'Experience Type',
+    select_experience_type: 'Select Type',
+    company_name: 'Company Name',
+    company_name_placeholder: 'Enter company name',
+    position: 'Position',
+    position_placeholder: 'Enter position',
+    from_date: 'From Date',
+    to_date: 'To Date',
+    currently_working: 'Currently Working',
+    responsibilities: 'Responsibilities',
+    add_responsibility: 'Add Responsibility',
+    remove_responsibility: 'Remove Responsibility',
+    responsibility_placeholder: 'Responsibility {number} (max 100 characters)',
+    no_responsibilities: 'No responsibilities added. Click "Add Responsibility" to add one.',
+
+    //single document upload
+    single_combined_document: 'Single Combined Document',
+    combine_documents_hint:
+      'Please combine all relevant documents into a single PDF before uploading.',
+    suggested_order: 'Suggested order',
+    resume: 'Resume',
+    experience_certificate: 'Experience Certificate',
+    education_certificate: 'Education Certificate',
+    training_certificate: 'Training Certificate',
+    upload_single_pdf: 'Upload Single PDF',
+    pdf_only_max_400kb: 'PDF only • Max 400 KB',
+
+    // merge documents
+    mergable_documents: 'Mergable Documents',
+    mergable_documents_hint:
+      'Individual documents to be merged into a single PDF. PDF only • Max 400 KB each.',
+    passport_pdf: 'Passport PDF',
+    driving_license: 'Driving License',
+
+    // other document upload
+    other_documents: 'Other Documents',
+    upload_nid: 'Upload NID',
+    upload_offer_letter: 'Upload Offer Letter',
+    upload_visa_copy: 'Upload Visa Copy',
+    upload_immigration_clearance: 'Upload Immigration Clearance',
+    upload_ticket: 'Upload Ticket',
+    upload_ticket_acknowledgment: 'Upload Ticket Acknowledgment',
+    upload_svp: 'Upload SVP',
+    upload_qvp: 'Upload QVP',
+
+    // application section
+    application_details: 'Application Details',
+    job_list_required: 'Job List (Required)',
+
+    search_by_job_name_or_job_code: 'Search by job name or job code',
+    search_by_agent_name: 'Search by agent name',
+    search_by_client_name: 'Search by client name',
+    search_by_assigner_name: 'Search by assigner name',
+    search_by_principal_name: 'Search by principal name',
+
+    remarks: 'Remarks',
+    remarks_optional: 'Remarks (Optional)',
+    candidate_available_for_interview: 'Candidate is available for interview',
+    applied_through_required: 'Applied Through (Required)',
+    payment_responsibility_required: 'Payment Responsibility (Required)',
+    direct_candidate: 'Direct Candidate',
+    agent_pays_recruitment_charges: 'Agent pays recruitment charges',
+    client_pays_in_usd_pricing: 'Client pays in USD pricing',
+    candidate_pays_in_bdt_pricing: 'Candidate pays in BDT pricing',
+
+    //LinksSection
+    document_links: 'Document Links',
+    nid_link_optional: 'NID Link (Optional)',
+    passport_link_optional: 'Passport Link (Optional)',
+    resume_link_optional: 'Resume Link (Optional)',
+    drive_link_example: 'eg https://drive...',
+
+    upload_image: 'Upload Applicant Image (Optional)',
+    placeholder: 'Eg: Bangladesh',
+
+    application_information: 'Application Information',
+
+    information: 'Application Information',
+    total_clients: 'Total Clients',
+
+    delete_confirmation: 'Are you sure you want to delete this Applicant?',
+
+    //view modal
+    education: 'Education',
+    personal_info: 'Personal Info',
+    contact: 'Contact',
+    nid_details: 'NID Details',
+    system_info: 'System Info',
+    transaction_history: 'Transaction History',
+
+    // /PersonalInformation
+    single_document: 'Single Document',
+    worker_image: 'Worker Image',
+    nid_document: 'NID Document',
+    passport_document: 'Passport Document',
+    payment_responsibility: 'Payment Responsibility',
+    general_documents: 'General Documents',
+    not_available: 'Not Available',
+    offer_letter: 'Offer Letter',
+    acknowledgment: 'Acknowledgment',
+    visa_copy: 'Visa Copy',
+    immigration_clearance: 'Immigration Clearance',
+    svp: 'SVP',
+    qvp: 'QVP',
+    ticket: 'Ticket',
+    applied_through: 'Applied Through',
+    record_id: 'Record ID',
+
+    transaction_id: 'Transaction ID',
+    total_amount: 'Total Amount',
+    paid_total: 'Paid Total',
+    discount: 'Discount',
+    due_amount: 'Due Amount',
+    payer_name: 'Payer Name',
+    payment_method: 'Payment Method',
+    payment_status: 'Payment Status',
+    payment_date: 'Payment Date & Time',
+    payment_note: 'Payment Note',
+  },
+
+  embassy: {
+   title: 'KSA Visa Processing Management',
+   sub_title: 'Only Medical Fit applications are displayed in this report.',
+   embassy_list: 'Embassy List',
+   has_visa_info: 'Has Visa Info',
+   visa_status: 'Visa Status',
+
+    edit_title: 'Edit KSA Visa Processing Info',
+    religion: 'Religion',
+    applied_id: 'Applied ID',
+    muslim: 'Muslim',
+    non_muslim: 'Non-Muslim',
+    islam_religion: 'Islam religion',
+    other_religion: 'Other religion',
+    profession: 'Profession',
+    visa_no: 'Visa No',
+
+    visa_profession_arabic: 'Visa Profession (Arabic)',
+    arabic_profession: 'Arabic Profession',
+    english_profession: 'English Profession (Optional)',
+    visa_profession_bangla: 'Visa Profession (Bangla)',
+    visa_profession_english: 'Visa Profession (English)',
+    generating_english_profession: 'Generating English profession...',
+
+    visit_work_for_arabic: 'Visit / Work For (Arabic)',
+    arabic_text: 'Arabic Text',
+    mofa_no: 'MOFA No',
+    police_clearance_no: 'Police Clearance No',
+    alwakala_no: 'Alwakala No',
+
+    visa_processing_submission: 'Visa Processing Submission',
+
+  },
+
+  embassyList: {
+    title: 'All Embassy List',
+    add: 'Add New Embassy List',
+    edit: 'Edit Embassy List',
+    view: 'View Embassy List',
+    re_stamping: 'Re-stamping',
+    new_stamping: 'New Stamping',
+    cancellation: 'Cancellation',
+    submit_date: 'Submit Date',
+    create_list: 'Create List',
+    update_list: 'Update List',
+    back_to_embassy_list: 'Back to Embassy List',
+    search_hints: 'Search Hints',
+
+    no_of_new_stamping: 'No. of New Stamping',
+    no_of_cancel_stamping: 'No. of Cancel Stamping',
+    no_of_re_stamping: 'No. of Re-stamping',
+    last_update: 'Last Update',
+
+    loading_embassy_list: 'Loading embassy list...',
+  },
+
+  process: {
+    title: 'Process Management',
+    edit_title: 'Edit Process',
+    view_title: 'View Process Details',
+
+    name: 'Process Name',
+    validity: 'Validity (Days)',
+    notify_before: 'Notify Before (Days)',
+    duration: 'Duration',
+  }
+}

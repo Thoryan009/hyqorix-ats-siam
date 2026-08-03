@@ -1,0 +1,58 @@
+{
+  "name": "sb-ats-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "bin": {
+    "vue-modular": "./bin/vue-modular"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:unit": "vitest",
+    "test:e2e": "playwright test",
+    "lint": "eslint . --fix --cache",
+    "format": "prettier --write --experimental-cli src/",
+    "docker:build": "docker build -f Dockerfile.dev -t sb-ats-frontend .",
+    "docker:dev": "docker run -d -p 5173:5173 --name sb-ats-frontend-container sb-ats-frontend"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/query-persist-client-core": "^5.91.15",
+    "@tanstack/query-sync-storage-persister": "^5.90.18",
+    "@tanstack/vue-query": "^5.92.5",
+    "axios": "^1.13.2",
+    "jsbarcode": "^3.12.3",
+    "pinia": "^3.0.4",
+    "qrcode.vue": "^3.8.0",
+    "sweetalert2": "^11.26.24",
+    "tailwindcss": "^4.1.18",
+    "vue": "^3.5.26",
+    "vue-i18n": "^11.3.0",
+    "vue-ready-modular": "^1.0.1",
+    "vue-router": "^4.6.4",
+    "vue-toastification": "^2.0.0-rc.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@playwright/test": "^1.57.0",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "@vitest/eslint-plugin": "^1.6.4",
+    "@vue/devtools": "^8.0.6",
+    "@vue/eslint-config-prettier": "^10.2.0",
+    "@vue/test-utils": "^2.4.6",
+    "eslint": "^9.39.2",
+    "eslint-plugin-playwright": "^2.4.0",
+    "eslint-plugin-vue": "~10.6.2",
+    "globals": "^16.5.0",
+    "jsdom": "^27.3.0",
+    "prettier": "3.7.4",
+    "vite": "^7.3.0",
+    "vite-plugin-vue-devtools": "^8.0.5",
+    "vitest": "^4.0.16"
+  }
+}

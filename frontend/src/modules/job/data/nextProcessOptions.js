@@ -1,0 +1,15 @@
+export const nextProcessOptions = [
+  { name: 'Select Process', id: '' },
+  { name: 'Visa Authorization', id: 'visa_authorization' },
+  { name: 'Medical Test', id: 'medical_test' },
+  { name: 'Police Clearance', id: 'police_clearance' },
+  { name: 'Trade Test', id: 'trade_test' },
+  { name: 'Biometric Enrollment', id: 'biometric_enrollment' },
+  { name: 'Embassy Submission', id: 'embassy_submission' },
+  { name: 'BMET Training', id: 'bmet_training' },
+  { name: 'BMET Biometric Enrollment', id: 'bmet_biometric_enrollment' },
+  { name: 'Immigration Clearance', id: 'immigration_clearance' },
+  { name: 'PTA Request', id: 'pta_request' },
+  { name: 'OnBoarding', id: 'onboarding' },
+  { name: 'TRA Process', id: 'tra_process' },
+]

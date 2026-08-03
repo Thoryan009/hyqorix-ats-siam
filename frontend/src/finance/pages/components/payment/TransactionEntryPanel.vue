@@ -1,0 +1,754 @@
+<template>
+  <div class="space-y-5">
+    <div class="flex flex-wrap gap-2">
+      <button
+        v-for="type in paymentModes"
+        :key="type.id"
+        type="button"
+        class="rounded-lg border px-3 py-2 text-sm font-semibold transition-all"
+        :class="
+          activePaymentMode === type.id
+            ? 'border-primary bg-primary-light! text-primary ring-1 ring-primary'
+            : 'border-gray-200 bg-white text-gray-700 hover:border-primary hover:bg-primary-light!'
+        "
+        @click="setPaymentMode(type.id)"
+      >
+        <i :class="[type.icon, 'mr-1.5']"></i>{{ type.label }}
+        <span
+          v-if="type.id === BILLS_TO_PAY_MODE && pendingBillCount"
+          class="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700"
+        >
+          {{ pendingBillCount }}
+        </span>
+        <span
+          v-if="type.id === BILLS_PAYABLE_MODE && payableBillCount"
+          class="ml-1.5 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700"
+        >
+          {{ payableBillCount }}
+        </span>
+      </button>
+    </div>
+
+    <div v-if="isBillsToPayMode" class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div class="mb-4 border-b border-gray-100 pb-3">
+        <h3 class="text-base font-semibold text-gray-800">Bills To Pay</h3>
+        <p class="mt-1 text-sm text-gray-500">
+          Manager-approved bills awaiting accountant payment review
+        </p>
+      </div>
+      <BillEntriesPanel status-scope="pending" />
+    </div>
+
+    <div
+      v-else-if="isBillsPayableMode"
+      class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+    >
+      <div class="mb-4 border-b border-gray-100 pb-3">
+        <h3 class="text-base font-semibold text-gray-800">Bills Payable</h3>
+        <p class="mt-1 text-sm text-gray-500">
+          Approved due bills posted to expense accounts across direct, client recruitment, and
+          operating expense ledgers
+        </p>
+      </div>
+      <BillEntriesPanel status-scope="payable" />
+    </div>
+
+    <div
+      v-else
+      class="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]"
+    >
+    <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <h3 class="mb-4 text-base font-semibold text-gray-800">Make Payment</h3>
+
+      <BaseForm :onSubmit="handleSubmit">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div class="space-y-2 md:col-span-2">
+            <BaseLabel for="txn_type">Transaction Type</BaseLabel>
+            <BaseSelect
+              id="txn_type"
+              :model-value="form.transaction_type"
+              :options="transactionTypeOptions"
+              placeholder="Select transaction type"
+              :required="true"
+              @update:model-value="setTransactionType"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <BaseLabel for="txn_date">Transaction Date</BaseLabel>
+            <BaseInput id="txn_date" v-model="form.date" type="date" :required="true" />
+          </div>
+
+          <div class="space-y-2">
+            <BaseLabel for="txn_amount">Amount (৳)</BaseLabel>
+            <BaseInput
+              id="txn_amount"
+              v-model="form.amount"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Enter amount"
+              :required="true"
+            />
+          </div>
+
+          <template v-if="isAdjustmentType">
+            <div class="space-y-2">
+              <BaseLabel for="txn_account_category">Account Category</BaseLabel>
+              <BaseSelect
+                id="txn_account_category"
+                v-model="form.account_category"
+                :options="accountCategoryOptions"
+                placeholder="Select account category"
+                :required="true"
+              />
+            </div>
+
+            <div v-if="form.account_category === 'main'" class="space-y-2">
+              <BaseLabel for="txn_main_account_type">Account Type</BaseLabel>
+              <BaseSelect
+                id="txn_main_account_type"
+                v-model="form.main_account_type"
+                :options="mainAccountTypeOptions"
+                placeholder="Select account type"
+                :required="true"
+              />
+            </div>
+
+            <div class="space-y-2 md:col-span-2">
+              <BaseLabel for="txn_account_id">Account</BaseLabel>
+              <BaseSearchSelect
+                id="txn_account_id"
+                v-model="form.account_id"
+                :options="singleAccountOptions"
+                placeholder="Search and select account"
+                :required="true"
+                :disabled="!canSelectSingleAccount"
+                :filter-fn="filterAccountOption"
+              />
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="md:col-span-2">
+              <p class="mb-3 text-sm font-semibold text-gray-800">{{ fromSectionLabel }}</p>
+            </div>
+
+            <div class="space-y-2">
+              <BaseLabel for="txn_from_category">From Account Category</BaseLabel>
+              <BaseSelect
+                id="txn_from_category"
+                v-model="form.from_account_category"
+                :options="accountCategoryOptions"
+                placeholder="Select category"
+                :required="true"
+              />
+            </div>
+
+            <div v-if="form.from_account_category === 'main'" class="space-y-2">
+              <BaseLabel for="txn_from_main_type">From Account Type</BaseLabel>
+              <BaseSelect
+                id="txn_from_main_type"
+                v-model="form.from_main_account_type"
+                :options="mainAccountTypeOptions"
+                placeholder="Select account type"
+                :required="true"
+              />
+            </div>
+
+            <div class="space-y-2 md:col-span-2">
+              <BaseLabel for="txn_from_account_id">From Account</BaseLabel>
+              <BaseSearchSelect
+                id="txn_from_account_id"
+                v-model="form.from_account_id"
+                :options="fromAccountOptions"
+                placeholder="Search and select from account"
+                :required="true"
+                :disabled="!canSelectFromAccount"
+                :filter-fn="filterAccountOption"
+              />
+            </div>
+
+            <div class="md:col-span-2">
+              <p class="mb-3 text-sm font-semibold text-gray-800">{{ toSectionLabel }}</p>
+            </div>
+
+            <div class="space-y-2">
+              <BaseLabel for="txn_to_category">To Account Category</BaseLabel>
+              <BaseSelect
+                id="txn_to_category"
+                v-model="form.to_account_category"
+                :options="accountCategoryOptions"
+                placeholder="Select category"
+                :required="true"
+              />
+            </div>
+
+            <div v-if="form.to_account_category === 'main'" class="space-y-2">
+              <BaseLabel for="txn_to_main_type">To Account Type</BaseLabel>
+              <BaseSelect
+                id="txn_to_main_type"
+                v-model="form.to_main_account_type"
+                :options="mainAccountTypeOptions"
+                placeholder="Select account type"
+                :required="true"
+              />
+            </div>
+
+            <div class="space-y-2 md:col-span-2">
+              <BaseLabel for="txn_to_account_id">To Account</BaseLabel>
+              <BaseSearchSelect
+                id="txn_to_account_id"
+                v-model="form.to_account_id"
+                :options="toAccountOptions"
+                placeholder="Search and select to account"
+                :required="true"
+                :disabled="!canSelectToAccount"
+                :filter-fn="filterAccountOption"
+              />
+            </div>
+          </template>
+
+          <div class="space-y-2 md:col-span-2">
+            <BaseLabel for="txn_particular">Particular</BaseLabel>
+            <BaseInput
+              id="txn_particular"
+              v-model="form.particular"
+              :placeholder="particularPlaceholder"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <BaseLabel for="txn_reference_no">Reference No (Optional)</BaseLabel>
+            <BaseInput
+              id="txn_reference_no"
+              v-model="form.reference_no"
+              placeholder="Eg: TXN-001/26"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <BaseLabel for="txn_remarks">Remarks (Optional)</BaseLabel>
+            <BaseInput id="txn_remarks" v-model="form.remarks" placeholder="Additional notes" />
+          </div>
+        </div>
+
+        <div
+          class="mt-4 rounded-lg border px-4 py-3 text-sm"
+          :class="transactionHintClass"
+        >
+          <i class="fa fa-info-circle mr-1.5"></i>{{ transactionTypeHint }}
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <BaseButton
+            type="submit"
+            class="bg-green-600 text-white hover:bg-green-700"
+            :disabled="submitLoading"
+            v-can="'receive_payment.create'"
+          >
+            {{ submitLoading ? 'Submitting...' : submitButtonLabel }}
+          </BaseButton>
+          <BaseButton
+            type="button"
+            :className="'border border-gray-300 bg-white text-gray-800 hover:bg-gray-50'"
+            @click="resetForm"
+          >
+            Reset
+          </BaseButton>
+        </div>
+      </BaseForm>
+    </div>
+
+    <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
+      <h3 class="mb-4 text-base font-semibold text-blue-800">Transaction Summary</h3>
+
+      <div class="space-y-3 text-sm">
+        <div class="flex justify-between gap-3">
+          <span class="text-gray-600">Transaction Type</span>
+          <span class="text-right font-semibold text-gray-900">{{ activeTypeLabel }}</span>
+        </div>
+
+        <template v-if="isAdjustmentType">
+          <div class="flex justify-between gap-3">
+            <span class="text-gray-600">Account Category</span>
+            <span class="text-right font-semibold text-gray-900">
+              {{ selectedCategoryLabel(form.account_category) }}
+            </span>
+          </div>
+          <div class="flex justify-between gap-3">
+            <span class="text-gray-600">Account</span>
+            <span class="text-right font-semibold text-gray-900">{{ selectedSingleAccountLabel }}</span>
+          </div>
+          <div class="flex justify-between gap-3">
+            <span class="text-gray-600">Current Balance</span>
+            <span class="font-semibold text-gray-900">{{ formatBalance(singleAccountBalance) }}</span>
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="space-y-3 border-t border-blue-200 pt-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">From Account</p>
+            <div class="flex justify-between gap-3">
+              <span class="text-gray-600">Category</span>
+              <span class="text-right font-semibold text-gray-900">
+                {{ selectedCategoryLabel(form.from_account_category) }}
+              </span>
+            </div>
+            <div class="flex justify-between gap-3">
+              <span class="text-gray-600">Account</span>
+              <span class="text-right font-semibold text-gray-900">{{ selectedFromAccountLabel }}</span>
+            </div>
+            <div class="flex justify-between gap-3">
+              <span class="text-gray-600">Balance</span>
+              <span class="font-semibold text-gray-900">{{ formatBalance(fromAccountBalance) }}</span>
+            </div>
+          </div>
+
+          <div class="space-y-3 border-t border-blue-200 pt-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">To Account</p>
+            <div class="flex justify-between gap-3">
+              <span class="text-gray-600">Category</span>
+              <span class="text-right font-semibold text-gray-900">
+                {{ selectedCategoryLabel(form.to_account_category) }}
+              </span>
+            </div>
+            <div class="flex justify-between gap-3">
+              <span class="text-gray-600">Account</span>
+              <span class="text-right font-semibold text-gray-900">{{ selectedToAccountLabel }}</span>
+            </div>
+            <div class="flex justify-between gap-3">
+              <span class="text-gray-600">Balance</span>
+              <span class="font-semibold text-gray-900">{{ formatBalance(toAccountBalance) }}</span>
+            </div>
+          </div>
+        </template>
+
+        <div class="rounded-lg bg-white px-3 py-2 ring-1 ring-blue-200">
+          <div class="flex justify-between gap-3">
+            <span class="font-medium text-gray-700">Transaction Amount</span>
+            <span class="text-lg font-bold text-blue-800">{{ formatCurrency(transactionAmount) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import BaseForm from '@/shared/components/base/BaseForm.vue'
+import BaseSearchSelect from '@/shared/components/base/BaseSearchSelect.vue'
+import BillEntriesPanel from './BillEntriesPanel.vue'
+import { useFinanceAccountStore } from '@/finance/store/financeAccountStore'
+import { useAccountTransactionStore } from '@/finance/store/accountTransactionStore'
+import { useExpensePaymentStore } from '@/finance/store/expensePaymentStore'
+import { ACCOUNT_CATEGORIES } from '@/finance/data/accountCategoryCodes'
+import {
+  accountTransactionCategoryOptions,
+  accountTransactionTypes,
+  getAccountCategoryLabel,
+  getDefaultFromCategory,
+  getDefaultToCategory,
+  getTransactionTypeHint,
+  getTransactionTypeLabel,
+  isAdjustmentTransactionType,
+  mainAccountTypeOptions,
+} from '@/finance/data/accountTransactionData'
+import { getPartyConfig } from '@/finance/config/partyAccountConfigs'
+import { formatCurrency } from '@/finance/utils/billUtils'
+import Swal from 'sweetalert2'
+
+const BILLS_TO_PAY_MODE = 'bills_to_pay'
+const BILLS_PAYABLE_MODE = 'bills_payable'
+const TRANSACTION_MODE = 'transaction'
+
+const emit = defineEmits(['saved'])
+
+const props = defineProps({
+  initialMode: { type: String, default: '' },
+})
+
+const route = useRoute()
+const router = useRouter()
+
+const financeAccountStore = useFinanceAccountStore()
+const transactionStore = useAccountTransactionStore()
+const paymentStore = useExpensePaymentStore()
+
+const submitLoading = ref(false)
+const activePaymentMode = ref(
+  props.initialMode === TRANSACTION_MODE
+    ? TRANSACTION_MODE
+    : props.initialMode === BILLS_PAYABLE_MODE
+      ? BILLS_PAYABLE_MODE
+      : BILLS_TO_PAY_MODE
+)
+const paymentModes = [
+  { id: BILLS_TO_PAY_MODE, label: 'Bills To Pay', icon: 'fa fa-clock-o' },
+  { id: BILLS_PAYABLE_MODE, label: 'Bills Payable', icon: 'fa fa-file-text-o' },
+  { id: TRANSACTION_MODE, label: 'Other Payment', icon: 'fa fa-exchange' },
+]
+const accountCategoryOptions = accountTransactionCategoryOptions
+const transactionTypeOptions = accountTransactionTypes.map((type) => ({
+  id: type.id,
+  name: type.label,
+}))
+const isBillsToPayMode = computed(() => activePaymentMode.value === BILLS_TO_PAY_MODE)
+const isBillsPayableMode = computed(() => activePaymentMode.value === BILLS_PAYABLE_MODE)
+const pendingBillCount = computed(() => paymentStore.pendingBillCount)
+const payableBillCount = computed(() => paymentStore.payableBillCount)
+
+const createDefaultForm = () => ({
+  transaction_type: 'loan',
+  date: new Date().toISOString().slice(0, 10),
+  amount: '',
+  particular: '',
+  reference_no: '',
+  remarks: '',
+  account_category: 'staff',
+  main_account_type: 'Cash',
+  account_id: '',
+  from_account_category: 'main',
+  from_main_account_type: 'Cash',
+  from_account_id: '',
+  to_account_category: 'staff',
+  to_main_account_type: '',
+  to_account_id: '',
+})
+
+const form = reactive(createDefaultForm())
+
+const isAdjustmentType = computed(() => isAdjustmentTransactionType(form.transaction_type))
+const activeTypeLabel = computed(() => getTransactionTypeLabel(form.transaction_type))
+const transactionTypeHint = computed(() => getTransactionTypeHint(form.transaction_type))
+const transactionAmount = computed(() => Number(form.amount) || 0)
+
+const transactionHintClass = computed(() =>
+  isAdjustmentType.value
+    ? 'border-amber-200 bg-amber-50 text-amber-800'
+    : 'border-blue-200 bg-blue-50 text-blue-800'
+)
+
+const fromSectionLabel = computed(() => {
+  if (form.transaction_type === 'loan_repay' || form.transaction_type === 'advanced_repay') {
+    return 'Repay From'
+  }
+
+  return 'Pay From'
+})
+
+const toSectionLabel = computed(() => {
+  if (form.transaction_type === 'loan' || form.transaction_type === 'advanced') {
+    return 'Receive To'
+  }
+
+  return 'Deposit To'
+})
+
+const particularPlaceholder = computed(() => `${activeTypeLabel.value} transaction`)
+
+const submitButtonLabel = computed(() => `Submit ${activeTypeLabel.value}`)
+
+function selectedCategoryLabel(category) {
+  return getAccountCategoryLabel(category) || '—'
+}
+
+function formatBalance(balance) {
+  return balance === null ? '—' : formatCurrency(balance)
+}
+
+function mapAccountOption(account) {
+  const balance = formatCurrency(account.balance ?? account.current_balance ?? 0)
+  const category = account.category
+
+  if (category === ACCOUNT_CATEGORIES.MAIN) {
+    return {
+      id: account.id,
+      name: `${account.account_type} — ${account.account_name} (${account.account_label}) — ${balance}`,
+    }
+  }
+
+  if (category === ACCOUNT_CATEGORIES.AGENT) {
+    return {
+      id: account.id,
+      name: `Agent — ${account.agent_code} — ${account.agent_name} — ${balance}`,
+    }
+  }
+
+  const config = getPartyConfig(category)
+  if (config) {
+    return {
+      id: account.id,
+      name: `${config.partyLabel} — ${account[config.codeKey]} — ${account[config.nameKey]} — ${balance}`,
+    }
+  }
+
+  return {
+    id: account.id,
+    name: `${account.account_name} — ${balance}`,
+  }
+}
+
+function getAccountOptions(category, mainAccountType) {
+  if (!category) return []
+
+  const accounts = financeAccountStore
+    .getAccountsByCategory(category)
+    .filter((account) => account.status === 'Active')
+
+  if (category === ACCOUNT_CATEGORIES.MAIN) {
+    return mainAccountType
+      ? accounts
+          .filter((account) => account.account_type === mainAccountType)
+          .map(mapAccountOption)
+      : []
+  }
+
+  return accounts.map(mapAccountOption)
+}
+
+const canSelectSingleAccount = computed(() => {
+  if (form.account_category === 'main') return Boolean(form.main_account_type)
+  return Boolean(form.account_category)
+})
+
+const canSelectFromAccount = computed(() => {
+  if (form.from_account_category === 'main') return Boolean(form.from_main_account_type)
+  return Boolean(form.from_account_category)
+})
+
+const canSelectToAccount = computed(() => {
+  if (form.to_account_category === 'main') return Boolean(form.to_main_account_type)
+  return Boolean(form.to_account_category)
+})
+
+const singleAccountOptions = computed(() =>
+  getAccountOptions(form.account_category, form.main_account_type)
+)
+
+const fromAccountOptions = computed(() =>
+  getAccountOptions(form.from_account_category, form.from_main_account_type).filter(
+    (option) =>
+      !(
+        form.from_account_category === form.to_account_category &&
+        Number(option.id) === Number(form.to_account_id)
+      )
+  )
+)
+
+const toAccountOptions = computed(() =>
+  getAccountOptions(form.to_account_category, form.to_main_account_type).filter(
+    (option) =>
+      !(
+        form.from_account_category === form.to_account_category &&
+        Number(option.id) === Number(form.from_account_id)
+      )
+  )
+)
+
+function filterAccountOption(option, query) {
+  const haystack = [option?.name, option?.id].filter(Boolean).join(' ').toLowerCase()
+  return haystack.includes(query)
+}
+
+const selectedSingleAccountLabel = computed(() => {
+  if (!form.account_id) return '—'
+  return (
+    singleAccountOptions.value.find((option) => Number(option.id) === Number(form.account_id))
+      ?.name ?? '—'
+  )
+})
+
+const selectedFromAccountLabel = computed(() => {
+  if (!form.from_account_id) return '—'
+  return (
+    fromAccountOptions.value.find((option) => Number(option.id) === Number(form.from_account_id))
+      ?.name ?? '—'
+  )
+})
+
+const selectedToAccountLabel = computed(() => {
+  if (!form.to_account_id) return '—'
+  return (
+    toAccountOptions.value.find((option) => Number(option.id) === Number(form.to_account_id))?.name ??
+    '—'
+  )
+})
+
+const singleAccountBalance = computed(() =>
+  transactionStore.getAccountBalance(form.account_category, form.account_id)
+)
+
+const fromAccountBalance = computed(() =>
+  transactionStore.getAccountBalance(form.from_account_category, form.from_account_id)
+)
+
+const toAccountBalance = computed(() =>
+  transactionStore.getAccountBalance(form.to_account_category, form.to_account_id)
+)
+
+function setPaymentMode(modeId) {
+  activePaymentMode.value = modeId
+  if (modeId === TRANSACTION_MODE) {
+    setTransactionType(form.transaction_type || accountTransactionTypes[0]?.id || 'loan')
+  }
+
+  const query = { ...route.query, tab: 'transaction_entry' }
+  if (modeId === BILLS_TO_PAY_MODE) {
+    query.payment_mode = 'bills_to_pay'
+  } else if (modeId === BILLS_PAYABLE_MODE) {
+    query.payment_mode = 'bills_payable'
+  } else {
+    query.payment_mode = 'transaction'
+  }
+  router.replace({ query })
+}
+
+watch(
+  () => props.initialMode,
+  (mode) => {
+    if (mode === TRANSACTION_MODE) {
+      activePaymentMode.value = TRANSACTION_MODE
+      return
+    }
+
+    if (mode === BILLS_PAYABLE_MODE) {
+      activePaymentMode.value = BILLS_PAYABLE_MODE
+      return
+    }
+
+    if (mode && accountTransactionTypes.some((item) => item.id === mode)) {
+      activePaymentMode.value = TRANSACTION_MODE
+      setTransactionType(mode)
+      return
+    }
+
+    activePaymentMode.value = BILLS_TO_PAY_MODE
+  }
+)
+
+function setTransactionType(type) {
+  form.transaction_type = type
+
+  if (isAdjustmentTransactionType(type)) {
+    form.account_category = 'staff'
+    form.main_account_type = 'Cash'
+    form.account_id = ''
+    return
+  }
+
+  form.from_account_category = getDefaultFromCategory(type)
+  form.from_main_account_type = form.from_account_category === 'main' ? 'Cash' : ''
+  form.from_account_id = ''
+  form.to_account_category = getDefaultToCategory(type)
+  form.to_main_account_type = form.to_account_category === 'main' ? 'Cash' : ''
+  form.to_account_id = ''
+}
+
+function resetForm() {
+  Object.assign(form, createDefaultForm())
+}
+
+watch(
+  () => form.account_category,
+  (category) => {
+    form.main_account_type = category === 'main' ? 'Cash' : ''
+    form.account_id = ''
+  }
+)
+
+watch(
+  () => form.main_account_type,
+  () => {
+    form.account_id = ''
+  }
+)
+
+watch(
+  () => form.from_account_category,
+  (category) => {
+    form.from_main_account_type = category === 'main' ? 'Cash' : ''
+    form.from_account_id = ''
+  }
+)
+
+watch(
+  () => form.from_main_account_type,
+  () => {
+    form.from_account_id = ''
+  }
+)
+
+watch(
+  () => form.to_account_category,
+  (category) => {
+    form.to_main_account_type = category === 'main' ? 'Cash' : ''
+    form.to_account_id = ''
+  }
+)
+
+watch(
+  () => form.to_main_account_type,
+  () => {
+    form.to_account_id = ''
+  }
+)
+
+async function handleSubmit() {
+  submitLoading.value = true
+
+  const result = await transactionStore.submitTransaction({
+    transactionType: form.transaction_type,
+    date: form.date,
+    amount: form.amount,
+    particular: form.particular,
+    referenceNo: form.reference_no,
+    remarks: form.remarks,
+    accountCategory: form.account_category,
+    mainAccountType: form.main_account_type,
+    accountId: form.account_id,
+    fromAccountCategory: form.from_account_category,
+    fromMainAccountType: form.from_main_account_type,
+    fromAccountId: form.from_account_id,
+    toAccountCategory: form.to_account_category,
+    toMainAccountType: form.to_main_account_type,
+    toAccountId: form.to_account_id,
+  })
+
+  submitLoading.value = false
+
+  if (!result.ok) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Transaction Failed',
+      text: result.message,
+      confirmButtonColor: '#22C55E',
+    })
+    return
+  }
+
+  await Swal.fire({
+    icon: 'success',
+    title: 'Transaction Saved',
+    text: `${activeTypeLabel.value} has been recorded successfully.`,
+    confirmButtonColor: '#22C55E',
+  })
+
+  resetForm()
+  emit('saved')
+}
+
+onMounted(async () => {
+  if (!route.query.payment_mode) {
+    setPaymentMode(BILLS_TO_PAY_MODE)
+  }
+
+  await Promise.all([
+    financeAccountStore.fetchAllCategories(),
+    paymentStore.fetchBillEntries(),
+  ])
+})
+</script>

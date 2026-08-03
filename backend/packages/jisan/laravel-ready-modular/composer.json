@@ -1,0 +1,22 @@
+{
+    "name": "jisan/laravel-ready-modular",
+    "version": "1.0.0",
+    "description": "Production ready modular architecture generator for Laravel",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Jisan\\LaravelReadyModular\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Jisan\\LaravelReadyModular\\LaravelReadyModularServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.1"
+    }
+}

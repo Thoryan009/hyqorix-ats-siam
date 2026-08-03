@@ -1,0 +1,62 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-primary: #10b981;
+  --color-primary-light: #ecfdf5;
+  --color-primary-gradient: #d1fae5;
+  --color-primary-ring: #93c5fd;
+  --color-primary-hover: #0369a1;
+  --color-primary-dark: #064e3b;
+  --color-secondary: #e2232a;
+  --color-secondary-dark: #4b5563;
+  --color-tertiary: #0d71b9;
+  --color-tertiary-dark: #0a5a8c;
+
+}
+
+/* @theme {
+  --color-primary: #047857;
+  --color-primary-light: #ecfdf5;
+  --color-primary-gradient: #d1fae5;
+  --color-primary-ring: #93c5fd;
+  --color-primary-hover: #0369a1;
+  --color-primary-dark: #047857;
+  --color-secondary: #e2232a;
+  --color-secondary-dark: #4b5563;
+  --color-tertiary: #0d71b9;
+  --color-tertiary-dark: #0a5a8c;
+} */
+
+body {
+  font-family: 'Poppins', sans-serif;
+}
+
+.merriweather {
+  font-family: "Helvetica", sans-serif;
+}
+
+/* Custom Scrollbar Styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #588f36, #6ba843);
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #6ba843, #7dc050);
+}
+
+/* Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #588f36 transparent;
+}

@@ -1,0 +1,20 @@
+export default {
+  vendor: {
+    module: 'ভেন্ডর',
+    management: 'ভেন্ডর ব্যবস্থাপনা',
+    add: 'ভেন্ডর যোগ করুন',
+    edit: 'ভেন্ডর সম্পাদনা',
+    view: 'ভেন্ডর বিস্তারিত',
+    delete: 'ভেন্ডর মুছুন',
+    information: 'ভেন্ডর তথ্য',
+    organization_name: 'প্রতিষ্ঠানের নাম',
+    vendor_type: 'ভেন্ডর টাইপ',
+    contact_person: 'যোগাযোগকারী',
+    placeholder_organization: 'যেমন: Global Ticket House',
+    placeholder_vendor_type: 'ভেন্ডর টাইপ নির্বাচন করুন',
+    placeholder_contact: 'যেমন: জন ডো',
+    placeholder_address: 'যেমন: ঢাকা, বাংলাদেশ',
+    upload_image: 'ভেন্ডর লোগো আপলোড (ঐচ্ছিক)',
+    delete_confirmation: 'আপনি কি নিশ্চিত এই ভেন্ডর মুছে ফেলতে চান?',
+  },
+}

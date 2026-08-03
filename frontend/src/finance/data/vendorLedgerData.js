@@ -1,0 +1,55 @@
+export const vendorLedgerEntries = {
+  1: [
+    {
+      id: 1,
+      date: '2026-01-01',
+      particular: 'Opening Balance',
+      voucher_no: 'OB-001/26',
+      demand_letter: '',
+      job: '',
+      client_name: '',
+      dr_amount: 0,
+      discount: 0,
+      cr_amount: 70000,
+      payment_method: '',
+      balance: 70000,
+      remarks: 'Opening balance forwarded',
+    },
+  ],
+  2: [
+    {
+      id: 1,
+      date: '2026-01-01',
+      particular: 'Opening Balance',
+      voucher_no: 'OB-001/26',
+      demand_letter: '',
+      job: '',
+      client_name: '',
+      dr_amount: 0,
+      discount: 0,
+      cr_amount: 0,
+      payment_method: '',
+      balance: 0,
+      remarks: 'Opening balance forwarded',
+    },
+  ],
+  3: [
+    {
+      id: 1,
+      date: '2026-01-01',
+      particular: 'Opening Balance',
+      voucher_no: 'OB-001/26',
+      demand_letter: '',
+      job: '',
+      client_name: '',
+      dr_amount: 0,
+      discount: 0,
+      cr_amount: 40000,
+      payment_method: '',
+      balance: 40000,
+      remarks: 'Opening balance forwarded',
+    },
+  ],
+}
+
+export { computeLedgerBalances, filterLedgerByDate } from './agentLedgerData'

@@ -1,0 +1,29 @@
+# Laravel
+/backend/vendor
+/backend/node_modules
+/backend/.env
+/backend/storage/*.key
+/backend/public/storage
+
+
+# Vue
+/frontend/node_modules
+/frontend/dist
+/frontend/.env.local
+/frontend/.env
+
+# Docker
+**/docker-compose.override.yml
+**/mysql_data
+docker-compose.yml
+docker-compose.prod.yml
+docker-compose.dev.yml
+/backend/Dockerfile.dev
+/backend/Dockerfile.prod
+/frontend/Dockerfile.dev
+/frontend/Dockerfile.prod
+
+# IDE / OS
+.vscode
+.idea
+.DS_Store

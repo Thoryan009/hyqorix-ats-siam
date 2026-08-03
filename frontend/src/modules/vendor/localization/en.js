@@ -1,0 +1,20 @@
+export default {
+  vendor: {
+    module: 'Vendor',
+    management: 'Vendor Management',
+    add: 'Add Vendor',
+    edit: 'Edit Vendor',
+    view: 'View Vendor Details',
+    delete: 'Delete Vendor',
+    information: 'Vendor Information',
+    organization_name: 'Organization Name',
+    vendor_type: 'Vendor Type',
+    contact_person: 'Contact Person',
+    placeholder_organization: 'Eg: Global Ticket House',
+    placeholder_vendor_type: 'Select vendor type',
+    placeholder_contact: 'Eg: John Doe',
+    placeholder_address: 'Eg: Dhaka, Bangladesh',
+    upload_image: 'Upload Vendor Logo (Optional)',
+    delete_confirmation: 'Are you sure you want to delete this Vendor?',
+  },
+}
