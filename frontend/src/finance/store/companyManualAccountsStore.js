@@ -67,7 +67,6 @@ export const useCompanyManualAccountsStore = defineStore('companyManualAccounts'
     return financeAccountStore.createAccount({
       category: config.accountCategory,
       account_name: accountName,
-      account_label: String(payload.account_label || '').trim() || null,
       balance: 0,
       opening_balance: 0,
       status: payload.status || 'Active',
@@ -95,7 +94,6 @@ export const useCompanyManualAccountsStore = defineStore('companyManualAccounts'
       id: account.id,
       category: config.accountCategory,
       account_name: accountName,
-      account_label: String(payload.account_label ?? account.account_label ?? '').trim() || null,
       balance: account.balance ?? account.current_balance ?? 0,
       opening_balance: account.opening_balance ?? 0,
       status: payload.status,

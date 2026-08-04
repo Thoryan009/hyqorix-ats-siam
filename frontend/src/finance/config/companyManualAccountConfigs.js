@@ -11,7 +11,6 @@ export const companyManualAccountConfigs = {
     searchPlaceholder: 'Search asset accounts...',
     createTitle: 'Create Asset Account',
     namePlaceholder: 'Eg: Office Equipment, Vehicle',
-    descriptionPlaceholder: 'Optional description',
   },
   liabilities: {
     tabId: 'liabilities-accounts',
@@ -23,7 +22,6 @@ export const companyManualAccountConfigs = {
     searchPlaceholder: 'Search liabilities accounts...',
     createTitle: 'Create Liabilities Account',
     namePlaceholder: 'Eg: Bank Loan, Accounts Payable',
-    descriptionPlaceholder: 'Optional description',
   },
 }
 

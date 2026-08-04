@@ -17,15 +17,6 @@
       </div>
 
       <div class="space-y-2">
-        <BaseLabel for="edit_manual_account_label">Description</BaseLabel>
-        <BaseInput
-          id="edit_manual_account_label"
-          v-model="form.account_label"
-          :placeholder="config.descriptionPlaceholder"
-        />
-      </div>
-
-      <div class="space-y-2">
         <BaseLabel for="edit_manual_account_status">Status</BaseLabel>
         <BaseSelect
           id="edit_manual_account_status"
@@ -73,7 +64,6 @@ const errorMessage = ref('')
 
 const form = reactive({
   account_name: '',
-  account_label: '',
   status: 'Active',
 })
 
@@ -87,7 +77,6 @@ watch(
   (isOpen) => {
     if (isOpen && manualStore.activeManualType === props.manualType && manualStore.editingAccount) {
       form.account_name = manualStore.editingAccount.account_name ?? ''
-      form.account_label = manualStore.editingAccount.account_label ?? ''
       form.status = manualStore.editingAccount.status ?? 'Active'
       errorMessage.value = ''
     }
@@ -108,7 +97,6 @@ const handleSubmit = async () => {
   try {
     const result = await manualStore.updateAccount(props.manualType, account.value.id, {
       account_name: form.account_name,
-      account_label: form.account_label,
       status: form.status,
     })
 

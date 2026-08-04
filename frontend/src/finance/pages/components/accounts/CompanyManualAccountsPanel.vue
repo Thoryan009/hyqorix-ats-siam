@@ -65,22 +65,12 @@
             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100">
               <i :class="[config.rowIcon, 'text-slate-700']"></i>
             </div>
-            <div>
-              <p class="font-medium text-gray-900">{{ row.account_name }}</p>
-              <p class="text-xs text-gray-500">{{ row.account_label || '—' }}</p>
-            </div>
+            <p class="font-medium text-gray-900">{{ row.account_name }}</p>
           </div>
         </template>
 
         <template #cell-balance="{ row }">
-          <span
-            class="font-semibold"
-            :class="
-              isApplicantLedgerAmountDebit(row.balance ?? row.current_balance)
-                ? 'text-red-700'
-                : 'text-green-700'
-            "
-          >
+          <span class="font-semibold" :class="amountColorClass">
             {{
               formatApplicantLedgerAmount(row.balance ?? row.current_balance, formatCurrency)
             }}
@@ -170,10 +160,7 @@ import { useFinanceAccountStore } from '@/finance/store/financeAccountStore'
 import { getCompanyManualAccountConfig } from '@/finance/config/companyManualAccountConfigs'
 import { partyAccountStatusFilterOptions } from '@/finance/data/partyAccountConstants'
 import { formatCurrency } from '@/finance/utils/billUtils'
-import {
-  formatApplicantLedgerAmount,
-  isApplicantLedgerAmountDebit,
-} from '@/finance/utils/partyLedgerCsvUtils'
+import { formatApplicantLedgerAmount } from '@/finance/utils/partyLedgerCsvUtils'
 import { showConfirmDialog } from '@/shared/utils/sweetAlertUtils'
 import { toast } from '@/shared/config/toastConfig'
 import CreateCompanyManualAccountModal from './CreateCompanyManualAccountModal.vue'
@@ -192,6 +179,10 @@ const manualStore = useCompanyManualAccountsStore()
 const financeAccountStore = useFinanceAccountStore()
 
 const config = computed(() => getCompanyManualAccountConfig(props.manualType))
+
+const amountColorClass = computed(() =>
+  props.manualType === 'liabilities' ? 'text-red-700' : 'text-green-700'
+)
 
 const filters = reactive({
   search: '',

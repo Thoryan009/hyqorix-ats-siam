@@ -22,15 +22,6 @@
       </div>
 
       <div class="space-y-2">
-        <BaseLabel for="manual_account_label">Description</BaseLabel>
-        <BaseInput
-          id="manual_account_label"
-          v-model="form.account_label"
-          :placeholder="config.descriptionPlaceholder"
-        />
-      </div>
-
-      <div class="space-y-2">
         <BaseLabel for="manual_account_status">Status</BaseLabel>
         <BaseSelect
           id="manual_account_status"
@@ -78,7 +69,6 @@ const errorMessage = ref('')
 
 const form = reactive({
   account_name: '',
-  account_label: '',
   status: 'Active',
 })
 
@@ -89,7 +79,6 @@ const statusOptions = partyAccountStatusOptions.map((option) => ({
 
 const resetForm = () => {
   form.account_name = ''
-  form.account_label = ''
   form.status = 'Active'
   errorMessage.value = ''
 }
@@ -115,7 +104,6 @@ const handleSubmit = async () => {
   try {
     const result = await manualStore.createAccount(props.manualType, {
       account_name: form.account_name,
-      account_label: form.account_label,
       status: form.status,
     })
 
