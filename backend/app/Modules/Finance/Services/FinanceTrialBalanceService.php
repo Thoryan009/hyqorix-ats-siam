@@ -66,11 +66,11 @@ class FinanceTrialBalanceService
      * Ledger stores main/capital with inverted cash convention (balance = CR − DR).
      * Flip those sides so Final Trial Balance matches textbook Debit/Credit layout:
      * Cash/Bank (assets) on Debit, Owner's Capital on Credit.
+     * Manual Asset accounts (e.g. Advanced Given) use normal DR-increase posting — no flip.
      */
     private const FLIP_NET_SIDE_CATEGORIES = [
         'main',
         'capital',
-        'asset',
     ];
 
     /** Expense heads: TB Debit = gross charges (ignore payment-settlement CRs). */

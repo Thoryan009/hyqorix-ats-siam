@@ -107,10 +107,25 @@ const columns = [
   { key: 'amount', label: 'Amount' },
 ]
 
-const transactionTypeFilterOptions = accountTransactionDisplayTypes.map((type) => ({
-  id: type.id,
-  name: type.label,
-}))
+const transactionTypeFilterOptions = computed(() => {
+  const known = accountTransactionDisplayTypes.map((type) => ({
+    id: type.id,
+    name: type.label,
+  }))
+
+  const knownIds = new Set(known.map((item) => item.id))
+  const dynamic = []
+
+  for (const row of transactionStore.transactions) {
+    const type = String(row.transaction_type || '').trim()
+    if (!type || knownIds.has(type)) continue
+    knownIds.add(type)
+    dynamic.push({ id: type, name: type })
+  }
+
+  dynamic.sort((a, b) => a.name.localeCompare(b.name))
+  return [...known, ...dynamic]
+})
 
 const page = ref(1)
 const perPage = ref(10)
@@ -206,6 +221,14 @@ function typeBadgeClass(type) {
     deposit: 'bg-cyan-100 text-cyan-700',
     withdraw: 'bg-rose-100 text-rose-700',
     transfer: 'bg-slate-100 text-slate-700',
+  }
+
+  const normalized = String(type || '').toLowerCase()
+  if (normalized.includes('given') || normalized.includes('asset')) {
+    return 'bg-sky-100 text-sky-800'
+  }
+  if (normalized.includes('receipt') || normalized.includes('liabilit')) {
+    return 'bg-amber-100 text-amber-800'
   }
 
   return classes[type] || 'bg-gray-100 text-gray-700'

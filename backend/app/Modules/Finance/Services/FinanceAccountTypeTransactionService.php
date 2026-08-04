@@ -179,6 +179,9 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
                 $transactionType,
                 $extraCategory
             );
+            $displayTransactionType = $extraAccount
+                ? (trim((string) $extraAccount->account_name) ?: $effectiveTransactionType)
+                : $effectiveTransactionType;
 
             $fromAccount = $this->resolveAccount($fromAccountId, $fromCategory);
             $toAccount = $this->resolveAccount($toAccountId, $toCategory);
@@ -206,7 +209,7 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
             $toPaymentMethod = $this->resolvePaymentMethod($toCategory, (string) ($data['to_main_account_type'] ?? ''));
 
             $transaction = FinanceAccountTypeTransaction::query()->create([
-                'transaction_type' => $effectiveTransactionType,
+                'transaction_type' => $displayTransactionType,
                 'amount' => $amount,
                 'transaction_date' => $transactionDate,
                 'particular' => $resolvedParticular,
@@ -248,14 +251,19 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
             );
 
             if ($extraAccount) {
-                ['from_delta' => $ignore, 'to_delta' => $extraDelta] = $this->resolveTransferEffects(
-                    $effectiveTransactionType,
-                    $fromCategory,
-                    $extraCategory,
-                    $amount
-                );
-
-                $this->assertSufficientBalance($extraAccount, $extraDelta);
+                // Asset advances (e.g. Advanced Given): always DR the selected asset ledger.
+                // Liabilities (e.g. Advance Receipts): CR via advanced transfer effects.
+                if ($extraCategory === 'asset') {
+                    $extraDelta = -$amount;
+                } else {
+                    ['from_delta' => $ignore, 'to_delta' => $extraDelta] = $this->resolveTransferEffects(
+                        $effectiveTransactionType,
+                        $fromCategory,
+                        $extraCategory,
+                        $amount
+                    );
+                    $this->assertSufficientBalance($extraAccount, $extraDelta);
+                }
 
                 $extraLabel = $this->accountLabel($extraAccount);
                 $extraPaymentMethod = $this->resolvePaymentMethod($extraCategory, '');

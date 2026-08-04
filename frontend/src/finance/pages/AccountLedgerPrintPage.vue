@@ -61,7 +61,7 @@
             <td
               class="px-2 py-2 text-right font-semibold"
               :class="
-                isIncomeHeadLedger
+                useAmountLabel
                   ? isAccountLedgerAmountDebit(row.balance)
                     ? 'text-red-700'
                     : 'text-green-700'
@@ -69,7 +69,7 @@
               "
             >
               {{
-                isIncomeHeadLedger
+                useAmountLabel
                   ? formatAccountLedgerAmount(row.balance, formatCurrency)
                   : formatAccountLedgerBalanceAmount(row.balance, formatCurrency)
               }}
@@ -135,6 +135,18 @@ const isIncomeHeadLedger = computed(() => {
   )
 })
 
+const isAssetOrLiabilitiesLedger = computed(() => {
+  const category = String(account.value?.category || '').toLowerCase()
+  return (
+    category === ACCOUNT_CATEGORIES.ASSET ||
+    category === ACCOUNT_CATEGORIES.LIABILITIES
+  )
+})
+
+const useAmountLabel = computed(
+  () => isIncomeHeadLedger.value || isAssetOrLiabilitiesLedger.value
+)
+
 const columns = computed(() => [
   { key: 'date', label: 'Date' },
   { key: 'particular', label: 'Particular' },
@@ -148,12 +160,17 @@ const columns = computed(() => [
       ? 'DR'
       : isIncomeHeadLedger.value
         ? 'DR (Bill)'
-        : 'DR (Payment)',
+        : isAssetOrLiabilitiesLedger.value
+          ? 'DR'
+          : 'DR (Payment)',
   },
   { key: 'discount', label: 'Discount' },
-  { key: 'cr_amount', label: isCapitalLedger.value ? 'CR' : 'CR (Received)' },
+  {
+    key: 'cr_amount',
+    label: isCapitalLedger.value || isAssetOrLiabilitiesLedger.value ? 'CR' : 'CR (Received)',
+  },
   { key: 'payment_method', label: 'Payment Method' },
-  { key: 'balance', label: isIncomeHeadLedger.value ? 'Amount' : 'Balance' },
+  { key: 'balance', label: useAmountLabel.value ? 'Amount' : 'Balance' },
   { key: 'remarks', label: 'Remarks' },
 ])
 
