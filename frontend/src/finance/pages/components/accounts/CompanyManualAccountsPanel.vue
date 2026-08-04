@@ -214,7 +214,7 @@ const perPageOptions = [
 
 const columns = [
   { key: 'account_name', label: 'Account Name' },
-  { key: 'balance', label: 'Balance' },
+  { key: 'balance', label: 'Amount' },
   { key: 'status', label: 'Status' },
 ]
 
@@ -269,7 +269,7 @@ const summaryCards = computed(() => {
       iconColor: 'text-slate-700',
     },
     {
-      title: 'Total Balance',
+      title: 'Total Amount',
       value: formatCurrency(totalBalance),
       subtitle: 'All accounts combined',
       icon: 'fa fa-money',
