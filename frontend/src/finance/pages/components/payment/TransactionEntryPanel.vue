@@ -58,206 +58,311 @@
 
     <div
       v-else
-      class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
+      class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
     >
-      <h3 class="mb-4 text-base font-semibold text-gray-800">Other Transaction</h3>
+      <div class="border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white px-6 py-5">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-semibold tracking-tight text-gray-900">Other Transaction</h3>
+            <p class="mt-1 text-sm text-gray-500">
+              Move funds between accounts — select source, destination, then enter the amount.
+            </p>
+          </div>
+          <span
+            class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
+          >
+            <i class="fa fa-exchange mr-1.5"></i>{{ activeTypeLabel }}
+          </span>
+        </div>
+      </div>
 
-      <BaseForm :onSubmit="handleSubmit">
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div class="space-y-2 md:col-span-2">
-            <BaseLabel for="txn_type">Transaction Type</BaseLabel>
-            <BaseSelect
-              id="txn_type"
-              :model-value="form.transaction_type"
-              :options="transactionTypeOptions"
-              placeholder="Select transaction type"
-              :required="true"
-              @update:model-value="setTransactionType"
-            />
+      <BaseForm :onSubmit="handleSubmit" class-name="space-y-0 p-6">
+        <div class="space-y-6">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div class="space-y-2">
+              <BaseLabel for="txn_type">Transaction Type</BaseLabel>
+              <BaseSelect
+                id="txn_type"
+                :model-value="form.transaction_type"
+                :options="transactionTypeOptions"
+                placeholder="Select transaction type"
+                :required="true"
+                @update:model-value="setTransactionType"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <BaseLabel for="txn_date">Transaction Date</BaseLabel>
+              <BaseInput id="txn_date" v-model="form.date" type="date" :required="true" />
+            </div>
           </div>
 
-          <div class="space-y-2">
-            <BaseLabel for="txn_date">Transaction Date</BaseLabel>
-            <BaseInput id="txn_date" v-model="form.date" type="date" :required="true" />
-          </div>
-
-          <div class="space-y-2">
-            <BaseLabel for="txn_amount">Amount (৳)</BaseLabel>
-            <BaseInput
-              id="txn_amount"
-              v-model="form.amount"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="Enter amount"
-              :required="true"
-            />
+          <div
+            class="rounded-lg border px-4 py-3 text-sm"
+            :class="transactionHintClass"
+          >
+            <i class="fa fa-info-circle mr-1.5"></i>{{ transactionTypeHint }}
           </div>
 
           <template v-if="isAdjustmentType">
-            <div class="space-y-2">
-              <BaseLabel for="txn_account_category">Account Category</BaseLabel>
-              <BaseSelect
-                id="txn_account_category"
-                v-model="form.account_category"
-                :options="accountCategoryOptions"
-                placeholder="Select account category"
-                :required="true"
-              />
-            </div>
+            <section class="rounded-xl border border-slate-200 bg-slate-50/70 p-5">
+              <div class="mb-4 flex items-center gap-2">
+                <span
+                  class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-white"
+                >
+                  <i class="fa fa-university text-sm"></i>
+                </span>
+                <div>
+                  <h4 class="text-sm font-semibold text-slate-900">Account</h4>
+                  <p class="text-xs text-slate-500">Select the account to adjust</p>
+                </div>
+              </div>
 
-            <div v-if="form.account_category === 'main'" class="space-y-2">
-              <BaseLabel for="txn_main_account_type">Account Type</BaseLabel>
-              <BaseSelect
-                id="txn_main_account_type"
-                v-model="form.main_account_type"
-                :options="mainAccountTypeOptions"
-                placeholder="Select account type"
-                :required="true"
-              />
-            </div>
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div class="space-y-2">
+                  <BaseLabel for="txn_account_category">Account Category</BaseLabel>
+                  <BaseSelect
+                    id="txn_account_category"
+                    v-model="form.account_category"
+                    :options="accountCategoryOptions"
+                    placeholder="Select account category"
+                    :required="true"
+                  />
+                </div>
 
-            <div class="space-y-2 md:col-span-2">
-              <BaseLabel for="txn_account_id">Account</BaseLabel>
-              <BaseSearchSelect
-                id="txn_account_id"
-                v-model="form.account_id"
-                :options="singleAccountOptions"
-                placeholder="Search and select account"
-                :required="true"
-                :disabled="!canSelectSingleAccount"
-                :filter-fn="filterAccountOption"
-              />
-            </div>
+                <div v-if="form.account_category === 'main'" class="space-y-2">
+                  <BaseLabel for="txn_main_account_type">Account Type</BaseLabel>
+                  <BaseSelect
+                    id="txn_main_account_type"
+                    v-model="form.main_account_type"
+                    :options="mainAccountTypeOptions"
+                    placeholder="Select account type"
+                    :required="true"
+                  />
+                </div>
+
+                <div class="space-y-2 md:col-span-2">
+                  <BaseLabel for="txn_account_id">Account</BaseLabel>
+                  <BaseSearchSelect
+                    id="txn_account_id"
+                    v-model="form.account_id"
+                    :options="singleAccountOptions"
+                    placeholder="Search and select account"
+                    :required="true"
+                    :disabled="!canSelectSingleAccount"
+                    :filter-fn="filterAccountOption"
+                  />
+                </div>
+              </div>
+            </section>
           </template>
 
           <template v-else>
-            <div class="md:col-span-2">
-              <p class="mb-3 text-sm font-semibold text-gray-800">{{ fromSectionLabel }}</p>
-            </div>
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-stretch">
+              <section
+                class="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/80 to-white p-5"
+              >
+                <div class="mb-4 flex items-center gap-2">
+                  <span
+                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600 text-white"
+                  >
+                    <i class="fa fa-arrow-up text-sm"></i>
+                  </span>
+                  <div>
+                    <h4 class="text-sm font-semibold text-amber-950">{{ fromSectionLabel }}</h4>
+                    <p class="text-xs text-amber-800/70">Source account</p>
+                  </div>
+                </div>
 
-            <div class="space-y-2">
-              <BaseLabel for="txn_from_category">From Account Category</BaseLabel>
-              <BaseSelect
-                id="txn_from_category"
-                v-model="form.from_account_category"
-                :options="accountCategoryOptions"
-                placeholder="Select category"
-                :required="true"
-              />
-            </div>
+                <div class="space-y-4">
+                  <div class="space-y-2">
+                    <BaseLabel for="txn_from_category">Account Category</BaseLabel>
+                    <BaseSelect
+                      id="txn_from_category"
+                      v-model="form.from_account_category"
+                      :options="accountCategoryOptions"
+                      placeholder="Select category"
+                      :required="true"
+                    />
+                  </div>
 
-            <div v-if="form.from_account_category === 'main'" class="space-y-2">
-              <BaseLabel for="txn_from_main_type">From Account Type</BaseLabel>
-              <BaseSelect
-                id="txn_from_main_type"
-                v-model="form.from_main_account_type"
-                :options="mainAccountTypeOptions"
-                placeholder="Select account type"
-                :required="true"
-              />
-            </div>
+                  <div v-if="form.from_account_category === 'main'" class="space-y-2">
+                    <BaseLabel for="txn_from_main_type">Account Type</BaseLabel>
+                    <BaseSelect
+                      id="txn_from_main_type"
+                      v-model="form.from_main_account_type"
+                      :options="mainAccountTypeOptions"
+                      placeholder="Select account type"
+                      :required="true"
+                    />
+                  </div>
 
-            <div class="space-y-2 md:col-span-2">
-              <BaseLabel for="txn_from_account_id">From Account</BaseLabel>
-              <BaseSearchSelect
-                id="txn_from_account_id"
-                v-model="form.from_account_id"
-                :options="fromAccountOptions"
-                placeholder="Search and select from account"
-                :required="true"
-                :disabled="!canSelectFromAccount"
-                :filter-fn="filterAccountOption"
-              />
-            </div>
+                  <div class="space-y-2">
+                    <BaseLabel for="txn_from_account_id">Account</BaseLabel>
+                    <BaseSearchSelect
+                      id="txn_from_account_id"
+                      v-model="form.from_account_id"
+                      :options="fromAccountOptions"
+                      placeholder="Search and select from account"
+                      :required="true"
+                      :disabled="!canSelectFromAccount"
+                      :filter-fn="filterAccountOption"
+                    />
+                  </div>
+                </div>
+              </section>
 
-            <div class="md:col-span-2">
-              <p class="mb-3 text-sm font-semibold text-gray-800">{{ toSectionLabel }}</p>
-            </div>
+              <div class="hidden items-center justify-center lg:flex">
+                <div
+                  class="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm"
+                  aria-hidden="true"
+                >
+                  <i class="fa fa-long-arrow-right text-lg"></i>
+                </div>
+              </div>
 
-            <div class="space-y-2">
-              <BaseLabel for="txn_to_category">To Account Category</BaseLabel>
-              <BaseSelect
-                id="txn_to_category"
-                v-model="form.to_account_category"
-                :options="accountCategoryOptions"
-                placeholder="Select category"
-                :required="true"
-              />
-            </div>
+              <div class="flex items-center justify-center lg:hidden" aria-hidden="true">
+                <div
+                  class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm"
+                >
+                  <i class="fa fa-long-arrow-down"></i>
+                </div>
+              </div>
 
-            <div v-if="form.to_account_category === 'main'" class="space-y-2">
-              <BaseLabel for="txn_to_main_type">To Account Type</BaseLabel>
-              <BaseSelect
-                id="txn_to_main_type"
-                v-model="form.to_main_account_type"
-                :options="mainAccountTypeOptions"
-                placeholder="Select account type"
-                :required="true"
-              />
-            </div>
+              <section
+                class="rounded-xl border border-emerald-200/80 bg-gradient-to-b from-emerald-50/80 to-white p-5"
+              >
+                <div class="mb-4 flex items-center gap-2">
+                  <span
+                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white"
+                  >
+                    <i class="fa fa-arrow-down text-sm"></i>
+                  </span>
+                  <div>
+                    <h4 class="text-sm font-semibold text-emerald-950">{{ toSectionLabel }}</h4>
+                    <p class="text-xs text-emerald-800/70">Destination account</p>
+                  </div>
+                </div>
 
-            <div class="space-y-2 md:col-span-2">
-              <BaseLabel for="txn_to_account_id">To Account</BaseLabel>
-              <BaseSearchSelect
-                id="txn_to_account_id"
-                v-model="form.to_account_id"
-                :options="toAccountOptions"
-                placeholder="Search and select to account"
-                :required="true"
-                :disabled="!canSelectToAccount"
-                :filter-fn="filterAccountOption"
-              />
+                <div class="space-y-4">
+                  <div class="space-y-2">
+                    <BaseLabel for="txn_to_category">Account Category</BaseLabel>
+                    <BaseSelect
+                      id="txn_to_category"
+                      v-model="form.to_account_category"
+                      :options="accountCategoryOptions"
+                      placeholder="Select category"
+                      :required="true"
+                    />
+                  </div>
+
+                  <div v-if="form.to_account_category === 'main'" class="space-y-2">
+                    <BaseLabel for="txn_to_main_type">Account Type</BaseLabel>
+                    <BaseSelect
+                      id="txn_to_main_type"
+                      v-model="form.to_main_account_type"
+                      :options="mainAccountTypeOptions"
+                      placeholder="Select account type"
+                      :required="true"
+                    />
+                  </div>
+
+                  <div class="space-y-2">
+                    <BaseLabel for="txn_to_account_id">Account</BaseLabel>
+                    <BaseSearchSelect
+                      id="txn_to_account_id"
+                      v-model="form.to_account_id"
+                      :options="toAccountOptions"
+                      placeholder="Search and select to account"
+                      :required="true"
+                      :disabled="!canSelectToAccount"
+                      :filter-fn="filterAccountOption"
+                    />
+                  </div>
+                </div>
+              </section>
             </div>
           </template>
 
-          <div class="space-y-2 md:col-span-2">
-            <BaseLabel for="txn_particular">Particular</BaseLabel>
-            <BaseInput
-              id="txn_particular"
-              v-model="form.particular"
-              :placeholder="particularPlaceholder"
-            />
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div class="space-y-2 md:col-span-1">
+              <BaseLabel for="txn_particular">Particular</BaseLabel>
+              <BaseInput
+                id="txn_particular"
+                v-model="form.particular"
+                :placeholder="particularPlaceholder"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <BaseLabel for="txn_reference_no">Reference No</BaseLabel>
+              <BaseInput
+                id="txn_reference_no"
+                v-model="form.reference_no"
+                placeholder="Optional — e.g. TXN-001/26"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <BaseLabel for="txn_remarks">Remarks</BaseLabel>
+              <BaseInput
+                id="txn_remarks"
+                v-model="form.remarks"
+                placeholder="Optional notes"
+              />
+            </div>
           </div>
 
-          <div class="space-y-2">
-            <BaseLabel for="txn_reference_no">Reference No (Optional)</BaseLabel>
-            <BaseInput
-              id="txn_reference_no"
-              v-model="form.reference_no"
-              placeholder="Eg: TXN-001/26"
-            />
-          </div>
-
-          <div class="space-y-2">
-            <BaseLabel for="txn_remarks">Remarks (Optional)</BaseLabel>
-            <BaseInput id="txn_remarks" v-model="form.remarks" placeholder="Additional notes" />
-          </div>
-        </div>
-
-        <div
-          class="mt-4 rounded-lg border px-4 py-3 text-sm"
-          :class="transactionHintClass"
-        >
-          <i class="fa fa-info-circle mr-1.5"></i>{{ transactionTypeHint }}
-        </div>
-
-        <div class="mt-6 flex flex-wrap gap-3">
-          <BaseButton
-            type="submit"
-            class="bg-green-600 text-white hover:bg-green-700"
-            :disabled="submitLoading"
-            v-can="'receive_payment.create'"
+          <section
+            class="rounded-xl border border-slate-800/10 bg-slate-900 px-5 py-6 text-white shadow-inner sm:px-8"
           >
-            {{ submitLoading ? 'Submitting...' : submitButtonLabel }}
-          </BaseButton>
-          <BaseButton
-            type="button"
-            :className="'border border-gray-300 bg-white text-gray-800 hover:bg-gray-50'"
-            @click="resetForm"
-          >
-            Reset
-          </BaseButton>
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">
+                  Transaction Amount
+                </p>
+                <p class="mt-1 text-sm text-slate-400">
+                  Enter the full amount to post for this {{ activeTypeLabel.toLowerCase() }}.
+                </p>
+
+                <div class="mt-4 flex items-center gap-3">
+                  <span
+                    class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white/10 text-2xl font-semibold text-emerald-300"
+                  >
+                    ৳
+                  </span>
+                  <BaseInput
+                    id="txn_amount"
+                    v-model="form.amount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    :required="true"
+                    class-name="h-14 w-full rounded-xl border-0 bg-white px-4 text-3xl font-semibold tracking-tight text-slate-900 shadow-sm outline-none ring-2 ring-transparent placeholder:text-slate-300 focus:ring-emerald-400"
+                  />
+                </div>
+              </div>
+
+              <div class="flex shrink-0 flex-wrap gap-3">
+                <BaseButton
+                  type="button"
+                  :className="'border border-white/20 bg-white/5 px-5 py-3 text-white hover:bg-white/10'"
+                  @click="resetForm"
+                >
+                  Reset
+                </BaseButton>
+                <BaseButton
+                  type="submit"
+                  class="bg-emerald-500 px-6 py-3 text-base font-semibold text-white hover:bg-emerald-400"
+                  :disabled="submitLoading"
+                  v-can="'receive_payment.create'"
+                >
+                  {{ submitLoading ? 'Submitting...' : submitButtonLabel }}
+                </BaseButton>
+              </div>
+            </div>
+          </section>
         </div>
       </BaseForm>
     </div>
