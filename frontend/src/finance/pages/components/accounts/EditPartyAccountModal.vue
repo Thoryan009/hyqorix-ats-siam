@@ -20,7 +20,7 @@
             <p class="text-xs uppercase tracking-wide text-gray-400">Phone</p>
             <p class="mt-1 text-gray-700">{{ account.phone }}</p>
           </div>
-          <div v-if="!canEditOpeningAmount">
+          <div>
             <p class="text-xs uppercase tracking-wide text-gray-400">{{ amountLabel }}</p>
             <p
               class="mt-1 font-semibold"
@@ -31,39 +31,6 @@
               {{ formatApplicantLedgerAmount(account.balance, formatCurrency) }}
             </p>
           </div>
-        </div>
-      </div>
-
-      <div v-if="canEditOpeningAmount" class="space-y-3 rounded-lg border border-amber-100 bg-amber-50/60 px-4 py-3">
-        <p class="text-xs text-amber-800">
-          No ledger entries yet. Set an opening amount and choose whether it is receivable or
-          payable (ledger only).
-        </p>
-
-        <div class="space-y-2">
-          <BaseLabel :for="`edit_${partyType}_opening_amount`">{{ amountLabel }}</BaseLabel>
-          <BaseInput
-            :id="`edit_${partyType}_opening_amount`"
-            v-model="form.opening_amount"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Enter amount"
-          />
-        </div>
-
-        <div class="space-y-2">
-          <BaseLabel :for="`edit_${partyType}_opening_type`">Amount Type</BaseLabel>
-          <BaseSelect
-            :id="`edit_${partyType}_opening_type`"
-            v-model="form.opening_amount_type"
-            :options="openingTypeOptions"
-            placeholder="Select receivable or payable"
-            :required="Boolean(form.opening_amount && Number(form.opening_amount) > 0)"
-          />
-          <p class="text-xs text-gray-500">
-            Receivable posts as DR. Payable posts as CR. Not related to bills receivable/payable.
-          </p>
         </div>
       </div>
 
@@ -121,35 +88,20 @@ const errorMessage = ref('')
 
 const form = reactive({
   status: 'Active',
-  opening_amount: '',
-  opening_amount_type: '',
 })
 
 const account = computed(() => partyStore.editingAccount)
-
-const canEditOpeningAmount = computed(() => {
-  if (!account.value) return false
-  if (account.value.has_ledger_entries) return false
-  return Number(account.value.balance || 0) === 0
-})
 
 const statusOptions = partyAccountStatusOptions.map((option) => ({
   id: option.value,
   name: option.label,
 }))
 
-const openingTypeOptions = [
-  { id: 'receivable', name: 'Receivable (DR)' },
-  { id: 'payable', name: 'Payable (CR)' },
-]
-
 watch(
   () => partyStore.isEditModalOpen,
   (isOpen) => {
     if (isOpen && partyStore.activePartyType === props.partyType && partyStore.editingAccount) {
       form.status = partyStore.editingAccount.status ?? 'Active'
-      form.opening_amount = ''
-      form.opening_amount_type = ''
       errorMessage.value = ''
     }
   }
@@ -163,30 +115,14 @@ const closeModal = () => {
 const handleSubmit = async () => {
   if (!account.value) return
 
-  const openingAmount = Number(form.opening_amount || 0)
-  if (canEditOpeningAmount.value && openingAmount > 0 && !form.opening_amount_type) {
-    errorMessage.value = 'Please select Receivable or Payable for the amount.'
-    toast.error(errorMessage.value)
-    return
-  }
-
   errorMessage.value = ''
   loading.value = true
 
   try {
-    const options =
-      canEditOpeningAmount.value && openingAmount > 0
-        ? {
-            opening_amount: openingAmount,
-            opening_amount_type: form.opening_amount_type,
-          }
-        : {}
-
     const result = await partyStore.updateAccountStatus(
       props.partyType,
       account.value.id,
-      form.status,
-      options
+      form.status
     )
 
     if (!result.ok) {

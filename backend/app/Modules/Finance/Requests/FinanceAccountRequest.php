@@ -100,6 +100,12 @@ class FinanceAccountRequest extends FormRequest
                 ->ignore($accountId);
         }
 
+        if ($category && in_array($category, ['agent', 'vendor', 'principal', 'client', 'staff'], true)) {
+            $rules['opening_amount'][] = 'prohibited';
+            $rules['opening_amount_type'][] = 'prohibited';
+            $rules['main_account_id'][] = 'prohibited';
+        }
+
         return $rules;
     }
 

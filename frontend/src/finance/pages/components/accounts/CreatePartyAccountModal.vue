@@ -38,34 +38,6 @@
         </p>
       </div>
 
-      <div class="space-y-3 rounded-lg border border-amber-100 bg-amber-50/60 px-4 py-3">
-        <div class="space-y-2">
-          <BaseLabel :for="`create_${partyType}_opening_amount`">Opening Amount (৳)</BaseLabel>
-          <BaseInput
-            :id="`create_${partyType}_opening_amount`"
-            v-model="form.opening_amount"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Optional opening amount"
-          />
-        </div>
-
-        <div class="space-y-2">
-          <BaseLabel :for="`create_${partyType}_opening_type`">Amount Type</BaseLabel>
-          <BaseSelect
-            :id="`create_${partyType}_opening_type`"
-            v-model="form.opening_amount_type"
-            :options="openingTypeOptions"
-            placeholder="Select receivable or payable"
-            :required="Boolean(form.opening_amount && Number(form.opening_amount) > 0)"
-          />
-          <p class="text-xs text-gray-500">
-            Required when opening amount is greater than 0. Receivable = DR, Payable = CR.
-          </p>
-        </div>
-      </div>
-
       <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
 
       <div class="flex justify-end gap-2 pt-2">
@@ -105,15 +77,8 @@ const isListLoading = computed(() => masterStore.isLoading(props.partyType))
 const loading = ref(false)
 const errorMessage = ref('')
 
-const openingTypeOptions = [
-  { id: 'receivable', name: 'Receivable' },
-  { id: 'payable', name: 'Payable' },
-]
-
 const form = reactive({
   partyId: '',
-  opening_amount: '',
-  opening_amount_type: '',
 })
 
 const partyOptions = computed(() =>
@@ -130,8 +95,6 @@ const selectedParty = computed(() => {
 
 const resetForm = () => {
   form.partyId = ''
-  form.opening_amount = ''
-  form.opening_amount_type = ''
   errorMessage.value = ''
 }
 
@@ -152,25 +115,10 @@ const closeModal = () => {
 
 const handleSubmit = async () => {
   errorMessage.value = ''
-
-  const openingAmount = Number(form.opening_amount || 0)
-  if (openingAmount > 0 && !form.opening_amount_type) {
-    errorMessage.value = 'Please choose Receivable or Payable for the opening amount.'
-    return
-  }
-
   loading.value = true
 
   try {
-    const options =
-      openingAmount > 0
-        ? {
-            opening_amount: openingAmount,
-            opening_amount_type: form.opening_amount_type,
-          }
-        : {}
-
-    const result = await partyStore.createAccount(props.partyType, form.partyId, options)
+    const result = await partyStore.createAccount(props.partyType, form.partyId)
 
     if (!result.ok) {
       errorMessage.value = result.message

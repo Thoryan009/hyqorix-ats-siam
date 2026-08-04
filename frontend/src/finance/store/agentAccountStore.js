@@ -133,7 +133,7 @@ export const useAgentAccountStore = defineStore('agentAccount', () => {
     return masterStore.agents.filter((agent) => !hasAccountForAgent(agent.id))
   }
 
-  async function createAccount(agentId, balance, options = {}) {
+  async function createAccount(agentId) {
     const masterStore = useAgentMasterStore()
     const masterAgent = masterStore.getAgent(agentId)
 
@@ -145,40 +145,17 @@ export const useAgentAccountStore = defineStore('agentAccount', () => {
       return { ok: false, message: 'An account already exists for this agent.' }
     }
 
-    const openingBalance = Number(balance)
-    if (!Number.isFinite(openingBalance)) {
-      return { ok: false, message: 'Please enter a valid advanced amount.' }
-    }
-
-    const mainAccountId = options.mainAccountId ? Number(options.mainAccountId) : null
-    if (openingBalance > 0 && !mainAccountId) {
-      return { ok: false, message: 'Please select a main account for the advanced amount.' }
-    }
-
-    const payload = {
+    return financeAccountStore.createAccount({
       category: ACCOUNT_CATEGORIES.AGENT,
       account_name: masterAgent.agent_name,
       code: masterAgent.agent_code,
       phone: masterAgent.phone,
       entity_id: masterAgent.id,
       bill_agent_id: masterAgent.id,
-      balance: openingBalance,
-      opening_balance: openingBalance,
+      balance: 0,
+      opening_balance: 0,
       status: 'Active',
-    }
-
-    if (mainAccountId) {
-      payload.main_account_id = mainAccountId
-    }
-
-    const result = await financeAccountStore.createAccount(payload)
-
-    if (result.ok && mainAccountId) {
-      useAccountStore().fetchActiveAccounts(true)
-      useAccountLedgerStore().invalidateAccountLedger(mainAccountId)
-    }
-
-    return result
+    })
   }
 
   const paymentTypes = [

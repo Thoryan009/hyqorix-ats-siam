@@ -116,7 +116,7 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
     activePartyType.value = null
   }
 
-  async function createAccount(partyType, partyId, options = {}) {
+  async function createAccount(partyType, partyId) {
     const config = getPartyConfig(partyType)
     const masterParty = usePartyMasterStore().getParty(partyType, partyId)
 
@@ -128,7 +128,7 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
       return { ok: false, message: `An account already exists for this ${config.partyLabel.toLowerCase()}.` }
     }
 
-    const payload = {
+    return financeAccountStore.createAccount({
       category: config.accountCategory,
       account_name: masterParty[config.nameKey],
       code: masterParty[config.codeKey],
@@ -137,17 +137,10 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
       balance: 0,
       opening_balance: 0,
       status: 'Active',
-    }
-
-    if (options.opening_amount != null && Number(options.opening_amount) > 0) {
-      payload.opening_amount = Number(options.opening_amount)
-      payload.opening_amount_type = options.opening_amount_type
-    }
-
-    return financeAccountStore.createAccount(payload)
+    })
   }
 
-    async function updateAccountStatus(partyType, accountId, status, options = {}) {
+  async function updateAccountStatus(partyType, accountId, status) {
     const config = getPartyConfig(partyType)
     const account = getAccount(partyType, accountId)
 
@@ -159,7 +152,7 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
       return { ok: false, message: 'Please select a valid status.' }
     }
 
-    const payload = {
+    return financeAccountStore.updateAccount({
       id: account.id,
       category: config.accountCategory,
       account_name: account[config.nameKey] ?? account.account_name,
@@ -169,14 +162,7 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
       balance: account.balance,
       opening_balance: account.opening_balance,
       status,
-    }
-
-    if (options.opening_amount != null && Number(options.opening_amount) > 0) {
-      payload.opening_amount = Number(options.opening_amount)
-      payload.opening_amount_type = options.opening_amount_type
-    }
-
-    return financeAccountStore.updateAccount(payload)
+    })
   }
 
   async function deleteAccount(partyType, accountId) {

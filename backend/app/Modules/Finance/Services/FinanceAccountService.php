@@ -33,6 +33,15 @@ class FinanceAccountService extends BaseCachedService
     public const INCOME_RECEIVABLE_CATEGORY = 'income_receivable';
     public const EXPENSE_PAYABLE_CATEGORY = 'expense_payable';
 
+    /** Party accounts are created with zero balance — no opening amount / main account on create. */
+    private const PARTY_ZERO_BALANCE_CATEGORIES = [
+        'agent',
+        'vendor',
+        'principal',
+        'client',
+        'staff',
+    ];
+
     public function __construct(protected FinanceAccountRepository $repository)
     {
         parent::__construct(new FinanceAccount());
@@ -108,6 +117,14 @@ class FinanceAccountService extends BaseCachedService
             $mainAccountId = !empty($data['main_account_id']) ? (int) $data['main_account_id'] : null;
             unset($data['opening_amount'], $data['opening_amount_type'], $data['main_account_id']);
 
+            $category = (string) ($data['category'] ?? '');
+            if (in_array($category, self::PARTY_ZERO_BALANCE_CATEGORIES, true)) {
+                $data['balance'] = 0;
+                $data['opening_balance'] = 0;
+
+                return $this->model->create($data);
+            }
+
             $account = $this->model->create($data);
 
             if ($openingAmount !== null && $openingAmount > 0) {
@@ -117,30 +134,7 @@ class FinanceAccountService extends BaseCachedService
             $openingBalance = (float) ($account->opening_balance ?: $account->balance ?: 0);
 
             if ($openingBalance > 0) {
-                if (($account->category ?? '') === 'agent') {
-                    if (!$mainAccountId) {
-                        throw ValidationException::withMessages([
-                            'main_account_id' => [
-                                'Please select the main account that receives this agent advanced amount.',
-                            ],
-                        ]);
-                    }
-
-                    $typeTransaction = $this->recordOpeningBalanceTransaction($account, $openingBalance);
-                    $this->recordAgentOpeningMainReceipt(
-                        $account,
-                        $mainAccountId,
-                        $openingBalance,
-                        $typeTransaction
-                    );
-                    $this->recordAgentAdvancedLedgerEntry(
-                        $account,
-                        $openingBalance,
-                        $typeTransaction
-                    );
-                } else {
-                    $this->recordOpeningBalanceTransaction($account, $openingBalance);
-                }
+                $this->recordOpeningBalanceTransaction($account, $openingBalance);
             }
 
             return $account;
@@ -1499,9 +1493,26 @@ class FinanceAccountService extends BaseCachedService
                 ? (float) $data['opening_amount']
                 : null;
             $openingType = $data['opening_amount_type'] ?? null;
-            unset($data['opening_amount'], $data['opening_amount_type']);
+            unset($data['opening_amount'], $data['opening_amount_type'], $data['main_account_id']);
 
-            if ($openingAmount !== null && $openingAmount > 0) {
+            $category = (string) ($financeAccount->category ?? $data['category'] ?? '');
+            if (
+                in_array($category, self::PARTY_ZERO_BALANCE_CATEGORIES, true)
+                && $openingAmount !== null
+                && $openingAmount > 0
+            ) {
+                throw ValidationException::withMessages([
+                    'opening_amount' => [
+                        'Opening amount cannot be set for agent, vendor, principal, client, or staff accounts.',
+                    ],
+                ]);
+            }
+
+            if (
+                $openingAmount !== null
+                && $openingAmount > 0
+                && !in_array($category, self::PARTY_ZERO_BALANCE_CATEGORIES, true)
+            ) {
                 $this->setPartyOpeningAmount($financeAccount, $openingAmount, (string) $openingType);
             }
 
@@ -1520,6 +1531,14 @@ class FinanceAccountService extends BaseCachedService
         float $amount,
         string $type,
     ): FinanceAccount {
+        if (in_array((string) ($account->category ?? ''), self::PARTY_ZERO_BALANCE_CATEGORIES, true)) {
+            throw ValidationException::withMessages([
+                'opening_amount' => [
+                    'Opening amount cannot be set for agent, vendor, principal, client, or staff accounts.',
+                ],
+            ]);
+        }
+
         if ($amount <= 0) {
             throw ValidationException::withMessages([
                 'opening_amount' => ['Opening amount must be greater than zero.'],
