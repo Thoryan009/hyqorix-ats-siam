@@ -7,7 +7,10 @@
       </div>
     </PageHeader>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div
+      v-if="summaryCards.length"
+      class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+    >
       <div
         v-for="card in summaryCards"
         :key="card.title"
@@ -133,12 +136,10 @@ import TransactionEntryPanel from './components/payment/TransactionEntryPanel.vu
 import SaleEntryFormPanel from './components/payment/SaleEntryFormPanel.vue'
 import BillsReceivablePanel from './components/payment/BillsReceivablePanel.vue'
 import { useExpensePaymentStore } from '@/finance/store/expensePaymentStore'
-import { useAccountTransactionStore } from '@/finance/store/accountTransactionStore'
 import { useSaleEntryStore } from '@/finance/store/saleEntryStore'
 import { useIncomeCollectionStore } from '@/finance/store/incomeCollectionStore'
 
 const paymentStore = useExpensePaymentStore()
-const transactionStore = useAccountTransactionStore()
 const saleEntryStore = useSaleEntryStore()
 const incomeCollectionStore = useIncomeCollectionStore()
 const route = useRoute()
@@ -374,32 +375,8 @@ const summaryCards = computed(() => {
     ]
   }
 
-  return [
-    {
-      title: 'Total Transactions',
-      value: transactionStore.totalTransactionCount,
-      subtitle: 'Saved account type transactions',
-      icon: 'fa fa-exchange',
-      iconBg: 'bg-violet-50',
-      iconColor: 'text-violet-600',
-    },
-    {
-      title: 'This Month',
-      value: transactionStore.thisMonthTransactionCount,
-      subtitle: 'Transactions in current month',
-      icon: 'fa fa-calendar',
-      iconBg: 'bg-blue-50',
-      iconColor: 'text-blue-600',
-    },
-    {
-      title: 'Pending Bills',
-      value: paymentStore.pendingBillCount,
-      subtitle: 'Bills awaiting approval',
-      icon: 'fa fa-clock-o',
-      iconBg: 'bg-amber-50',
-      iconColor: 'text-amber-600',
-    },
-  ]
+  // Other Transaction has no summary cards.
+  return []
 })
 
 const setActiveTab = (tabId) => {
@@ -534,7 +511,6 @@ watch(() => route.query, applyRouteTab, { immediate: true, deep: true })
 onMounted(async () => {
   await Promise.all([
     paymentStore.fetchBillEntries(),
-    transactionStore.fetchTransactions(),
     incomeCollectionStore.fetchCollections(),
     saleEntryStore.fetchReceivableBills(true),
   ])

@@ -58,9 +58,8 @@
 
     <div
       v-else
-      class="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]"
+      class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
     >
-    <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
       <h3 class="mb-4 text-base font-semibold text-gray-800">Other Transaction</h3>
 
       <BaseForm :onSubmit="handleSubmit">
@@ -262,80 +261,6 @@
         </div>
       </BaseForm>
     </div>
-
-    <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
-      <h3 class="mb-4 text-base font-semibold text-blue-800">Transaction Summary</h3>
-
-      <div class="space-y-3 text-sm">
-        <div class="flex justify-between gap-3">
-          <span class="text-gray-600">Transaction Type</span>
-          <span class="text-right font-semibold text-gray-900">{{ activeTypeLabel }}</span>
-        </div>
-
-        <template v-if="isAdjustmentType">
-          <div class="flex justify-between gap-3">
-            <span class="text-gray-600">Account Category</span>
-            <span class="text-right font-semibold text-gray-900">
-              {{ selectedCategoryLabel(form.account_category) }}
-            </span>
-          </div>
-          <div class="flex justify-between gap-3">
-            <span class="text-gray-600">Account</span>
-            <span class="text-right font-semibold text-gray-900">{{ selectedSingleAccountLabel }}</span>
-          </div>
-          <div class="flex justify-between gap-3">
-            <span class="text-gray-600">Current Balance</span>
-            <span class="font-semibold text-gray-900">{{ formatBalance(singleAccountBalance) }}</span>
-          </div>
-        </template>
-
-        <template v-else>
-          <div class="space-y-3 border-t border-blue-200 pt-3">
-            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">From Account</p>
-            <div class="flex justify-between gap-3">
-              <span class="text-gray-600">Category</span>
-              <span class="text-right font-semibold text-gray-900">
-                {{ selectedCategoryLabel(form.from_account_category) }}
-              </span>
-            </div>
-            <div class="flex justify-between gap-3">
-              <span class="text-gray-600">Account</span>
-              <span class="text-right font-semibold text-gray-900">{{ selectedFromAccountLabel }}</span>
-            </div>
-            <div class="flex justify-between gap-3">
-              <span class="text-gray-600">Balance</span>
-              <span class="font-semibold text-gray-900">{{ formatBalance(fromAccountBalance) }}</span>
-            </div>
-          </div>
-
-          <div class="space-y-3 border-t border-blue-200 pt-3">
-            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">To Account</p>
-            <div class="flex justify-between gap-3">
-              <span class="text-gray-600">Category</span>
-              <span class="text-right font-semibold text-gray-900">
-                {{ selectedCategoryLabel(form.to_account_category) }}
-              </span>
-            </div>
-            <div class="flex justify-between gap-3">
-              <span class="text-gray-600">Account</span>
-              <span class="text-right font-semibold text-gray-900">{{ selectedToAccountLabel }}</span>
-            </div>
-            <div class="flex justify-between gap-3">
-              <span class="text-gray-600">Balance</span>
-              <span class="font-semibold text-gray-900">{{ formatBalance(toAccountBalance) }}</span>
-            </div>
-          </div>
-        </template>
-
-        <div class="rounded-lg bg-white px-3 py-2 ring-1 ring-blue-200">
-          <div class="flex justify-between gap-3">
-            <span class="font-medium text-gray-700">Transaction Amount</span>
-            <span class="text-lg font-bold text-blue-800">{{ formatCurrency(transactionAmount) }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    </div>
   </div>
 </template>
 
@@ -352,7 +277,6 @@ import { ACCOUNT_CATEGORIES } from '@/finance/data/accountCategoryCodes'
 import {
   accountTransactionCategoryOptions,
   accountTransactionTypes,
-  getAccountCategoryLabel,
   getDefaultFromCategory,
   getDefaultToCategory,
   getTransactionTypeHint,
@@ -361,7 +285,6 @@ import {
   mainAccountTypeOptions,
 } from '@/finance/data/accountTransactionData'
 import { getPartyConfig } from '@/finance/config/partyAccountConfigs'
-import { formatCurrency } from '@/finance/utils/billUtils'
 import Swal from 'sweetalert2'
 
 const BILLS_TO_PAY_MODE = 'bills_to_pay'
@@ -431,7 +354,6 @@ const form = reactive(createDefaultForm())
 const isAdjustmentType = computed(() => isAdjustmentTransactionType(form.transaction_type))
 const activeTypeLabel = computed(() => getTransactionTypeLabel(form.transaction_type))
 const transactionTypeHint = computed(() => getTransactionTypeHint(form.transaction_type))
-const transactionAmount = computed(() => Number(form.amount) || 0)
 
 const transactionHintClass = computed(() =>
   isAdjustmentType.value
@@ -459,29 +381,24 @@ const particularPlaceholder = computed(() => `${activeTypeLabel.value} transacti
 
 const submitButtonLabel = computed(() => `Submit ${activeTypeLabel.value}`)
 
-function selectedCategoryLabel(category) {
-  return getAccountCategoryLabel(category) || '—'
-}
-
-function formatBalance(balance) {
-  return balance === null ? '—' : formatCurrency(balance)
-}
-
 function mapAccountOption(account) {
-  const balance = formatCurrency(account.balance ?? account.current_balance ?? 0)
+  const balance = Number(account.balance ?? account.current_balance ?? 0).toLocaleString('en-BD', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
   const category = account.category
 
   if (category === ACCOUNT_CATEGORIES.MAIN) {
     return {
       id: account.id,
-      name: `${account.account_type} — ${account.account_name} (${account.account_label}) — ${balance}`,
+      name: `${account.account_type} — ${account.account_name} (${account.account_label}) — ৳${balance}`,
     }
   }
 
   if (category === ACCOUNT_CATEGORIES.AGENT) {
     return {
       id: account.id,
-      name: `Agent — ${account.agent_code} — ${account.agent_name} — ${balance}`,
+      name: `Agent — ${account.agent_code} — ${account.agent_name} — ৳${balance}`,
     }
   }
 
@@ -489,13 +406,13 @@ function mapAccountOption(account) {
   if (config) {
     return {
       id: account.id,
-      name: `${config.partyLabel} — ${account[config.codeKey]} — ${account[config.nameKey]} — ${balance}`,
+      name: `${config.partyLabel} — ${account[config.codeKey]} — ${account[config.nameKey]} — ৳${balance}`,
     }
   }
 
   return {
     id: account.id,
-    name: `${account.account_name} — ${balance}`,
+    name: `${account.account_name} — ৳${balance}`,
   }
 }
 
@@ -560,42 +477,6 @@ function filterAccountOption(option, query) {
   const haystack = [option?.name, option?.id].filter(Boolean).join(' ').toLowerCase()
   return haystack.includes(query)
 }
-
-const selectedSingleAccountLabel = computed(() => {
-  if (!form.account_id) return '—'
-  return (
-    singleAccountOptions.value.find((option) => Number(option.id) === Number(form.account_id))
-      ?.name ?? '—'
-  )
-})
-
-const selectedFromAccountLabel = computed(() => {
-  if (!form.from_account_id) return '—'
-  return (
-    fromAccountOptions.value.find((option) => Number(option.id) === Number(form.from_account_id))
-      ?.name ?? '—'
-  )
-})
-
-const selectedToAccountLabel = computed(() => {
-  if (!form.to_account_id) return '—'
-  return (
-    toAccountOptions.value.find((option) => Number(option.id) === Number(form.to_account_id))?.name ??
-    '—'
-  )
-})
-
-const singleAccountBalance = computed(() =>
-  transactionStore.getAccountBalance(form.account_category, form.account_id)
-)
-
-const fromAccountBalance = computed(() =>
-  transactionStore.getAccountBalance(form.from_account_category, form.from_account_id)
-)
-
-const toAccountBalance = computed(() =>
-  transactionStore.getAccountBalance(form.to_account_category, form.to_account_id)
-)
 
 function setPaymentMode(modeId) {
   activePaymentMode.value = modeId
