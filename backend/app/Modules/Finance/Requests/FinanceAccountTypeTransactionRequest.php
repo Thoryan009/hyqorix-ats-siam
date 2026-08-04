@@ -4,10 +4,21 @@ namespace App\Modules\Finance\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class FinanceAccountTypeTransactionRequest extends FormRequest
 {
-    private const ACCOUNT_CATEGORIES = ['main', 'staff', 'agent', 'vendor', 'principal', 'client', 'applicant'];
+    private const ACCOUNT_CATEGORIES = [
+        'main',
+        'staff',
+        'agent',
+        'asset',
+        'liabilities',
+        'vendor',
+        'principal',
+        'client',
+        'applicant',
+    ];
 
     private const TRANSACTION_TYPES = [
         'loan',
@@ -39,6 +50,8 @@ class FinanceAccountTypeTransactionRequest extends FormRequest
             'toAccountCategory' => 'to_account_category',
             'toMainAccountType' => 'to_main_account_type',
             'toAccountId' => 'to_account_id',
+            'assetAccountId' => 'asset_account_id',
+            'liabilitiesAccountId' => 'liabilities_account_id',
         ];
 
         foreach ($map as $camel => $snake) {
@@ -75,6 +88,8 @@ class FinanceAccountTypeTransactionRequest extends FormRequest
             $rules['account_category'] = ['required', 'string', Rule::in(self::ACCOUNT_CATEGORIES)];
             $rules['account_id'] = ['required', 'integer', 'exists:finance_accounts,id'];
             $rules['main_account_type'] = ['nullable', 'string', Rule::in(['Cash', 'Bank', 'cash', 'bank'])];
+            $rules['asset_account_id'] = ['prohibited'];
+            $rules['liabilities_account_id'] = ['prohibited'];
         } else {
             $rules['from_account_category'] = ['required', 'string', Rule::in(self::ACCOUNT_CATEGORIES)];
             $rules['from_account_id'] = ['required', 'integer', 'exists:finance_accounts,id'];
@@ -87,8 +102,32 @@ class FinanceAccountTypeTransactionRequest extends FormRequest
             ];
             $rules['from_main_account_type'] = ['nullable', 'string', Rule::in(['Cash', 'Bank', 'cash', 'bank'])];
             $rules['to_main_account_type'] = ['nullable', 'string', Rule::in(['Cash', 'Bank', 'cash', 'bank'])];
+            $rules['asset_account_id'] = [
+                'nullable',
+                'integer',
+                'exists:finance_accounts,id',
+            ];
+            $rules['liabilities_account_id'] = [
+                'nullable',
+                'integer',
+                'exists:finance_accounts,id',
+            ];
         }
 
         return $rules;
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $assetAccountId = $this->input('asset_account_id');
+            $liabilitiesAccountId = $this->input('liabilities_account_id');
+
+            if (!empty($assetAccountId) && !empty($liabilitiesAccountId)) {
+                $message = 'Please select either an asset account or a liabilities account, not both.';
+                $validator->errors()->add('asset_account_id', $message);
+                $validator->errors()->add('liabilities_account_id', $message);
+            }
+        });
     }
 }

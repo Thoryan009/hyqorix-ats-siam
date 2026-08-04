@@ -71,37 +71,42 @@
           <span
             class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
           >
-            <i class="fa fa-exchange mr-1.5"></i>{{ activeTypeLabel }}
+            <i class="fa fa-exchange mr-1.5"></i>{{ transferLabel }}
           </span>
         </div>
       </div>
 
       <BaseForm :onSubmit="handleSubmit" class-name="space-y-0 p-6">
         <div class="space-y-6">
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div class="space-y-2">
-              <BaseLabel for="txn_type">Transaction Type</BaseLabel>
-              <BaseSelect
-                id="txn_type"
-                :model-value="form.transaction_type"
-                :options="transactionTypeOptions"
-                placeholder="Select transaction type"
-                :required="true"
-                @update:model-value="setTransactionType"
-              />
-            </div>
-
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div class="space-y-2">
               <BaseLabel for="txn_date">Transaction Date</BaseLabel>
               <BaseInput id="txn_date" v-model="form.date" type="date" :required="true" />
             </div>
-          </div>
 
-          <div
-            class="rounded-lg border px-4 py-3 text-sm"
-            :class="transactionHintClass"
-          >
-            <i class="fa fa-info-circle mr-1.5"></i>{{ transactionTypeHint }}
+            <div v-if="!isAdjustmentType" class="space-y-2">
+              <BaseLabel for="txn_asset_account_id">Asset Account</BaseLabel>
+              <BaseSearchSelect
+                id="txn_asset_account_id"
+                v-model="form.asset_account_id"
+                :options="assetAccountOptions"
+                placeholder="Search asset account"
+                :disabled="isLiabilitiesSelected"
+                :filter-fn="filterAccountOption"
+              />
+            </div>
+
+            <div v-if="!isAdjustmentType" class="space-y-2">
+              <BaseLabel for="txn_liabilities_account_id">Liabilities Account</BaseLabel>
+              <BaseSearchSelect
+                id="txn_liabilities_account_id"
+                v-model="form.liabilities_account_id"
+                :options="liabilitiesAccountOptions"
+                placeholder="Search liabilities account"
+                :disabled="isAssetSelected"
+                :filter-fn="filterAccountOption"
+              />
+            </div>
           </div>
 
           <template v-if="isAdjustmentType">
@@ -322,7 +327,7 @@
                   Transaction Amount
                 </p>
                 <p class="mt-1 text-sm text-slate-400">
-                  Enter the full amount to post for this {{ activeTypeLabel.toLowerCase() }}.
+                  Enter the full amount to post for this {{ transferLabel.toLowerCase() }}.
                 </p>
 
                 <div class="mt-4 flex items-center gap-3">
@@ -384,8 +389,6 @@ import {
   accountTransactionTypes,
   getDefaultFromCategory,
   getDefaultToCategory,
-  getTransactionTypeHint,
-  getTransactionTypeLabel,
   isAdjustmentTransactionType,
   mainAccountTypeOptions,
 } from '@/finance/data/accountTransactionData'
@@ -423,10 +426,7 @@ const paymentModes = [
   { id: BILLS_PAYABLE_MODE, label: 'Bills Payable', icon: 'fa fa-file-text-o' },
 ]
 const accountCategoryOptions = accountTransactionCategoryOptions
-const transactionTypeOptions = accountTransactionTypes.map((type) => ({
-  id: type.id,
-  name: type.label,
-}))
+
 const isBillsToPayMode = computed(
   () => !props.transactionOnly && activePaymentMode.value === BILLS_TO_PAY_MODE
 )
@@ -443,6 +443,8 @@ const createDefaultForm = () => ({
   particular: '',
   reference_no: '',
   remarks: '',
+  asset_account_id: '',
+  liabilities_account_id: '',
   account_category: 'staff',
   main_account_type: 'Cash',
   account_id: '',
@@ -457,13 +459,31 @@ const createDefaultForm = () => ({
 const form = reactive(createDefaultForm())
 
 const isAdjustmentType = computed(() => isAdjustmentTransactionType(form.transaction_type))
-const activeTypeLabel = computed(() => getTransactionTypeLabel(form.transaction_type))
-const transactionTypeHint = computed(() => getTransactionTypeHint(form.transaction_type))
+const transferLabel = 'Transfer'
+const activeTypeLabel = computed(() => transferLabel)
 
-const transactionHintClass = computed(() =>
-  isAdjustmentType.value
-    ? 'border-amber-200 bg-amber-50 text-amber-800'
-    : 'border-blue-200 bg-blue-50 text-blue-800'
+const isAssetSelected = computed(() => Boolean(form.asset_account_id))
+const isLiabilitiesSelected = computed(() => Boolean(form.liabilities_account_id))
+
+const assetAccountOptions = computed(() => getAccountOptions('asset'))
+const liabilitiesAccountOptions = computed(() => getAccountOptions('liabilities'))
+
+watch(
+  () => form.asset_account_id,
+  (value) => {
+    if (value && form.liabilities_account_id) {
+      form.liabilities_account_id = ''
+    }
+  }
+)
+
+watch(
+  () => form.liabilities_account_id,
+  (value) => {
+    if (value && form.asset_account_id) {
+      form.asset_account_id = ''
+    }
+  }
 )
 
 const fromSectionLabel = computed(() => {
@@ -699,6 +719,8 @@ async function handleSubmit() {
     toAccountCategory: form.to_account_category,
     toMainAccountType: form.to_main_account_type,
     toAccountId: form.to_account_id,
+    assetAccountId: form.asset_account_id,
+    liabilitiesAccountId: form.liabilities_account_id,
   })
 
   submitLoading.value = false
@@ -716,7 +738,7 @@ async function handleSubmit() {
   await Swal.fire({
     icon: 'success',
     title: 'Transaction Saved',
-    text: `${activeTypeLabel.value} has been recorded successfully.`,
+    text: `${transferLabel} has been recorded successfully.`,
     confirmButtonColor: '#22C55E',
   })
 

@@ -167,11 +167,24 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
             $fromAccountId,
             $toAccountId
         ) {
+            $assetAccountId = (int) ($data['asset_account_id'] ?? 0);
+            $liabilitiesAccountId = (int) ($data['liabilities_account_id'] ?? 0);
+            $extraCategory = $assetAccountId > 0 ? 'asset' : ($liabilitiesAccountId > 0 ? 'liabilities' : '');
+            $extraAccountId = $assetAccountId > 0 ? $assetAccountId : $liabilitiesAccountId;
+            $extraAccount = $extraAccountId > 0
+                ? $this->resolveAccount($extraAccountId, $extraCategory)
+                : null;
+
+            $effectiveTransactionType = $this->resolveEffectiveTransactionType(
+                $transactionType,
+                $extraCategory
+            );
+
             $fromAccount = $this->resolveAccount($fromAccountId, $fromCategory);
             $toAccount = $this->resolveAccount($toAccountId, $toCategory);
 
             ['from_delta' => $fromDelta, 'to_delta' => $toDelta] = $this->resolveTransferEffects(
-                $transactionType,
+                $effectiveTransactionType,
                 $fromCategory,
                 $toCategory,
                 $amount
@@ -182,10 +195,10 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
 
             $fromLabel = $this->accountLabel($fromAccount);
             $toLabel = $this->accountLabel($toAccount);
-            $resolvedParticular = $particular !== '' ? $particular : $this->defaultParticular($transactionType);
+            $resolvedParticular = $particular !== '' ? $particular : $this->defaultParticular($effectiveTransactionType);
             $voucherNo = $referenceNo !== '' ? $referenceNo : $this->nextVoucherNo(
-                $fromAccount->id,
-                $this->voucherPrefix($transactionType),
+                $extraAccount?->id ?? $fromAccount->id,
+                $extraAccount ? $this->voucherPrefixForAccount($extraAccount) : $this->voucherPrefix($effectiveTransactionType),
                 $transactionDate
             );
 
@@ -193,7 +206,7 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
             $toPaymentMethod = $this->resolvePaymentMethod($toCategory, (string) ($data['to_main_account_type'] ?? ''));
 
             $transaction = FinanceAccountTypeTransaction::query()->create([
-                'transaction_type' => $transactionType,
+                'transaction_type' => $effectiveTransactionType,
                 'amount' => $amount,
                 'transaction_date' => $transactionDate,
                 'particular' => $resolvedParticular,
@@ -234,10 +247,45 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
                 $remarks ?: "Transfer from {$fromLabel}"
             );
 
+            if ($extraAccount) {
+                ['from_delta' => $ignore, 'to_delta' => $extraDelta] = $this->resolveTransferEffects(
+                    $effectiveTransactionType,
+                    $fromCategory,
+                    $extraCategory,
+                    $amount
+                );
+
+                $this->assertSufficientBalance($extraAccount, $extraDelta);
+
+                $extraLabel = $this->accountLabel($extraAccount);
+                $extraPaymentMethod = $this->resolvePaymentMethod($extraCategory, '');
+
+                $this->applyAccountDelta(
+                    $extraAccount,
+                    $extraDelta,
+                    $transaction->id,
+                    $transactionDate,
+                    $resolvedParticular,
+                    $voucherNo,
+                    $fromLabel,
+                    $extraPaymentMethod,
+                    $remarks ?: "Transfer to {$extraLabel}"
+                );
+            }
+
             $this->accountService->flushCache();
 
             return $transaction;
         });
+    }
+
+    private function resolveEffectiveTransactionType(string $transactionType, string $extraCategory): string
+    {
+        if ($extraCategory === 'liabilities') {
+            return 'advanced';
+        }
+
+        return $transactionType;
     }
 
     private function resolveAccount(int $accountId, string $expectedCategory): FinanceAccount
@@ -453,6 +501,26 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
             'adjust_plus' => 'AP',
             default => 'TX',
         };
+    }
+
+    private function voucherPrefixForAccount(FinanceAccount $account): string
+    {
+        $name = trim((string) $account->account_name);
+
+        if ($name === '') {
+            return $account->category === 'asset' ? 'AS' : 'LB';
+        }
+
+        $parts = preg_split('/[^A-Za-z0-9]+/', strtoupper($name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $prefix = '';
+
+        foreach ($parts as $part) {
+            $prefix .= substr($part, 0, 1);
+        }
+
+        $prefix = substr($prefix, 0, 4);
+
+        return $prefix !== '' ? $prefix : ($account->category === 'asset' ? 'AS' : 'LB');
     }
 
     private function nextVoucherNo(int $accountId, string $prefix, string $date): string

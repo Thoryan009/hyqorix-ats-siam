@@ -142,11 +142,12 @@ class FinanceTrialBalanceService
             $totalCr = round((float) ($account->total_cr ?? 0), 2);
             $category = (string) ($account->category ?? 'main');
 
-            // Party AR/AP is consolidated:
+            // Party AR/AP is consolidated / represented elsewhere:
             // - agents → Agent Advanced
             // - applicants → Bills Receivable
             // - clients → Income Receivable (e.g. Client Commission Receivable)
-            if (in_array($category, ['agent', 'applicant', 'client'], true)) {
+            // - vendor / staff / principal → Asset & Liabilities accounts (Other Transaction)
+            if (in_array($category, ['agent', 'applicant', 'client', 'vendor', 'staff', 'principal'], true)) {
                 continue;
             }
 
