@@ -2,10 +2,14 @@
   <BaseModal
     :isVisible="agentStore.isCreateModalOpen"
     title="Create Agent Account"
-    className="xl:max-w-lg"
+    className="max-w-md !overflow-visible"
     @close="closeModal"
   >
-    <BaseForm :onSubmit="handleSubmit">
+    <BaseForm :onSubmit="handleSubmit" class-name="space-y-5">
+      <p class="text-sm text-gray-500">
+        Choose an agent to open a finance account. Search by code, name, or phone.
+      </p>
+
       <div class="space-y-2">
         <BaseLabel for="create_agent_id">Agent</BaseLabel>
         <BaseSearchSelect
@@ -16,28 +20,38 @@
           :required="true"
           :disabled="isLoadingOptions || !agentOptions.length"
           :filter-fn="filterAgentOption"
+          list-class-name="max-h-64"
         />
         <p v-if="isLoadingOptions" class="text-xs text-gray-500">Loading agents...</p>
         <p v-else-if="!agentOptions.length" class="text-xs text-amber-600">
           All agents already have accounts.
         </p>
+        <p v-else class="text-xs text-gray-400">
+          {{ agentOptions.length }} agent{{ agentOptions.length === 1 ? '' : 's' }} available
+        </p>
       </div>
 
       <div
         v-if="selectedAgent"
-        class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-600"
+        class="rounded-lg border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm"
       >
-        <p>
-          <span class="font-medium text-gray-800">Code:</span> {{ selectedAgent.agent_code }}
-        </p>
-        <p class="mt-1">
-          <span class="font-medium text-gray-800">Phone:</span> {{ selectedAgent.phone }}
-        </p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Selected agent</p>
+        <p class="mt-1 font-medium text-gray-900">{{ selectedAgent.agent_name }}</p>
+        <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-gray-600">
+          <span>
+            <span class="text-gray-400">Code:</span>
+            {{ selectedAgent.agent_code }}
+          </span>
+          <span>
+            <span class="text-gray-400">Phone:</span>
+            {{ selectedAgent.phone || '—' }}
+          </span>
+        </div>
       </div>
 
       <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
 
-      <div class="flex justify-end gap-2 pt-2">
+      <div class="flex justify-end gap-2 border-t border-gray-100 pt-4">
         <BaseButton type="button" class="bg-gray-500 text-white hover:bg-gray-600" @click="closeModal">
           Cancel
         </BaseButton>

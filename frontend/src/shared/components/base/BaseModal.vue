@@ -4,7 +4,9 @@
       v-if="isVisible"
       class="fixed inset-0 bg-gray-500/70 flex items-center justify-center z-50"
     >
-      <div :class="`bg-white rounded-lg shadow-lg p-6 w-full overflow-y-scroll custom-scrollbar mx-4 ${className}`">
+      <div
+        :class="`bg-white rounded-lg shadow-lg p-6 w-full custom-scrollbar mx-4 overflow-y-auto ${className}`"
+      >
         <div class="flex justify-between items-center">
           <h3 class="text-lg font-semibold">{{ title }} </h3>
           <button @click="close" class="text-gray-900 cursor-pointer text-3xl hover:text-primary">

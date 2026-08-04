@@ -26,7 +26,8 @@
 
     <ul
       v-if="isOpen && filteredOptions.length"
-      class="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg"
+      class="absolute z-50 mt-1 w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg"
+      :class="listClassName"
     >
       <li
         v-for="option in filteredOptions"
@@ -90,6 +91,10 @@ const props = defineProps({
   className: {
     type: String,
     default: '',
+  },
+  listClassName: {
+    type: String,
+    default: 'max-h-56',
   },
 })
 
