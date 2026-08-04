@@ -102,25 +102,19 @@
                 <td class="px-2 py-2">{{ row.demand_letter || '-' }}</td>
                 <td class="px-2 py-2">{{ row.job || '-' }}</td>
                 <td class="px-2 py-2">{{ row.client_name || '-' }}</td>
-                <td class="px-2 py-2 text-right text-red-700">
+                <td class="px-2 py-2 text-right" :class="drAmountClass">
                   {{ row.dr_amount ? formatCurrency(row.dr_amount) : '-' }}
                 </td>
                 <td class="px-2 py-2 text-right text-orange-700">
                   {{ row.discount ? formatCurrency(row.discount) : '-' }}
                 </td>
-                <td class="px-2 py-2 text-right text-green-700">
+                <td class="px-2 py-2 text-right" :class="crAmountClass">
                   {{ formatAccountLedgerCreditAmount(row.cr_amount, formatCurrency) }}
                 </td>
                 <td class="px-2 py-2">{{ row.payment_method || '-' }}</td>
                 <td
                   class="px-2 py-2 text-right font-semibold"
-                  :class="
-                    useAmountLabel
-                      ? isAccountLedgerAmountDebit(row.balance)
-                        ? 'text-red-700'
-                        : 'text-green-700'
-                      : 'text-gray-900'
-                  "
+                  :class="amountValueClass(row.balance)"
                 >
                   {{
                     useAmountLabel
@@ -207,9 +201,41 @@ const isAssetOrLiabilitiesLedger = computed(() => {
   )
 })
 
+const isAssetLedger = computed(() => {
+  return String(account.value?.category || '').toLowerCase() === ACCOUNT_CATEGORIES.ASSET
+})
+
+const isLiabilitiesLedger = computed(() => {
+  return String(account.value?.category || '').toLowerCase() === ACCOUNT_CATEGORIES.LIABILITIES
+})
+
 const useAmountLabel = computed(
   () => isIncomeHeadLedger.value || isAssetOrLiabilitiesLedger.value
 )
+
+const drAmountClass = computed(() =>
+  isAssetLedger.value ? 'text-green-700' : 'text-red-700'
+)
+
+const crAmountClass = computed(() =>
+  isLiabilitiesLedger.value ? 'text-red-700' : 'text-green-700'
+)
+
+function amountValueClass(balance) {
+  if (!useAmountLabel.value) return 'text-gray-900'
+
+  const isDebit = isAccountLedgerAmountDebit(balance)
+
+  if (isAssetLedger.value) {
+    return isDebit ? 'text-green-700' : 'text-red-700'
+  }
+
+  if (isLiabilitiesLedger.value) {
+    return isDebit ? 'text-green-700' : 'text-red-700'
+  }
+
+  return isDebit ? 'text-red-700' : 'text-green-700'
+}
 
 const columns = computed(() => [
   { key: 'date', label: 'Date' },
