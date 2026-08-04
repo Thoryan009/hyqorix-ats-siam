@@ -1,6 +1,8 @@
 export const ACCOUNT_CATEGORIES = {
   MAIN: 'main',
   CAPITAL: 'capital',
+  ASSET: 'asset',
+  LIABILITIES: 'liabilities',
   AGENT_ADVANCED: 'agent_advanced',
   SALE: 'sale',
   BILLS_RECEIVABLE: 'bills_receivable',
@@ -22,6 +24,8 @@ export const ACCOUNT_CATEGORIES = {
 
 export const ACCOUNT_CATEGORY_OPTIONS = [
   { id: ACCOUNT_CATEGORIES.MAIN, name: 'Main Account' },
+  { id: ACCOUNT_CATEGORIES.ASSET, name: 'Asset Account' },
+  { id: ACCOUNT_CATEGORIES.LIABILITIES, name: 'Liabilities Account' },
   { id: ACCOUNT_CATEGORIES.DIRECT_EXPENSE, name: 'Direct Expense Account' },
   { id: ACCOUNT_CATEGORIES.CLIENT_RECRUITMENT, name: 'Client Recruitment Account' },
   { id: ACCOUNT_CATEGORIES.OPERATING_EXPENSE, name: 'Operating Expense Account' },

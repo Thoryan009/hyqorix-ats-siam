@@ -294,6 +294,11 @@
       :income-type="activeIncomeType"
     />
 
+    <CompanyManualAccountsPanel
+      v-else-if="activeCompanyManualType"
+      :manual-type="activeCompanyManualType"
+    />
+
     <BankManagementPanel v-else-if="activeTab === 'banks'" />
 
     <template v-if="activeTab === 'accounts'">
@@ -324,6 +329,7 @@ import { useAgentAccountStore } from '../store/agentAccountStore'
 import { usePartyAccountsStore } from '../store/partyAccountsStore'
 import { useExpenseCostAccountsStore } from '../store/expenseCostAccountsStore'
 import { useIncomeAccountsStore } from '../store/incomeAccountsStore'
+import { useCompanyManualAccountsStore } from '../store/companyManualAccountsStore'
 import { accountStatusFilterOptions, accountTypeOptions } from '../data/accountData'
 import { formatCurrency } from '../utils/billUtils'
 import {
@@ -351,6 +357,11 @@ import {
   getPartyTypeFromTab,
   isPartyAccountsType,
 } from '../config/partyAccountConfigs'
+import {
+  companyManualAccountConfigs,
+  companyManualAccountTabIds,
+  getCompanyManualTypeFromTab,
+} from '../config/companyManualAccountConfigs'
 
 const AddModal = defineAsyncComponent(() => import('./components/accounts/AddModal.vue'))
 const EditModal = defineAsyncComponent(() => import('./components/accounts/EditModal.vue'))
@@ -370,12 +381,16 @@ const ExpenseCostAccountsPanel = defineAsyncComponent(
 const IncomeAccountsPanel = defineAsyncComponent(
   () => import('./components/accounts/IncomeAccountsPanel.vue')
 )
+const CompanyManualAccountsPanel = defineAsyncComponent(
+  () => import('./components/accounts/CompanyManualAccountsPanel.vue')
+)
 
 const store = useAccountStore()
 const agentAccountStore = useAgentAccountStore()
 const partyAccountsStore = usePartyAccountsStore()
 const expenseCostAccountsStore = useExpenseCostAccountsStore()
 const incomeAccountsStore = useIncomeAccountsStore()
+const companyManualAccountsStore = useCompanyManualAccountsStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -396,9 +411,17 @@ const accountNavGroups = [
   {
     id: 'company',
     label: 'Company',
-    description: 'Main payment accounts',
+    description: 'Main, asset & liabilities',
     icon: 'fa fa-bank',
-    tabs: [{ id: 'accounts', label: 'Main Accounts', shortLabel: 'Main Accounts', icon: 'fa fa-bank' }],
+    tabs: [
+      { id: 'accounts', label: 'Main Accounts', shortLabel: 'Main Accounts', icon: 'fa fa-bank' },
+      ...Object.values(companyManualAccountConfigs).map((config) => ({
+        id: config.tabId,
+        label: config.label,
+        shortLabel: config.shortLabel,
+        icon: config.rowIcon,
+      })),
+    ],
   },
   {
     id: 'expense',
@@ -464,8 +487,18 @@ const setActiveNavGroup = (groupId) => {
 const activePartyType = computed(() => getPartyTypeFromTab(activeTab.value))
 const activeExpenseCostType = computed(() => getExpenseCostTypeFromTab(activeTab.value))
 const activeIncomeType = computed(() => getIncomeTypeFromTab(activeTab.value))
+const activeCompanyManualType = computed(() => getCompanyManualTypeFromTab(activeTab.value))
 
 const createAccountAction = computed(() => {
+  const companyManualType = activeCompanyManualType.value
+  if (companyManualType) {
+    const config = companyManualAccountConfigs[companyManualType]
+    return {
+      label: `Create ${config.typeLabel} Account`,
+      onClick: () => companyManualAccountsStore.openCreateModal(companyManualType),
+    }
+  }
+
   const expenseCostType = activeExpenseCostType.value
   if (expenseCostType) {
     const config = expenseCostAccountConfigs[expenseCostType]
@@ -510,6 +543,12 @@ const pageSubtitle = computed(() => {
     return 'Manage bank master records linked to payment accounts'
   }
 
+  const companyManualType = activeCompanyManualType.value
+  if (companyManualType) {
+    const config = companyManualAccountConfigs[companyManualType]
+    return `Create and manage ${config.typeLabel.toLowerCase()} accounts with dedicated ledgers`
+  }
+
   const expenseCostType = activeExpenseCostType.value
   if (expenseCostType) {
     const config = expenseCostAccountConfigs[expenseCostType]
@@ -546,7 +585,13 @@ const setActiveTab = (tabId) => {
 
 const applyRouteTab = () => {
   const tab = route.query.tab
-  if (tab === 'banks' || partyTabIds.includes(tab) || expenseCostTabIds.includes(tab) || incomeAccountTabIds.includes(tab)) {
+  if (
+    tab === 'banks' ||
+    partyTabIds.includes(tab) ||
+    expenseCostTabIds.includes(tab) ||
+    incomeAccountTabIds.includes(tab) ||
+    companyManualAccountTabIds.includes(tab)
+  ) {
     activeTab.value = tab
     return
   }
@@ -739,6 +784,12 @@ const loadActiveTabData = async () => {
   const incomeType = activeIncomeType.value
   if (incomeType) {
     await incomeAccountsStore.fetchAccounts(incomeType, true)
+    return
+  }
+
+  const companyManualType = activeCompanyManualType.value
+  if (companyManualType) {
+    await companyManualAccountsStore.fetchAccounts(companyManualType, true)
   }
 }
 

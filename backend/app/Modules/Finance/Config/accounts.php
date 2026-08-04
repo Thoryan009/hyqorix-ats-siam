@@ -4,6 +4,8 @@ return [
     'categories' => [
         'main',
         'capital',
+        'asset',
+        'liabilities',
         'agent_advanced',
         'sale',
         'bills_receivable',

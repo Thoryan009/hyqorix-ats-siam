@@ -16,6 +16,8 @@ class FinanceTrialBalanceService
     private const CATEGORY_LABELS = [
         'main' => 'Main Accounts',
         'capital' => 'Capital Account',
+        'asset' => 'Asset Accounts',
+        'liabilities' => 'Liabilities Accounts',
         'agent_advanced' => 'Agent Advanced',
         'sale' => 'Sale',
         'bills_receivable' => 'Sale Receivable',
@@ -41,6 +43,7 @@ class FinanceTrialBalanceService
      */
     private const CATEGORY_ORDER = [
         'main',
+        'asset',
         'bills_receivable',
         'income_receivable',
         'expense_payable',
@@ -52,6 +55,7 @@ class FinanceTrialBalanceService
         'client_recruitment',
         'operating_expense',
         'capital',
+        'liabilities',
         'sale',
         'recruitment_income',
         'client_income',
@@ -66,6 +70,7 @@ class FinanceTrialBalanceService
     private const FLIP_NET_SIDE_CATEGORIES = [
         'main',
         'capital',
+        'asset',
     ];
 
     /** Expense heads: TB Debit = gross charges (ignore payment-settlement CRs). */

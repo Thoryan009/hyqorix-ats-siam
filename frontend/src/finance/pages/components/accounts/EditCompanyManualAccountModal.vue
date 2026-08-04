@@ -1,0 +1,127 @@
+<template>
+  <BaseModal
+    :isVisible="manualStore.isEditModalOpen && manualStore.activeManualType === manualType"
+    :title="`Edit ${config.typeLabel} Account`"
+    className="max-w-md !overflow-visible"
+    @close="closeModal"
+  >
+    <BaseForm v-if="account" :onSubmit="handleSubmit" class-name="space-y-4">
+      <div class="space-y-2">
+        <BaseLabel for="edit_manual_account_name">Account Name</BaseLabel>
+        <BaseInput
+          id="edit_manual_account_name"
+          v-model="form.account_name"
+          :placeholder="config.namePlaceholder"
+          :required="true"
+        />
+      </div>
+
+      <div class="space-y-2">
+        <BaseLabel for="edit_manual_account_label">Description</BaseLabel>
+        <BaseInput
+          id="edit_manual_account_label"
+          v-model="form.account_label"
+          :placeholder="config.descriptionPlaceholder"
+        />
+      </div>
+
+      <div class="space-y-2">
+        <BaseLabel for="edit_manual_account_status">Status</BaseLabel>
+        <BaseSelect
+          id="edit_manual_account_status"
+          v-model="form.status"
+          :options="statusOptions"
+          placeholder="Select status"
+          :required="true"
+        />
+      </div>
+
+      <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
+
+      <div class="flex justify-end gap-2 border-t border-gray-100 pt-4">
+        <BaseButton type="button" class="bg-gray-500 text-white hover:bg-gray-600" @click="closeModal">
+          Cancel
+        </BaseButton>
+        <BaseButton type="submit" :disabled="loading">
+          {{ loading ? 'Saving...' : 'Save' }}
+        </BaseButton>
+      </div>
+    </BaseForm>
+  </BaseModal>
+</template>
+
+<script setup>
+import { computed, reactive, ref, watch } from 'vue'
+import { useCompanyManualAccountsStore } from '@/finance/store/companyManualAccountsStore'
+import { getCompanyManualAccountConfig } from '@/finance/config/companyManualAccountConfigs'
+import { partyAccountStatusOptions } from '@/finance/data/partyAccountConstants'
+import { toast } from '@/shared/config/toastConfig'
+
+const props = defineProps({
+  manualType: {
+    type: String,
+    required: true,
+  },
+})
+
+const manualStore = useCompanyManualAccountsStore()
+const config = computed(() => getCompanyManualAccountConfig(props.manualType))
+const account = computed(() => manualStore.editingAccount)
+
+const loading = ref(false)
+const errorMessage = ref('')
+
+const form = reactive({
+  account_name: '',
+  account_label: '',
+  status: 'Active',
+})
+
+const statusOptions = partyAccountStatusOptions.map((option) => ({
+  id: option.value,
+  name: option.label,
+}))
+
+watch(
+  () => manualStore.isEditModalOpen,
+  (isOpen) => {
+    if (isOpen && manualStore.activeManualType === props.manualType && manualStore.editingAccount) {
+      form.account_name = manualStore.editingAccount.account_name ?? ''
+      form.account_label = manualStore.editingAccount.account_label ?? ''
+      form.status = manualStore.editingAccount.status ?? 'Active'
+      errorMessage.value = ''
+    }
+  }
+)
+
+const closeModal = () => {
+  manualStore.closeEditModal()
+  errorMessage.value = ''
+}
+
+const handleSubmit = async () => {
+  if (!account.value) return
+
+  errorMessage.value = ''
+  loading.value = true
+
+  try {
+    const result = await manualStore.updateAccount(props.manualType, account.value.id, {
+      account_name: form.account_name,
+      account_label: form.account_label,
+      status: form.status,
+    })
+
+    if (!result.ok) {
+      errorMessage.value = result.message
+      toast.error(result.message)
+      return
+    }
+
+    toast.success(`${config.value.typeLabel} account updated successfully`)
+    closeModal()
+  } finally {
+    loading.value = false
+  }
+}
+</script>
