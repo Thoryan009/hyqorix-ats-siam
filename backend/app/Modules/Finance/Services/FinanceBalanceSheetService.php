@@ -27,6 +27,21 @@ class FinanceBalanceSheetService
         'owners_equity',
     ];
 
+    /** P&L income heads on Trial Balance (credit-normal) — close to equity, not shown as lines. */
+    private const INCOME_CATEGORIES = [
+        'sale',
+        'recruitment_income',
+        'client_income',
+        'other_income',
+    ];
+
+    /** P&L expense heads on Trial Balance (debit-normal) — close to equity, not shown as lines. */
+    private const EXPENSE_CATEGORIES = [
+        'direct_expense',
+        'client_recruitment',
+        'operating_expense',
+    ];
+
     /** P&L / party categories excluded from line items (profit closes to equity). */
     private const EXCLUDED_CATEGORIES = [
         'direct_expense',
@@ -42,6 +57,7 @@ class FinanceBalanceSheetService
         'principal',
         'client',
         'applicant',
+        'banks',
     ];
 
     public function __construct(
@@ -74,57 +90,40 @@ class FinanceBalanceSheetService
                 continue;
             }
 
-            if (in_array($category, self::ASSET_CATEGORIES, true)) {
-                $amount = round((float) ($row['debit_balance'] ?? 0), 2);
-                if ($amount < 0.005) {
-                    continue;
-                }
+            $debit = round((float) ($row['debit_balance'] ?? 0), 2);
+            $credit = round((float) ($row['credit_balance'] ?? 0), 2);
+            $label = (string) ($row['account_name'] ?? 'Account');
+            $accountId = (int) ($row['account_id'] ?? 0);
 
-                $assets[] = $this->lineItem(
-                    (string) ($row['account_name'] ?? 'Account'),
-                    $amount,
-                    $category,
-                    (int) ($row['account_id'] ?? 0)
-                );
+            if (in_array($category, self::ASSET_CATEGORIES, true)) {
+                $net = round($debit - $credit, 2);
+                if ($net > 0.005) {
+                    $assets[] = $this->lineItem($label, $net, $category, $accountId);
+                } elseif ($net < -0.005) {
+                    // e.g. Agent Advanced (CR balance) is a liability, not an asset.
+                    $liabilities[] = $this->lineItem($label, abs($net), $category, $accountId);
+                }
 
                 continue;
             }
 
             if (in_array($category, self::LIABILITY_CATEGORIES, true)) {
-                $amount = round((float) ($row['credit_balance'] ?? 0), 2);
-                if ($amount < 0.005) {
-                    continue;
+                $net = round($credit - $debit, 2);
+                if ($net > 0.005) {
+                    $liabilities[] = $this->lineItem($label, $net, $category, $accountId);
+                } elseif ($net < -0.005) {
+                    $assets[] = $this->lineItem($label, abs($net), $category, $accountId);
                 }
-
-                $liabilities[] = $this->lineItem(
-                    (string) ($row['account_name'] ?? 'Account'),
-                    $amount,
-                    $category,
-                    (int) ($row['account_id'] ?? 0)
-                );
 
                 continue;
             }
 
             if (in_array($category, self::EQUITY_CATEGORIES, true)) {
-                $credit = round((float) ($row['credit_balance'] ?? 0), 2);
-                $debit = round((float) ($row['debit_balance'] ?? 0), 2);
-
                 if ($credit >= 0.005) {
-                    $equity[] = $this->lineItem(
-                        (string) ($row['account_name'] ?? 'Account'),
-                        $credit,
-                        $category,
-                        (int) ($row['account_id'] ?? 0)
-                    );
+                    $equity[] = $this->lineItem($label, $credit, $category, $accountId);
                 } elseif ($debit >= 0.005) {
                     // Contra-equity (e.g. Owner Drawings) reduces total equity.
-                    $equity[] = $this->lineItem(
-                        (string) ($row['account_name'] ?? 'Account'),
-                        round(-$debit, 2),
-                        $category,
-                        (int) ($row['account_id'] ?? 0)
-                    );
+                    $equity[] = $this->lineItem($label, round(-$debit, 2), $category, $accountId);
                 }
             }
         }
@@ -135,6 +134,24 @@ class FinanceBalanceSheetService
         ]);
 
         $currentYearProfit = round((float) ($statement['summary']['net_profit'] ?? 0), 2);
+        $trialBalanceNetProfit = $this->computeTrialBalanceNetProfit($trialBalance['rows'] ?? []);
+
+        $totalAssets = round(array_sum(array_column($assets, 'amount')), 2);
+        $totalLiabilities = round(array_sum(array_column($liabilities, 'amount')), 2);
+        $equityLedgerTotal = round(array_sum(array_column($equity, 'amount')), 2);
+
+        // Closing profit bridges mapped Assets to Liabilities + equity ledger (A = L + E + P).
+        $requiredProfitClose = round($totalAssets - $totalLiabilities - $equityLedgerTotal, 2);
+        $retainedEarnings = round($requiredProfitClose - $currentYearProfit, 2);
+
+        if (abs($retainedEarnings) >= 0.005) {
+            $equity[] = $this->lineItem(
+                $retainedEarnings >= 0 ? 'Retained Earnings' : 'Retained Loss',
+                $retainedEarnings,
+                'retained_earnings',
+                0
+            );
+        }
 
         if (abs($currentYearProfit) >= 0.005) {
             $equity[] = $this->lineItem(
@@ -169,10 +186,37 @@ class FinanceBalanceSheetService
                 'total_equity' => $totalEquity,
                 'total_liabilities_and_equity' => $totalLiabilitiesAndEquity,
                 'current_year_profit' => $currentYearProfit,
+                'retained_earnings' => $retainedEarnings,
+                'required_profit_close' => $requiredProfitClose,
+                'trial_balance_net_profit' => $trialBalanceNetProfit,
+                'trial_balance_is_balanced' => (bool) ($trialBalance['is_balanced'] ?? false),
                 'difference' => $difference,
                 'is_balanced' => $isBalanced,
             ],
         ];
+    }
+
+    /**
+     * Net P&L per Final Trial Balance (income credits − expense debits, cumulative through to_date).
+     */
+    private function computeTrialBalanceNetProfit(array $rows): float
+    {
+        $incomeTotal = 0.0;
+        $expenseTotal = 0.0;
+
+        foreach ($rows as $row) {
+            $category = (string) ($row['category'] ?? '');
+
+            if (in_array($category, self::INCOME_CATEGORIES, true)) {
+                $incomeTotal = round($incomeTotal + (float) ($row['credit_balance'] ?? 0), 2);
+            }
+
+            if (in_array($category, self::EXPENSE_CATEGORIES, true)) {
+                $expenseTotal = round($expenseTotal + (float) ($row['debit_balance'] ?? 0), 2);
+            }
+        }
+
+        return round($incomeTotal - $expenseTotal, 2);
     }
 
     /**
@@ -196,10 +240,10 @@ class FinanceBalanceSheetService
     {
         usort($lines, function (array $a, array $b) use ($profitLast) {
             if ($profitLast) {
-                $aProfit = ($a['category'] ?? '') === 'current_year_profit' ? 1 : 0;
-                $bProfit = ($b['category'] ?? '') === 'current_year_profit' ? 1 : 0;
-                if ($aProfit !== $bProfit) {
-                    return $aProfit <=> $bProfit;
+                $aRank = $this->equityClosingSortRank((string) ($a['category'] ?? ''));
+                $bRank = $this->equityClosingSortRank((string) ($b['category'] ?? ''));
+                if ($aRank !== $bRank) {
+                    return $aRank <=> $bRank;
                 }
             }
 
@@ -207,6 +251,15 @@ class FinanceBalanceSheetService
         });
 
         return $lines;
+    }
+
+    private function equityClosingSortRank(string $category): int
+    {
+        return match ($category) {
+            'retained_earnings' => 1,
+            'current_year_profit' => 2,
+            default => 0,
+        };
     }
 
     private function normalizeDate(mixed $value): ?string

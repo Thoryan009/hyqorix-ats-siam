@@ -127,7 +127,7 @@
                     No equity balances
                   </td>
                 </tr>
-                <tr v-for="row in equity" :key="`equity-${row.account_id}-${row.label}`" class="hover:bg-gray-50">
+                <tr v-for="row in equity" :key="`equity-${row.account_id}-${row.category}-${row.label}`" class="hover:bg-gray-50">
                   <td class="border border-gray-200 px-4 py-2.5 text-gray-900">{{ row.label }}</td>
                   <td
                     class="border border-gray-200 px-4 py-2.5 text-right tabular-nums"
@@ -239,6 +239,7 @@ const summary = ref({
   total_equity: 0,
   total_liabilities_and_equity: 0,
   current_year_profit: 0,
+  retained_earnings: 0,
   difference: 0,
   is_balanced: true,
 })
@@ -304,6 +305,7 @@ async function loadReport() {
       total_equity: Number(data?.summary?.total_equity || 0),
       total_liabilities_and_equity: Number(data?.summary?.total_liabilities_and_equity || 0),
       current_year_profit: Number(data?.summary?.current_year_profit || 0),
+      retained_earnings: Number(data?.summary?.retained_earnings || 0),
       difference: Number(data?.summary?.difference || 0),
       is_balanced: data?.summary?.is_balanced !== false,
     }
