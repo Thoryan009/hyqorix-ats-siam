@@ -16,6 +16,7 @@ class FinanceTrialBalanceService
     private const CATEGORY_LABELS = [
         'main' => 'Main Accounts',
         'capital' => 'Capital Account',
+        'owners_equity' => "Owner's Equity Accounts",
         'asset' => 'Asset Accounts',
         'liabilities' => 'Liabilities Accounts',
         'agent_advanced' => 'Agent Advanced',
@@ -55,6 +56,7 @@ class FinanceTrialBalanceService
         'client_recruitment',
         'operating_expense',
         'capital',
+        'owners_equity',
         'liabilities',
         'sale',
         'recruitment_income',
@@ -147,7 +149,7 @@ class FinanceTrialBalanceService
             // - applicants → Bills Receivable
             // - clients → Income Receivable (e.g. Client Commission Receivable)
             // - vendor / staff / principal → Asset & Liabilities accounts (Other Transaction)
-            if (in_array($category, ['agent', 'applicant', 'client', 'vendor', 'staff', 'principal'], true)) {
+            if (in_array($category, ['agent', 'applicant', 'client', 'vendor', 'staff', 'principal', 'banks'], true)) {
                 continue;
             }
 

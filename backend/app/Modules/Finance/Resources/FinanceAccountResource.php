@@ -65,6 +65,9 @@ class FinanceAccountResource extends JsonResource
             'applicant_id' => $this->category === 'applicant' ? $this->entity_id : null,
             'applicant_code' => $this->category === 'applicant' ? $this->code : null,
             'applicant_name' => $this->category === 'applicant' ? $this->account_name : null,
+            'banks_id' => $this->category === 'banks' ? $this->bank_id : null,
+            'banks_code' => $this->category === 'banks' ? $this->code : null,
+            'banks_name' => $this->category === 'banks' ? $this->account_name : null,
             'passport_no' => $this->category === 'applicant'
                 ? ($this->applicantApplication?->passport_no
                     ?? ($this->metadata['passport_no'] ?? null))

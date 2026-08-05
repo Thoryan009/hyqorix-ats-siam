@@ -1,6 +1,17 @@
 import { ACCOUNT_CATEGORIES } from '../data/accountCategoryCodes'
 
 export const companyManualAccountConfigs = {
+  owners_equity: {
+    tabId: 'owners-equity-accounts',
+    label: "Owner's Equity",
+    shortLabel: "Owner's Equity",
+    typeLabel: "Owner's Equity",
+    accountCategory: ACCOUNT_CATEGORIES.OWNERS_EQUITY,
+    rowIcon: 'fa fa-pie-chart',
+    searchPlaceholder: "Search owner's equity accounts...",
+    createTitle: "Create Owner's Equity Account",
+    namePlaceholder: 'Eg: Retained Earnings, Drawings',
+  },
   asset: {
     tabId: 'asset-accounts',
     label: 'Asset Accounts',

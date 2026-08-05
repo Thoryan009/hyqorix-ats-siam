@@ -411,7 +411,7 @@ const accountNavGroups = [
   {
     id: 'company',
     label: 'Company',
-    description: 'Main, asset & liabilities',
+    description: "Main, owner's equity, asset & liabilities",
     icon: 'fa fa-bank',
     tabs: [
       { id: 'accounts', label: 'Main Accounts', shortLabel: 'Main Accounts', icon: 'fa fa-bank' },

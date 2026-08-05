@@ -18,6 +18,7 @@ class FinanceAccountTypeTransactionRequest extends FormRequest
         'principal',
         'client',
         'applicant',
+        'banks',
     ];
 
     private const TRANSACTION_TYPES = [
@@ -52,6 +53,8 @@ class FinanceAccountTypeTransactionRequest extends FormRequest
             'toAccountId' => 'to_account_id',
             'assetAccountId' => 'asset_account_id',
             'liabilitiesAccountId' => 'liabilities_account_id',
+            'ownersEquityAccountId' => 'owners_equity_account_id',
+            'transactionDirection' => 'transaction_direction',
         ];
 
         foreach ($map as $camel => $snake) {
@@ -90,6 +93,7 @@ class FinanceAccountTypeTransactionRequest extends FormRequest
             $rules['main_account_type'] = ['nullable', 'string', Rule::in(['Cash', 'Bank', 'cash', 'bank'])];
             $rules['asset_account_id'] = ['prohibited'];
             $rules['liabilities_account_id'] = ['prohibited'];
+            $rules['owners_equity_account_id'] = ['prohibited'];
         } else {
             $rules['from_account_category'] = ['required', 'string', Rule::in(self::ACCOUNT_CATEGORIES)];
             $rules['from_account_id'] = ['required', 'integer', 'exists:finance_accounts,id'];
@@ -112,6 +116,16 @@ class FinanceAccountTypeTransactionRequest extends FormRequest
                 'integer',
                 'exists:finance_accounts,id',
             ];
+            $rules['owners_equity_account_id'] = [
+                'nullable',
+                'integer',
+                'exists:finance_accounts,id',
+            ];
+            $rules['transaction_direction'] = [
+                'nullable',
+                'string',
+                Rule::in(['payment', 'receive']),
+            ];
         }
 
         return $rules;
@@ -120,13 +134,24 @@ class FinanceAccountTypeTransactionRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            $assetAccountId = $this->input('asset_account_id');
-            $liabilitiesAccountId = $this->input('liabilities_account_id');
+            $selected = array_filter([
+                'owners_equity_account_id' => $this->input('owners_equity_account_id'),
+                'asset_account_id' => $this->input('asset_account_id'),
+                'liabilities_account_id' => $this->input('liabilities_account_id'),
+            ], fn ($value) => !empty($value));
 
-            if (!empty($assetAccountId) && !empty($liabilitiesAccountId)) {
-                $message = 'Please select either an asset account or a liabilities account, not both.';
-                $validator->errors()->add('asset_account_id', $message);
-                $validator->errors()->add('liabilities_account_id', $message);
+            if (count($selected) > 1) {
+                $message = "Please select only one of Owner's Equity, Asset, or Liabilities account.";
+                foreach (array_keys($selected) as $field) {
+                    $validator->errors()->add($field, $message);
+                }
+            }
+
+            if (count($selected) === 1 && empty($this->input('transaction_direction'))) {
+                $validator->errors()->add(
+                    'transaction_direction',
+                    'Please select Payment or Receive for this transaction.'
+                );
             }
         });
     }

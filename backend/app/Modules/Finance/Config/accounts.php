@@ -4,6 +4,7 @@ return [
     'categories' => [
         'main',
         'capital',
+        'owners_equity',
         'asset',
         'liabilities',
         'agent_advanced',
@@ -23,6 +24,7 @@ return [
         'client',
         'staff',
         'applicant',
+        'banks',
     ],
 
     /** Expense category `code` → finance account `category` */

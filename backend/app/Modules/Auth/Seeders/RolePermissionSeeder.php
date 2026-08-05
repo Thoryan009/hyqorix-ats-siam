@@ -86,6 +86,7 @@ class RolePermissionSeeder extends Seeder
             'finance_account' => ['create', 'edit', 'delete', 'view'],
             'income_tax' => ['create', 'edit', 'delete', 'view'],
             'income_statement' => ['view'],
+            'balance_sheet' => ['view'],
             'trial_balance' => ['view'],
             'gross_profit_report' => ['view'],
 

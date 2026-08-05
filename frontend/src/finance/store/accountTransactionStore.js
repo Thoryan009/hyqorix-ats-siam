@@ -132,6 +132,11 @@ export const useAccountTransactionStore = defineStore('accountTransaction', () =
         categories.add('liabilities')
         accountLedgerStore.invalidateAccountLedger(Number(payload.liabilitiesAccountId))
       }
+
+      if (payload.ownersEquityAccountId) {
+        categories.add('owners_equity')
+        accountLedgerStore.invalidateAccountLedger(Number(payload.ownersEquityAccountId))
+      }
     }
 
     await Promise.all(

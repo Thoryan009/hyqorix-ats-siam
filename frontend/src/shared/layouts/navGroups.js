@@ -299,6 +299,13 @@ export const navGroups = [
         section: 'Reports',
       },
       {
+        name: 'Balance Sheet',
+        path: '/finance/reports/balance-sheet',
+        icon: 'fa fa-file-text-o',
+        permission: 'balance_sheet.view',
+        section: 'Reports',
+      },
+      {
         name: 'navigation.income_tax',
         path: '/finance/income-tax',
         icon: 'fa fa-percent',

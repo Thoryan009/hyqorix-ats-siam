@@ -52,6 +52,9 @@ export function buildAccountTypeTransactionPayload(payload) {
   const extraLiabilitiesAccountId = payload.liabilitiesAccountId
     ? Number(payload.liabilitiesAccountId)
     : null
+  const extraOwnersEquityAccountId = payload.ownersEquityAccountId
+    ? Number(payload.ownersEquityAccountId)
+    : null
 
   return {
     ...base,
@@ -63,6 +66,12 @@ export function buildAccountTypeTransactionPayload(payload) {
     to_account_id: Number(payload.toAccountId),
     ...(extraAssetAccountId ? { asset_account_id: extraAssetAccountId } : {}),
     ...(extraLiabilitiesAccountId ? { liabilities_account_id: extraLiabilitiesAccountId } : {}),
+    ...(extraOwnersEquityAccountId
+      ? { owners_equity_account_id: extraOwnersEquityAccountId }
+      : {}),
+    ...(payload.transactionDirection
+      ? { transaction_direction: payload.transactionDirection }
+      : {}),
   }
 }
 

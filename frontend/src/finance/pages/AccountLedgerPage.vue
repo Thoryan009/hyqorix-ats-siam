@@ -193,11 +193,12 @@ const isIncomeHeadLedger = computed(() => {
   )
 })
 
-const isAssetOrLiabilitiesLedger = computed(() => {
+const isManualAmountLedger = computed(() => {
   const category = String(account.value?.category || '').toLowerCase()
   return (
     category === ACCOUNT_CATEGORIES.ASSET ||
-    category === ACCOUNT_CATEGORIES.LIABILITIES
+    category === ACCOUNT_CATEGORIES.LIABILITIES ||
+    category === ACCOUNT_CATEGORIES.OWNERS_EQUITY
   )
 })
 
@@ -206,11 +207,15 @@ const isAssetLedger = computed(() => {
 })
 
 const isLiabilitiesLedger = computed(() => {
-  return String(account.value?.category || '').toLowerCase() === ACCOUNT_CATEGORIES.LIABILITIES
+  const category = String(account.value?.category || '').toLowerCase()
+  return (
+    category === ACCOUNT_CATEGORIES.LIABILITIES ||
+    category === ACCOUNT_CATEGORIES.OWNERS_EQUITY
+  )
 })
 
 const useAmountLabel = computed(
-  () => isIncomeHeadLedger.value || isAssetOrLiabilitiesLedger.value
+  () => isIncomeHeadLedger.value || isManualAmountLedger.value
 )
 
 const drAmountClass = computed(() =>
@@ -250,14 +255,14 @@ const columns = computed(() => [
       ? 'DR'
       : isIncomeHeadLedger.value
         ? 'DR (Bill)'
-        : isAssetOrLiabilitiesLedger.value
+        : isManualAmountLedger.value
           ? 'DR'
           : 'DR (Payment)',
   },
   { key: 'discount', label: 'Discount' },
   {
     key: 'cr_amount',
-    label: isCapitalLedger.value || isAssetOrLiabilitiesLedger.value ? 'CR' : 'CR (Received)',
+    label: isCapitalLedger.value || isManualAmountLedger.value ? 'CR' : 'CR (Received)',
   },
   { key: 'payment_method', label: 'Payment Method' },
   { key: 'balance', label: useAmountLabel.value ? 'Amount' : 'Balance' },

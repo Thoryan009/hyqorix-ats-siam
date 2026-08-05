@@ -16,7 +16,7 @@
             <p class="text-xs uppercase tracking-wide text-gray-400">Code</p>
             <p class="mt-1 text-gray-700">{{ account[config.codeKey] }}</p>
           </div>
-          <div>
+          <div v-if="!config.hidePhone">
             <p class="text-xs uppercase tracking-wide text-gray-400">Phone</p>
             <p class="mt-1 text-gray-700">{{ account.phone }}</p>
           </div>

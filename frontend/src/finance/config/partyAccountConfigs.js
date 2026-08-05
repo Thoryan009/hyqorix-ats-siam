@@ -156,6 +156,34 @@ export const partyAccountConfigs = {
     ],
     ledgerPath: (accountId) => `/finance/applicant-accounts/${accountId}/ledger`,
   },
+  banks: {
+    tabId: 'bank-accounts',
+    label: 'Bank Accounts',
+    partyLabel: 'Bank',
+    partyLabelPlural: 'Banks',
+    accountCategory: 'banks',
+    rowIcon: 'fa fa-university',
+    nameKey: 'account_name',
+    codeKey: 'code',
+    idKey: 'bank_id',
+    useBankMaster: true,
+    hidePhone: true,
+    summaryTitle: 'Bank Balance Summary',
+    searchPlaceholder: 'Search by bank name or SWIFT code...',
+    tableNameLabel: 'Bank',
+    actions: {
+      ledger: true,
+      payment: false,
+      generateBill: false,
+      create: true,
+      edit: true,
+    },
+    quickActions: [
+      { label: 'Manage Banks', icon: 'fa fa-university', route: '/finance/accounts?tab=banks' },
+      { label: 'Company Accounts', icon: 'fa fa-bank', route: '/finance/accounts' },
+    ],
+    ledgerPath: (accountId) => `/finance/bank-accounts/${accountId}/ledger`,
+  },
 }
 
 export const partyTabIds = Object.values(partyAccountConfigs).map((config) => config.tabId)
@@ -169,7 +197,7 @@ export function getPartyTypeFromTab(tabId) {
   return entry?.[0] ?? null
 }
 
-export const partyTypesWithAccounts = ['vendor', 'principal', 'client', 'staff', 'applicant']
+export const partyTypesWithAccounts = ['vendor', 'principal', 'client', 'staff', 'applicant', 'banks']
 
 export function isPartyAccountsType(partyType) {
   return partyTypesWithAccounts.includes(partyType)

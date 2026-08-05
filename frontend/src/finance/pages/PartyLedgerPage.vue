@@ -201,6 +201,7 @@ const printRouteName = computed(() => {
     client: 'Client Ledger Print',
     principal: 'Principal Ledger Print',
     applicant: 'Applicant Ledger Print',
+    banks: 'Bank Ledger Print',
   }
   return names[props.partyType] ?? 'Party Ledger Print'
 })

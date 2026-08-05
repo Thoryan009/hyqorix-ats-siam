@@ -24,6 +24,7 @@ import ExpenseCostLedgerPage from './pages/ExpenseCostLedgerPage.vue'
 import GrossProfitReportPage from './pages/GrossProfitReportPage.vue'
 import TrialBalancePage from './pages/TrialBalancePage.vue'
 import IncomeStatementPage from './pages/IncomeStatementPage.vue'
+import BalanceSheetPage from './pages/BalanceSheetPage.vue'
 import IncomeTaxPage from './pages/IncomeTaxPage.vue'
 import DashboardLayout from '@/shared/layouts/DashboardLayout.vue'
 
@@ -160,6 +161,7 @@ export default [
     'Principal Ledger',
     'Principal Ledger Print',
   ),
+  ...createPartyLedgerRoutes('banks', 'bank-accounts', 'Bank Ledger', 'Bank Ledger Print'),
   // Legacy vendor print path (vendorId param)
 
   {
@@ -406,6 +408,21 @@ export default [
         component: IncomeStatementPage,
         meta: {
           permissions: ['income_statement.view'],
+        },
+      },
+    ],
+  },
+  {
+    path: '/finance/reports/balance-sheet',
+    component: DashboardLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'Balance Sheet',
+        component: BalanceSheetPage,
+        meta: {
+          permissions: ['balance_sheet.view'],
         },
       },
     ],

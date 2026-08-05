@@ -4,7 +4,8 @@
     <EditAgentAccountModal v-if="partyType === 'agent'" />
 
     <template v-if="isPartyAccountsType(partyType)">
-      <CreatePartyAccountModal :party-type="partyType" />
+      <CreateBankAccountModal v-if="partyType === 'banks'" />
+      <CreatePartyAccountModal v-else :party-type="partyType" />
       <EditPartyAccountModal :party-type="partyType" />
     </template>
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -229,6 +230,7 @@ import { toast } from '@/shared/config/toastConfig'
 import CreateAgentAccountModal from './CreateAgentAccountModal.vue'
 import EditAgentAccountModal from './EditAgentAccountModal.vue'
 import CreatePartyAccountModal from './CreatePartyAccountModal.vue'
+import CreateBankAccountModal from './CreateBankAccountModal.vue'
 import EditPartyAccountModal from './EditPartyAccountModal.vue'
 
 const props = defineProps({
@@ -280,8 +282,11 @@ const columns = computed(() => {
   const baseColumns = [
     { key: 'sl', label: 'SL' },
     { key: 'party_name', label: config.value.tableNameLabel },
-    { key: 'phone', label: 'Phone' },
   ]
+
+  if (!config.value.hidePhone) {
+    baseColumns.push({ key: 'phone', label: 'Phone' })
+  }
 
   for (const column of config.value.extraColumns ?? []) {
     baseColumns.push(column)

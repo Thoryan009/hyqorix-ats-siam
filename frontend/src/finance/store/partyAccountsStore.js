@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { getPartyConfig } from '../config/partyAccountConfigs'
 import { usePartyMasterStore } from './partyMasterStore'
 import { useFinanceAccountStore } from './financeAccountStore'
+import { useBankStore } from './bankStore'
 
 export const usePartyAccountsStore = defineStore('partyAccounts', () => {
   const financeAccountStore = useFinanceAccountStore()
@@ -30,6 +31,13 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
 
   function getAccountByEntityId(partyType, entityId) {
     if (!entityId) return null
+
+    if (partyType === 'banks') {
+      return (
+        getAccounts('banks').find((account) => Number(account.bank_id) === Number(entityId)) ?? null
+      )
+    }
+
     return (
       getAccounts(partyType).find(
         (account) => Number(account.entity_id) === Number(entityId)
@@ -37,8 +45,16 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
     )
   }
 
+  function hasAccountForBank(bankId) {
+    return getAccounts('banks').some((account) => Number(account.bank_id) === Number(bankId))
+  }
+
   function hasAccountForParty(partyType, partyId) {
     const config = getPartyConfig(partyType)
+    if (partyType === 'banks') {
+      return hasAccountForBank(partyId)
+    }
+
     const masterParty = usePartyMasterStore().getParty(partyType, partyId)
     if (!config || !masterParty) return false
 
@@ -50,6 +66,13 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
   }
 
   function getAvailableParties(partyType) {
+    if (partyType === 'banks') {
+      const bankStore = useBankStore()
+      return bankStore.banks.filter(
+        (bank) => bank.status === 'Active' && !hasAccountForBank(bank.id)
+      )
+    }
+
     const masterStore = usePartyMasterStore()
     return masterStore.getParties(partyType).filter((party) => !hasAccountForParty(partyType, party.id))
   }
@@ -57,6 +80,11 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
   async function fetchAccounts(partyType, force = false) {
     const category = getAccountCategory(partyType)
     if (!category) return
+
+    if (partyType === 'banks') {
+      await useBankStore().fetchBanks(force)
+    }
+
     await financeAccountStore.fetchAccounts(category, force)
   }
 
@@ -118,6 +146,32 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
 
   async function createAccount(partyType, partyId) {
     const config = getPartyConfig(partyType)
+
+    if (partyType === 'banks') {
+      const bankStore = useBankStore()
+      await bankStore.fetchBanks(true)
+      const bank = bankStore.banks.find((item) => Number(item.id) === Number(partyId))
+
+      if (!bank) {
+        return { ok: false, message: 'Selected bank was not found.' }
+      }
+
+      if (hasAccountForBank(partyId)) {
+        return { ok: false, message: 'An account already exists for this bank.' }
+      }
+
+      return financeAccountStore.createAccount({
+        category: config.accountCategory,
+        account_name: bank.bank_name,
+        code: bank.swift_code || `BANK-${bank.id}`,
+        bank_id: bank.id,
+        entity_id: bank.id,
+        balance: 0,
+        opening_balance: 0,
+        status: 'Active',
+      })
+    }
+
     const masterParty = usePartyMasterStore().getParty(partyType, partyId)
 
     if (!config || !masterParty) {
@@ -155,10 +209,14 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
     return financeAccountStore.updateAccount({
       id: account.id,
       category: config.accountCategory,
-      account_name: account[config.nameKey] ?? account.account_name,
-      code: account[config.codeKey] ?? account.code,
+      account_name:
+        partyType === 'banks'
+          ? account.account_name
+          : account[config.nameKey] ?? account.account_name,
+      code: partyType === 'banks' ? account.code : account[config.codeKey] ?? account.code,
       phone: account.phone,
-      entity_id: account.entity_id ?? account[config.idKey],
+      bank_id: partyType === 'banks' ? account.bank_id : undefined,
+      entity_id: partyType === 'banks' ? account.bank_id : account.entity_id ?? account[config.idKey],
       balance: account.balance,
       opening_balance: account.opening_balance,
       status,

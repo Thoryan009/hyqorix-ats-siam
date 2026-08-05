@@ -1,6 +1,7 @@
 export const ACCOUNT_CATEGORIES = {
   MAIN: 'main',
   CAPITAL: 'capital',
+  OWNERS_EQUITY: 'owners_equity',
   ASSET: 'asset',
   LIABILITIES: 'liabilities',
   AGENT_ADVANCED: 'agent_advanced',
@@ -20,10 +21,12 @@ export const ACCOUNT_CATEGORIES = {
   CLIENT: 'client',
   STAFF: 'staff',
   APPLICANT: 'applicant',
+  BANKS: 'banks',
 }
 
 export const ACCOUNT_CATEGORY_OPTIONS = [
   { id: ACCOUNT_CATEGORIES.MAIN, name: 'Main Account' },
+  { id: ACCOUNT_CATEGORIES.OWNERS_EQUITY, name: "Owner's Equity Account" },
   { id: ACCOUNT_CATEGORIES.ASSET, name: 'Asset Account' },
   { id: ACCOUNT_CATEGORIES.LIABILITIES, name: 'Liabilities Account' },
   { id: ACCOUNT_CATEGORIES.DIRECT_EXPENSE, name: 'Direct Expense Account' },
@@ -38,6 +41,7 @@ export const ACCOUNT_CATEGORY_OPTIONS = [
   { id: ACCOUNT_CATEGORIES.CLIENT, name: 'Client Account' },
   { id: ACCOUNT_CATEGORIES.STAFF, name: 'Staff Account' },
   { id: ACCOUNT_CATEGORIES.APPLICANT, name: 'Applicant Account' },
+  { id: ACCOUNT_CATEGORIES.BANKS, name: 'Bank Account' },
 ]
 
 /** Legacy expense cost tab keys → unified account category */
@@ -60,6 +64,7 @@ export const PARTY_TYPE_TO_ACCOUNT_CATEGORY = {
   client: ACCOUNT_CATEGORIES.CLIENT,
   staff: ACCOUNT_CATEGORIES.STAFF,
   applicant: ACCOUNT_CATEGORIES.APPLICANT,
+  banks: ACCOUNT_CATEGORIES.BANKS,
 }
 
 export function getAccountCategoryFromCostType(costType) {

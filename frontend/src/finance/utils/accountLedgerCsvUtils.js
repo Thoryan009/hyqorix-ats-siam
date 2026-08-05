@@ -13,10 +13,11 @@ function getLedgerHeaders(category) {
     normalized === ACCOUNT_CATEGORIES.CLIENT_INCOME ||
     normalized === ACCOUNT_CATEGORIES.RECRUITMENT_INCOME ||
     normalized === ACCOUNT_CATEGORIES.OTHER_INCOME
-  const isAssetOrLiabilitiesLedger =
+  const isManualAmountLedger =
     normalized === ACCOUNT_CATEGORIES.ASSET ||
-    normalized === ACCOUNT_CATEGORIES.LIABILITIES
-  const useAmountLabel = isIncomeHeadLedger || isAssetOrLiabilitiesLedger
+    normalized === ACCOUNT_CATEGORIES.LIABILITIES ||
+    normalized === ACCOUNT_CATEGORIES.OWNERS_EQUITY
+  const useAmountLabel = isIncomeHeadLedger || isManualAmountLedger
 
   return [
     'Date',
@@ -25,13 +26,13 @@ function getLedgerHeaders(category) {
     'Demand Letter',
     'Job',
     'Reference',
-    isSystemLedger || isAssetOrLiabilitiesLedger
+    isSystemLedger || isManualAmountLedger
       ? 'DR'
       : isIncomeHeadLedger
         ? 'DR (Bill)'
         : 'DR (Payment)',
     'Discount',
-    isSystemLedger || isAssetOrLiabilitiesLedger ? 'CR' : 'CR (Received)',
+    isSystemLedger || isManualAmountLedger ? 'CR' : 'CR (Received)',
     'Payment Method',
     useAmountLabel ? 'Amount' : 'Balance',
     'Remarks',

@@ -181,7 +181,9 @@ const financeAccountStore = useFinanceAccountStore()
 const config = computed(() => getCompanyManualAccountConfig(props.manualType))
 
 const amountColorClass = computed(() =>
-  props.manualType === 'liabilities' ? 'text-red-700' : 'text-green-700'
+  props.manualType === 'liabilities' || props.manualType === 'owners_equity'
+    ? 'text-red-700'
+    : 'text-green-700'
 )
 
 const filters = reactive({

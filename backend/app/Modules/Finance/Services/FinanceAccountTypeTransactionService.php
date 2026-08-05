@@ -169,8 +169,22 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
         ) {
             $assetAccountId = (int) ($data['asset_account_id'] ?? 0);
             $liabilitiesAccountId = (int) ($data['liabilities_account_id'] ?? 0);
-            $extraCategory = $assetAccountId > 0 ? 'asset' : ($liabilitiesAccountId > 0 ? 'liabilities' : '');
-            $extraAccountId = $assetAccountId > 0 ? $assetAccountId : $liabilitiesAccountId;
+            $ownersEquityAccountId = (int) ($data['owners_equity_account_id'] ?? 0);
+
+            if ($ownersEquityAccountId > 0) {
+                $extraCategory = 'owners_equity';
+                $extraAccountId = $ownersEquityAccountId;
+            } elseif ($assetAccountId > 0) {
+                $extraCategory = 'asset';
+                $extraAccountId = $assetAccountId;
+            } elseif ($liabilitiesAccountId > 0) {
+                $extraCategory = 'liabilities';
+                $extraAccountId = $liabilitiesAccountId;
+            } else {
+                $extraCategory = '';
+                $extraAccountId = 0;
+            }
+
             $extraAccount = $extraAccountId > 0
                 ? $this->resolveAccount($extraAccountId, $extraCategory)
                 : null;
@@ -185,13 +199,39 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
 
             $fromAccount = $this->resolveAccount($fromAccountId, $fromCategory);
             $toAccount = $this->resolveAccount($toAccountId, $toCategory);
+            $direction = strtolower(trim((string) ($data['transaction_direction'] ?? '')));
 
-            ['from_delta' => $fromDelta, 'to_delta' => $toDelta] = $this->resolveTransferEffects(
-                $effectiveTransactionType,
-                $fromCategory,
-                $toCategory,
-                $amount
-            );
+            if ($extraCategory === 'owners_equity') {
+                // Receive (capital in): party CR, cash CR, equity CR.
+                // Payment (drawings out): cash DR, party DR, equity DR.
+                $signed = $direction === 'payment' ? -$amount : $amount;
+                $fromDelta = $signed;
+                $toDelta = $signed;
+            } elseif ($extraCategory === 'asset' || $extraCategory === 'liabilities') {
+                // Payment: cash/from DR (funds out), party/to CR (payment), asset DR / liability DR.
+                // Receive: from CR, cash/to CR, asset/liability CR.
+                if ($direction === 'payment') {
+                    $fromDelta = -$amount;
+                    $toDelta = $amount;
+                } elseif ($direction === 'receive') {
+                    $fromDelta = $amount;
+                    $toDelta = $amount;
+                } else {
+                    ['from_delta' => $fromDelta, 'to_delta' => $toDelta] = $this->resolveTransferEffects(
+                        $effectiveTransactionType,
+                        $fromCategory,
+                        $toCategory,
+                        $amount
+                    );
+                }
+            } else {
+                ['from_delta' => $fromDelta, 'to_delta' => $toDelta] = $this->resolveTransferEffects(
+                    $effectiveTransactionType,
+                    $fromCategory,
+                    $toCategory,
+                    $amount
+                );
+            }
 
             $this->assertSufficientBalance($fromAccount, $fromDelta);
             $this->assertSufficientBalance($toAccount, $toDelta);
@@ -251,10 +291,12 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
             );
 
             if ($extraAccount) {
-                // Asset advances (e.g. Advanced Given): always DR the selected asset ledger.
-                // Liabilities (e.g. Advance Receipts): CR via advanced transfer effects.
+                // Asset: DR on payment/give (default), CR only if explicitly received.
+                // Owner's Equity / Liabilities: CR on receive, DR on payment.
                 if ($extraCategory === 'asset') {
-                    $extraDelta = -$amount;
+                    $extraDelta = $direction === 'receive' ? $amount : -$amount;
+                } elseif ($extraCategory === 'owners_equity' || $extraCategory === 'liabilities') {
+                    $extraDelta = $direction === 'payment' ? -$amount : $amount;
                 } else {
                     ['from_delta' => $ignore, 'to_delta' => $extraDelta] = $this->resolveTransferEffects(
                         $effectiveTransactionType,
@@ -289,7 +331,7 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
 
     private function resolveEffectiveTransactionType(string $transactionType, string $extraCategory): string
     {
-        if ($extraCategory === 'liabilities') {
+        if ($extraCategory === 'liabilities' || $extraCategory === 'owners_equity') {
             return 'advanced';
         }
 
@@ -454,8 +496,8 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
             return;
         }
 
-        // Agent balances may go negative (loan / advanced liability).
-        if ($account->category === 'agent') {
+        // Only Cash/Bank (main) must have funds. Party, asset, equity, liability, etc. may go DR.
+        if ($account->category !== 'main') {
             return;
         }
 

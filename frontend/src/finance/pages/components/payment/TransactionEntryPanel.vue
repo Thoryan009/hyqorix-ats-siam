@@ -78,10 +78,22 @@
 
       <BaseForm :onSubmit="handleSubmit" class-name="space-y-0 p-6">
         <div class="space-y-6">
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="space-y-2">
               <BaseLabel for="txn_date">Transaction Date</BaseLabel>
               <BaseInput id="txn_date" v-model="form.date" type="date" :required="true" />
+            </div>
+
+            <div v-if="!isAdjustmentType" class="space-y-2">
+              <BaseLabel for="txn_owners_equity_account_id">Owner's Equity Account</BaseLabel>
+              <BaseSearchSelect
+                id="txn_owners_equity_account_id"
+                v-model="form.owners_equity_account_id"
+                :options="ownersEquityAccountOptions"
+                placeholder="Search owner's equity account"
+                :disabled="isAssetSelected || isLiabilitiesSelected"
+                :filter-fn="filterAccountOption"
+              />
             </div>
 
             <div v-if="!isAdjustmentType" class="space-y-2">
@@ -91,7 +103,7 @@
                 v-model="form.asset_account_id"
                 :options="assetAccountOptions"
                 placeholder="Search asset account"
-                :disabled="isLiabilitiesSelected"
+                :disabled="isOwnersEquitySelected || isLiabilitiesSelected"
                 :filter-fn="filterAccountOption"
               />
             </div>
@@ -103,10 +115,33 @@
                 v-model="form.liabilities_account_id"
                 :options="liabilitiesAccountOptions"
                 placeholder="Search liabilities account"
-                :disabled="isAssetSelected"
+                :disabled="isOwnersEquitySelected || isAssetSelected"
                 :filter-fn="filterAccountOption"
               />
             </div>
+          </div>
+
+          <div v-if="!isAdjustmentType && hasExtraAccountSelected" class="space-y-2">
+            <BaseLabel>Cash Direction</BaseLabel>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="option in directionOptions"
+                :key="option.id"
+                type="button"
+                class="rounded-lg border px-4 py-2 text-sm font-semibold transition-all"
+                :class="
+                  form.transaction_direction === option.id
+                    ? option.activeClass
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                "
+                @click="form.transaction_direction = option.id"
+              >
+                <i :class="[option.icon, 'mr-1.5']"></i>{{ option.label }}
+              </button>
+            </div>
+            <p class="text-xs text-gray-500">
+              {{ directionHint }}
+            </p>
           </div>
 
           <template v-if="isAdjustmentType">
@@ -443,6 +478,8 @@ const createDefaultForm = () => ({
   particular: '',
   reference_no: '',
   remarks: '',
+  transaction_direction: 'receive',
+  owners_equity_account_id: '',
   asset_account_id: '',
   liabilities_account_id: '',
   account_category: 'staff',
@@ -462,16 +499,54 @@ const isAdjustmentType = computed(() => isAdjustmentTransactionType(form.transac
 const transferLabel = 'Transfer'
 const activeTypeLabel = computed(() => transferLabel)
 
+const isOwnersEquitySelected = computed(() => Boolean(form.owners_equity_account_id))
 const isAssetSelected = computed(() => Boolean(form.asset_account_id))
 const isLiabilitiesSelected = computed(() => Boolean(form.liabilities_account_id))
+const hasExtraAccountSelected = computed(
+  () => isOwnersEquitySelected.value || isAssetSelected.value || isLiabilitiesSelected.value
+)
 
+const directionOptions = [
+  {
+    id: 'receive',
+    label: 'Receive',
+    icon: 'fa fa-arrow-down',
+    activeClass: 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500',
+  },
+  {
+    id: 'payment',
+    label: 'Payment',
+    icon: 'fa fa-arrow-up',
+    activeClass: 'border-amber-500 bg-amber-50 text-amber-900 ring-1 ring-amber-500',
+  },
+]
+
+const directionHint = computed(() => {
+  if (form.transaction_direction === 'payment') {
+    return 'Payment: cash goes out — party/staff posts DR, Owner Drawings / similar accounts post DR.'
+  }
+  return 'Receive: cash comes in — party/staff posts CR, Owner Capital / similar accounts post CR.'
+})
+
+const ownersEquityAccountOptions = computed(() => getAccountOptions('owners_equity'))
 const assetAccountOptions = computed(() => getAccountOptions('asset'))
 const liabilitiesAccountOptions = computed(() => getAccountOptions('liabilities'))
 
 watch(
+  () => form.owners_equity_account_id,
+  (value) => {
+    if (value) {
+      form.asset_account_id = ''
+      form.liabilities_account_id = ''
+    }
+  }
+)
+
+watch(
   () => form.asset_account_id,
   (value) => {
-    if (value && form.liabilities_account_id) {
+    if (value) {
+      form.owners_equity_account_id = ''
       form.liabilities_account_id = ''
     }
   }
@@ -480,7 +555,8 @@ watch(
 watch(
   () => form.liabilities_account_id,
   (value) => {
-    if (value && form.asset_account_id) {
+    if (value) {
+      form.owners_equity_account_id = ''
       form.asset_account_id = ''
     }
   }
@@ -524,6 +600,13 @@ function mapAccountOption(account) {
     return {
       id: account.id,
       name: `Agent — ${account.agent_code} — ${account.agent_name} — ৳${balance}`,
+    }
+  }
+
+  if (category === ACCOUNT_CATEGORIES.BANKS) {
+    return {
+      id: account.id,
+      name: `Bank — ${account.account_name}${account.code ? ` (${account.code})` : ''} — ৳${balance}`,
     }
   }
 
@@ -701,6 +784,16 @@ watch(
 )
 
 async function handleSubmit() {
+  if (hasExtraAccountSelected.value && !['payment', 'receive'].includes(form.transaction_direction)) {
+    await Swal.fire({
+      icon: 'warning',
+      title: 'Direction Required',
+      text: 'Please select Payment or Receive.',
+      confirmButtonColor: '#22C55E',
+    })
+    return
+  }
+
   submitLoading.value = true
 
   const result = await transactionStore.submitTransaction({
@@ -721,6 +814,10 @@ async function handleSubmit() {
     toAccountId: form.to_account_id,
     assetAccountId: form.asset_account_id,
     liabilitiesAccountId: form.liabilities_account_id,
+    ownersEquityAccountId: form.owners_equity_account_id,
+    transactionDirection: hasExtraAccountSelected.value
+      ? form.transaction_direction
+      : undefined,
   })
 
   submitLoading.value = false
