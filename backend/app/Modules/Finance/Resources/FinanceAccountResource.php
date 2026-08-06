@@ -45,6 +45,9 @@ class FinanceAccountResource extends JsonResource
             'entity_id' => $this->entity_id,
             'bill_agent_id' => $this->bill_agent_id,
             'metadata' => $this->metadata ?? [],
+            'link_to_purchase' => $this->category === 'asset'
+                ? (bool) ($this->link_to_purchase ?? false)
+                : false,
             'status' => $status,
             'status_raw' => $this->status,
             'agent_id' => $this->category === 'agent' ? $this->entity_id : null,

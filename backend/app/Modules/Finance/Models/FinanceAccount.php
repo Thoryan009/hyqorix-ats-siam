@@ -20,6 +20,7 @@ class FinanceAccount extends Model
         'opening_balance' => 'decimal:2',
         'base_price' => 'decimal:2',
         'metadata' => 'array',
+        'link_to_purchase' => 'boolean',
     ];
 
     public function bank(): BelongsTo

@@ -27,6 +27,24 @@
         />
       </div>
 
+      <div v-if="manualType === 'asset'" class="space-y-2">
+        <BaseLabel for="edit_manual_link_to_purchase">Link to Purchase</BaseLabel>
+        <label
+          for="edit_manual_link_to_purchase"
+          class="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5"
+        >
+          <input
+            id="edit_manual_link_to_purchase"
+            v-model="form.link_to_purchase"
+            type="checkbox"
+            class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+          />
+          <span class="text-sm text-slate-700">
+            {{ form.link_to_purchase ? 'Yes — link this asset account to purchase' : 'No' }}
+          </span>
+        </label>
+      </div>
+
       <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
 
       <div class="flex justify-end gap-2 border-t border-gray-100 pt-4">
@@ -65,6 +83,7 @@ const errorMessage = ref('')
 const form = reactive({
   account_name: '',
   status: 'Active',
+  link_to_purchase: false,
 })
 
 const statusOptions = partyAccountStatusOptions.map((option) => ({
@@ -78,6 +97,7 @@ watch(
     if (isOpen && manualStore.activeManualType === props.manualType && manualStore.editingAccount) {
       form.account_name = manualStore.editingAccount.account_name ?? ''
       form.status = manualStore.editingAccount.status ?? 'Active'
+      form.link_to_purchase = Boolean(manualStore.editingAccount.link_to_purchase)
       errorMessage.value = ''
     }
   }
@@ -98,6 +118,7 @@ const handleSubmit = async () => {
     const result = await manualStore.updateAccount(props.manualType, account.value.id, {
       account_name: form.account_name,
       status: form.status,
+      ...(props.manualType === 'asset' ? { link_to_purchase: form.link_to_purchase } : {}),
     })
 
     if (!result.ok) {

@@ -20,6 +20,14 @@ class FinanceAccountRequest extends FormRequest
             $merged['status'] = $this->normalizeStatus($this->input('status'));
         }
 
+        if ($this->has('link_to_purchase')) {
+            $merged['link_to_purchase'] = filter_var(
+                $this->input('link_to_purchase'),
+                FILTER_VALIDATE_BOOLEAN,
+                FILTER_NULL_ON_FAILURE
+            ) ?? false;
+        }
+
         if ($this->has('account_type')) {
             $merged['account_type'] = strtolower((string) $this->input('account_type'));
         }
@@ -79,6 +87,7 @@ class FinanceAccountRequest extends FormRequest
             'entity_id' => ['nullable', 'integer'],
             'bill_agent_id' => ['nullable', 'integer'],
             'metadata' => ['nullable', 'array'],
+            'link_to_purchase' => ['nullable', 'boolean'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
         ];
 
@@ -121,6 +130,10 @@ class FinanceAccountRequest extends FormRequest
                     ->where(fn ($query) => $query->where('category', 'banks'))
                     ->ignore($accountId),
             ];
+        }
+
+        if ($category !== 'asset') {
+            $rules['link_to_purchase'][] = 'prohibited';
         }
 
         return $rules;
