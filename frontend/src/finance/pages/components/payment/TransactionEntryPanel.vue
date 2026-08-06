@@ -542,8 +542,24 @@ const directionHint = computed(() => {
 })
 
 const ownersEquityAccountOptions = computed(() => getAccountOptions('owners_equity'))
-const assetAccountOptions = computed(() => getAccountOptions('asset'))
+const assetAccountOptions = computed(() =>
+  financeAccountStore
+    .getAccountsByCategory(ACCOUNT_CATEGORIES.ASSET)
+    .filter((account) => account.status === 'Active' && !account.link_to_purchase)
+    .map(mapAccountOption)
+)
 const liabilitiesAccountOptions = computed(() => getAccountOptions('liabilities'))
+
+watch(assetAccountOptions, (options) => {
+  if (!form.asset_account_id) return
+
+  const stillAvailable = options.some(
+    (option) => Number(option.id) === Number(form.asset_account_id)
+  )
+  if (!stillAvailable) {
+    form.asset_account_id = ''
+  }
+})
 
 watch(
   () => form.owners_equity_account_id,
