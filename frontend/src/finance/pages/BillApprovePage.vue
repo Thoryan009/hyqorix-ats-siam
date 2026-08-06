@@ -937,12 +937,14 @@ function getFinanceAccountBalance(accountId) {
 const paymentAccountOptions = computed(() => {
   if (form.payment_account_category === 'main') {
     const mainType = String(form.main_account_type || '').trim()
+    const shouldFilterByMainType =
+      !isPayableSettlementMode.value && !isBatchPayMode.value && Boolean(mainType)
 
     return financeAccountStore
       .getAccountsByCategory(ACCOUNT_CATEGORIES.MAIN)
       .filter((account) => account.status === 'Active')
       .filter((account) => {
-        if (!mainType) return true
+        if (!shouldFilterByMainType) return true
         return String(account.account_type || '').toLowerCase() === mainType.toLowerCase()
       })
       .map(mapPaymentAccountOption)
@@ -1217,6 +1219,8 @@ function populateForm(bill) {
     form.payment_method = 'cash'
     form.payment_account_category = form.payment_account_category || 'main'
     form.main_account_type = ''
+    form.payment_account_id = ''
+    form.payment_account_name = ''
     form.pay_amount = String(getPayableRemainingAmount(bill) || '')
   }
 }
