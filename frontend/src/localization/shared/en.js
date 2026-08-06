@@ -222,7 +222,7 @@ export default {
     payment_received: 'Payment / Received',
     receipt_list: 'Receipt List',
     income_list: 'Income List',
-    bill_generation: 'Bill Generation',
+    bill_generation: 'Bills & Purchases',
     submitted_bills: 'Submitted Bills',
     bill_management: 'Paid Bills',
     rejected_bills: 'Rejected Bills',
