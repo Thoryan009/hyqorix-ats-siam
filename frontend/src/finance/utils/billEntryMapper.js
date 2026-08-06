@@ -124,6 +124,9 @@ export function buildBillEntryUpdatePayload(payload) {
     manual_approval_path:
       payload.manual_approval_path instanceof File ? payload.manual_approval_path : undefined,
     amount: Number(payload.amount),
+    ...(payload.pay_amount !== undefined && payload.pay_amount !== null && payload.pay_amount !== ''
+      ? { pay_amount: Number(payload.pay_amount) }
+      : {}),
     particular: payload.particular?.trim() || '',
     reference_no: payload.reference_no?.trim() || '',
     voucher_no: payload.voucher_no?.trim() || '',

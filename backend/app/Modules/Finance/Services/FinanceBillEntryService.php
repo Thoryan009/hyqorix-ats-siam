@@ -272,10 +272,51 @@ class FinanceBillEntryService extends BaseCachedService
         }
 
         return $this->mutate(function () use ($billEntry, $data) {
-            $paymentMethod = strtolower((string) ($data['payment_method'] ?? $billEntry->payment_method ?? 'cash'));
+            $requestedMethod = strtolower((string) ($data['payment_method'] ?? $billEntry->payment_method ?? 'cash'));
+            if (!in_array($requestedMethod, ['cash', 'bank', 'due'], true)) {
+                $requestedMethod = 'cash';
+            }
 
-            return DB::transaction(function () use ($billEntry, $data, $paymentMethod) {
-                $amount = round((float) $data['amount'], 2);
+            return DB::transaction(function () use ($billEntry, $data, $requestedMethod) {
+                $billTotal = round((float) ($data['amount'] ?? $billEntry->amount), 2);
+                if ($billTotal <= 0) {
+                    throw ValidationException::withMessages([
+                        'amount' => ['Please enter a valid bill amount.'],
+                    ]);
+                }
+
+                // pay_amount = cash/bank portion paid now.
+                // Remaining (billTotal − pay_amount) stays Due → Bills Payable.
+                if (array_key_exists('pay_amount', $data) && $data['pay_amount'] !== null && $data['pay_amount'] !== '') {
+                    $payAmount = round((float) $data['pay_amount'], 2);
+                } elseif ($requestedMethod === 'due') {
+                    $payAmount = 0.0;
+                } else {
+                    $payAmount = $billTotal;
+                }
+
+                if ($payAmount < 0) {
+                    throw ValidationException::withMessages([
+                        'pay_amount' => ['Payment amount cannot be negative.'],
+                    ]);
+                }
+
+                if ($payAmount > $billTotal) {
+                    throw ValidationException::withMessages([
+                        'pay_amount' => ["Payment amount cannot exceed the bill amount of {$billTotal}."],
+                    ]);
+                }
+
+                $dueRemaining = round($billTotal - $payAmount, 2);
+                $hasDueRemaining = $dueRemaining >= 0.005;
+                $hasCashPayment = $payAmount >= 0.005;
+
+                // Any unpaid remainder stays as Due so it appears in Bills Payable.
+                $storedPaymentMethod = $hasDueRemaining ? 'due' : ($hasCashPayment ? $requestedMethod : 'due');
+                if ($storedPaymentMethod === 'due' && $hasCashPayment && !in_array($requestedMethod, ['cash', 'bank'], true)) {
+                    $requestedMethod = 'cash';
+                }
+
                 $paymentDate = $billEntry->payment_date?->format('Y-m-d') ?? now()->toDateString();
                 $particular = trim((string) ($data['particular'] ?? $billEntry->particular));
                 $referenceNo = trim((string) ($data['reference_no'] ?? $billEntry->reference_no ?? ''));
@@ -285,18 +326,27 @@ class FinanceBillEntryService extends BaseCachedService
                 if ($voucherNo === '') {
                     $voucherNo = $billEntry->voucher_no ?: $referenceNo ?: $this->nextVoucherNo('BILL', Carbon::parse($paymentDate));
                 }
-                $paymentFields = $this->resolvePaymentAccountFields($data, $paymentMethod);
+
+                $cashMethod = in_array($requestedMethod, ['cash', 'bank'], true) ? $requestedMethod : 'cash';
+                $paymentFields = $hasCashPayment
+                    ? $this->resolvePaymentAccountFields($data, $cashMethod)
+                    : [
+                        'payment_account_category' => '',
+                        'payment_account_type' => null,
+                        'payment_account_id' => null,
+                        'payment_account_name' => '',
+                    ];
                 $manualApprovalFields = $this->resolveManualApprovalFields($billEntry, $data);
 
                 $billEntry->update([
-                    'amount' => $amount,
+                    'amount' => $billTotal,
                     'particular' => $particular,
                     'reference_no' => $referenceNo,
                     'voucher_no' => $voucherNo,
                     'remarks' => $remarks,
                     'approval_remarks' => $approvalRemarks,
-                    'payment_method' => $paymentMethod,
-                    'paid_amount' => $paymentMethod === 'due' ? 0 : $amount,
+                    'payment_method' => $storedPaymentMethod,
+                    'paid_amount' => $payAmount,
                     'status' => 'approved',
                     'approved_at' => now(),
                     'approved_by' => trim((string) ($data['approved_by'] ?? 'Accountant')),
@@ -319,22 +369,28 @@ class FinanceBillEntryService extends BaseCachedService
                 }
 
                 $paymentAccount = null;
-                if ($paymentMethod !== 'due' && !empty($paymentFields['payment_account_id'])) {
+                if ($hasCashPayment) {
+                    if (empty($paymentFields['payment_account_id'])) {
+                        throw ValidationException::withMessages([
+                            'payment_account_id' => ['Payment account is required for cash or bank bill payments.'],
+                        ]);
+                    }
+
                     $paymentAccount = FinanceAccount::query()
                         ->lockForUpdate()
                         ->findOrFail((int) $paymentFields['payment_account_id']);
 
                     $this->assertActiveFinanceAccount($paymentAccount);
 
-                    if ((float) $paymentAccount->balance < $amount) {
+                    if ((float) $paymentAccount->balance < $payAmount) {
                         throw ValidationException::withMessages([
-                            'amount' => ['Insufficient balance in the selected payment account.'],
+                            'pay_amount' => ['Insufficient balance in the selected payment account.'],
                         ]);
                     }
                 }
 
                 $typeTransaction = $this->createBillPaymentTransaction(
-                    $amount,
+                    $hasCashPayment ? $payAmount : $billTotal,
                     $paymentDate,
                     $particular,
                     $referenceNo,
@@ -346,56 +402,55 @@ class FinanceBillEntryService extends BaseCachedService
                 );
                 $typeTransactionId = $typeTransaction?->id;
 
-                $isDuePayment = $paymentMethod === 'due';
                 $expenseBillParticular = $particular !== '' ? $particular : 'Bill approved';
-                $paymentMethodLabel = $this->resolveBillPaymentMethodLabel($paymentMethod, $paymentFields);
-
-                if (!$isDuePayment && !$paymentAccount) {
-                    throw ValidationException::withMessages([
-                        'payment_account_id' => ['Payment account is required for cash or bank bill payments.'],
-                    ]);
-                }
+                $paymentMethodLabel = $this->resolveBillPaymentMethodLabel(
+                    $hasCashPayment ? $cashMethod : 'due',
+                    $paymentFields
+                );
 
                 if ($expenseAccount) {
-                    // Expense head ledger: DR bill charge, then CR settlement when paid by cash/bank
-                    // (same pattern as agent Deployment Charge + collection). Due stays DR-only.
+                    // Expense head ledger: always DR full bill charge.
                     $this->postBillLedgerEntry(
                         $expenseAccount,
                         $billEntry->id,
-                        $amount,
+                        $billTotal,
                         $paymentDate,
                         $expenseBillParticular,
                         $voucherNo,
                         $billEntry->client_name ?? '',
-                        $isDuePayment ? null : $paymentMethodLabel,
+                        $hasDueRemaining ? null : ($hasCashPayment ? $paymentMethodLabel : null),
                         $approvalRemarks ?: $remarks ?: 'Bill approved',
                         $typeTransactionId,
                         false
                     );
 
-                    if (!$isDuePayment) {
+                    // Settle cash/bank portion on expense ledger (CR).
+                    if ($hasCashPayment) {
                         $this->postBillLedgerEntry(
                             $expenseAccount,
                             $billEntry->id,
-                            $amount,
+                            $payAmount,
                             $paymentDate,
                             $expenseBillParticular,
                             $voucherNo,
                             $billEntry->client_name ?? '',
                             $paymentMethodLabel,
-                            $approvalRemarks ?: 'Bill payment approved',
+                            $approvalRemarks ?: ($hasDueRemaining
+                                ? 'Partial bill payment approved'
+                                : 'Bill payment approved'),
                             $typeTransactionId,
                             true
                         );
                     }
 
-                    // Due bills: CR {Head} Payable so Trial Balance shows the liability.
-                    if ($isDuePayment) {
+                    // Due remaining (or full due): CR {Head} Payable liability.
+                    if ($hasDueRemaining) {
                         $expenseHead = $this->resolveExpenseHeadForBill($billEntry, $expenseAccount);
                         if ($expenseHead) {
+                            // Full liability first, then clear the paid portion (matches due → payable settle flow).
                             $this->accountService->recordExpensePayableEntry(
                                 $expenseHead,
-                                $amount,
+                                $billTotal,
                                 'cr',
                                 $paymentDate,
                                 $voucherNo,
@@ -405,22 +460,42 @@ class FinanceBillEntryService extends BaseCachedService
                                 $approvalRemarks ?: $remarks ?: 'Bill approved as due',
                                 (string) ($billEntry->client_name ?? '')
                             );
+
+                            if ($hasCashPayment) {
+                                $settleVoucherNo = $voucherNo !== ''
+                                    ? sprintf('%s-P%s', $voucherNo, $typeTransactionId ?: now()->timestamp)
+                                    : sprintf('BILL-PAY-%d', $billEntry->id);
+                                $this->accountService->recordExpensePayableEntry(
+                                    $expenseHead,
+                                    $payAmount,
+                                    'dr',
+                                    $paymentDate,
+                                    $settleVoucherNo,
+                                    $typeTransactionId,
+                                    $expenseBillParticular,
+                                    $paymentMethodLabel,
+                                    $approvalRemarks ?: 'Partial bill payment against due',
+                                    (string) ($billEntry->client_name ?? '')
+                                );
+                            }
                         }
                     }
                 }
 
                 if ($paymentAccount) {
-                    // Main cash/bank ledger: DR only (cash out). No CR on main account.
+                    // Main cash/bank ledger: DR only (cash out) for the paid portion.
                     $this->postBillLedgerEntry(
                         $paymentAccount,
                         $billEntry->id,
-                        $amount,
+                        $payAmount,
                         $paymentDate,
                         $particular,
                         $voucherNo,
                         $billEntry->linked_account_name ?? $billEntry->expense_cost_account_name ?? '',
-                        $paymentMethodLabel ?? ucfirst($paymentMethod),
-                        $approvalRemarks ?: 'Bill payment approved',
+                        $paymentMethodLabel ?? ucfirst($cashMethod),
+                        $approvalRemarks ?: ($hasDueRemaining
+                            ? 'Partial bill payment approved'
+                            : 'Bill payment approved'),
                         $typeTransactionId,
                         false
                     );

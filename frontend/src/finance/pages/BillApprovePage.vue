@@ -374,34 +374,77 @@
 
             <div
               v-else
-              class="mb-3 rounded-xl border-2 border-emerald-200 bg-emerald-50/70 p-3"
+              class="mb-3 space-y-3"
             >
-              <BaseLabel
-                for="pay_amount"
-                :className="'mb-1 block text-xs font-bold uppercase tracking-wide text-emerald-800'"
-              >
-                {{ isBatchPayMode ? 'Batch Total (৳)' : 'Bill Amount (৳)' }}
-              </BaseLabel>
-              <BaseInput
-                id="pay_amount"
-                v-model="form.amount"
-                type="number"
-                min="0"
-                step="0.01"
-                :required="true"
-                :disabled="isReadonly || isBatchPayMode"
-                :className="'w-full rounded-lg border-2 border-emerald-300 bg-white px-3 py-2.5 text-2xl font-bold tabular-nums text-emerald-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30'"
-              />
-              <p v-if="isBatchPayMode" class="mt-1 text-xs text-emerald-800/80">
-                Each bill in the batch is paid at its own amount. Payment method and account apply to all.
-              </p>
+              <div class="rounded-xl border-2 border-emerald-200 bg-emerald-50/70 p-3">
+                <BaseLabel
+                  for="pay_amount"
+                  :className="'mb-1 block text-xs font-bold uppercase tracking-wide text-emerald-800'"
+                >
+                  {{ isBatchPayMode ? 'Batch Total (৳)' : 'Bill Amount (৳)' }}
+                </BaseLabel>
+                <BaseInput
+                  id="pay_amount"
+                  v-model="form.amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  :required="true"
+                  :disabled="isReadonly || isBatchPayMode"
+                  :className="'w-full rounded-lg border-2 border-emerald-300 bg-white px-3 py-2.5 text-2xl font-bold tabular-nums text-emerald-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30'"
+                />
+                <p v-if="isBatchPayMode" class="mt-1 text-xs text-emerald-800/80">
+                  Each bill in the batch is paid at its own amount. Payment method and account apply to all.
+                </p>
+              </div>
+
+              <template v-if="!isReadonly && !isBatchPayMode">
+                <div class="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
+                  <div>
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      Pay Now (Cash / Bank)
+                    </p>
+                    <BaseInput
+                      id="bills_to_pay_now"
+                      v-model="form.pay_now_amount"
+                      type="number"
+                      min="0"
+                      :max="Number(form.amount) || undefined"
+                      step="0.01"
+                      :required="true"
+                      :className="'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-lg font-bold tabular-nums text-slate-900'"
+                    />
+                  </div>
+                  <div>
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      Due Remaining
+                    </p>
+                    <p
+                      class="mt-1 rounded-lg border px-3 py-2 text-lg font-bold tabular-nums"
+                      :class="
+                        billsToPayDueRemaining > 0
+                          ? 'border-amber-200 bg-amber-50 text-amber-800'
+                          : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      "
+                    >
+                      {{ formatCurrency(billsToPayDueRemaining) }}
+                    </p>
+                    <p class="mt-1 text-[11px] text-slate-500">
+                      Due remaining moves to Bills Payable after approval.
+                    </p>
+                  </div>
+                </div>
+                <p v-if="payNowExceedsBillAmount" class="text-xs text-red-600">
+                  Pay Now cannot exceed the bill amount.
+                </p>
+              </template>
             </div>
 
             <div
-              v-if="!isPayableSettlementMode && !isReadonly"
+              v-if="!isPayableSettlementMode && !isReadonly && showBillsToPayPaymentMethod"
               class="mb-3 space-y-1"
             >
-              <BaseLabel for="pay_payment_method">Payment Method</BaseLabel>
+              <BaseLabel for="pay_payment_method">Payment Method (Pay Now)</BaseLabel>
               <BaseSelect
                 id="pay_payment_method"
                 v-model="form.payment_method"
@@ -412,7 +455,20 @@
             </div>
 
             <p
-              v-if="isDuePayment"
+              v-if="!isPayableSettlementMode && !isReadonly && billsToPayDueRemaining > 0 && billsToPayNowAmount <= 0"
+              class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+            >
+              Full bill will be Due — no payment account required. It will appear in Bills Payable.
+            </p>
+            <p
+              v-else-if="!isPayableSettlementMode && !isReadonly && billsToPayDueRemaining > 0"
+              class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+            >
+              Partial payment: {{ formatCurrency(billsToPayNowAmount) }} will hit the selected account;
+              {{ formatCurrency(billsToPayDueRemaining) }} Due will move to Bills Payable.
+            </p>
+            <p
+              v-else-if="isDuePayment"
               class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
             >
               Due payment method — no payment account required.
@@ -583,7 +639,7 @@
                 v-can="'receive_payment.create'"
                   type="submit"
                   class="cursor-pointer rounded-lg bg-emerald-600 px-4 py-2 text-white shadow-sm hover:bg-emerald-700"
-                  :disabled="loading || payAmountExceedsRemaining || (showPaymentAccountFields && insufficientPaymentBalance)"
+                  :disabled="loading || payAmountExceedsRemaining || payNowExceedsBillAmount || (showPaymentAccountFields && insufficientPaymentBalance)"
                 >
                   {{
                     loading
@@ -598,7 +654,11 @@
                           : 'Confirm Payment'
                         : isBatchPayMode
                           ? `Pay Batch (${batchEntries.length})`
-                          : 'Pay Bill'
+                          : billsToPayDueRemaining > 0 && billsToPayNowAmount > 0
+                            ? 'Pay Partial & Move Due'
+                            : billsToPayNowAmount <= 0
+                              ? 'Approve as Due'
+                              : 'Pay Bill'
                   }}
                 </BaseButton>
                 <BaseButton
@@ -679,6 +739,7 @@ const form = reactive({
   head_name: '',
   amount: '',
   pay_amount: '',
+  pay_now_amount: '',
   paid_amount: '',
   payment_method: 'cash',
   particular: '',
@@ -751,7 +812,24 @@ const settlementPaymentMethodOptions = computed(() => {
 })
 
 const billsToPayPaymentMethodOptions = computed(() =>
-  paymentMethods.filter((method) => ['cash', 'bank', 'due'].includes(method.id))
+  paymentMethods.filter((method) => ['cash', 'bank'].includes(method.id))
+)
+
+const billsToPayBillTotal = computed(() => Math.max(Number(form.amount) || 0, 0))
+const billsToPayNowAmount = computed(() => {
+  const value = Number(form.pay_now_amount)
+  if (Number.isNaN(value)) return 0
+  return Math.max(value, 0)
+})
+const billsToPayDueRemaining = computed(() =>
+  Math.max(Math.round((billsToPayBillTotal.value - billsToPayNowAmount.value) * 100) / 100, 0)
+)
+const payNowExceedsBillAmount = computed(() => {
+  if (isPayableSettlementMode.value || isBatchPayMode.value) return false
+  return billsToPayNowAmount.value > billsToPayBillTotal.value + 0.0001
+})
+const showBillsToPayPaymentMethod = computed(
+  () => !isBatchPayMode.value && billsToPayNowAmount.value > 0
 )
 
 const isPayableSettlementMode = computed(() => route.name === 'Bill Payable Payment')
@@ -889,7 +967,8 @@ const billAmount = computed(() => {
     return batchEntries.value.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
   }
 
-  return Number(form.amount) || 0
+  // Bills To Pay: balance check uses the cash/bank portion being paid now.
+  return billsToPayNowAmount.value
 })
 const linkedBillAccountTypeLabel = computed(() => getLinkedBillAccountTypeLabel(form))
 const linkedBillAccountName = computed(() => getLinkedBillAccountName(form))
@@ -919,12 +998,17 @@ const paymentMethodLabel = computed(() => {
 
 const isDuePayment = computed(() => {
   if (isPayableSettlementMode.value) return false
+  if (!isBatchPayMode.value) {
+    return billsToPayNowAmount.value <= 0
+  }
   return isDuePaymentMethod(form.payment_method)
 })
 
 const showPaymentAccountFields = computed(() => {
   if (isPayableSettlementMode.value && isIncomeLinkMethod.value) return false
-  return isPayableSettlementMode.value || !isDuePayment.value
+  if (isPayableSettlementMode.value) return true
+  if (isBatchPayMode.value) return !isDuePayment.value
+  return billsToPayNowAmount.value > 0
 })
 
 const isManualRequestBill = computed(() => {
@@ -1014,8 +1098,15 @@ function populateForm(bill) {
     head_name: bill.head_name || '',
     amount: bill.amount ?? '',
     pay_amount: '',
+    pay_now_amount:
+      route.name === 'Bill Payable Payment'
+        ? ''
+        : bill.payment_method === 'due'
+          ? 0
+          : bill.amount ?? '',
     paid_amount: bill.paid_amount ?? 0,
-    payment_method: bill.payment_method || 'cash',
+    payment_method:
+      bill.payment_method === 'due' ? 'cash' : bill.payment_method || 'cash',
     particular: bill.particular || '',
     reference_no: bill.reference_no || '',
     voucher_no: bill.voucher_no || '',
@@ -1106,7 +1197,17 @@ function goBack() {
 
 const buildPayload = () => ({
   ...form,
-  pay_amount: isPayableSettlementMode.value ? form.pay_amount : form.amount,
+  // Bills To Pay single: pay_now_amount = cash/bank portion (remainder → Due / Bills Payable).
+  // Batch: omit pay_amount so each bill is paid in full at its own amount.
+  ...(isPayableSettlementMode.value
+    ? { pay_amount: form.pay_amount }
+    : isBatchPayMode.value
+      ? {}
+      : { pay_amount: form.pay_now_amount }),
+  payment_method:
+    !isPayableSettlementMode.value && !isBatchPayMode.value && billsToPayNowAmount.value <= 0
+      ? 'due'
+      : form.payment_method,
   manual_approval_manager_id: isManualRequestBill.value ? form.manual_approval_manager_id : null,
   manual_approval_path: isManualRequestBill.value ? form.manual_approval_path : null,
 })
@@ -1139,8 +1240,15 @@ async function handleApprove() {
 
   const remainingAfter = isPayableSettlementMode.value
     ? getPayableRemainingAmount(result.entry)
-    : 0
-  const isFullPayment = isPayableSettlementMode.value && remainingAfter <= 0
+    : !isBatchPayMode.value
+      ? Math.max(
+          Math.round(
+            ((Number(result.entry?.amount) || 0) - (Number(result.entry?.paid_amount) || 0)) * 100
+          ) / 100,
+          0
+        )
+      : 0
+  const isFullPayment = remainingAfter <= 0
 
   await Swal.fire({
     icon: 'success',
@@ -1148,14 +1256,18 @@ async function handleApprove() {
       ? 'Payment Recorded'
       : isBatchPayMode.value
         ? 'Batch Paid'
-        : 'Bill Approved',
+        : isFullPayment
+          ? 'Bill Approved'
+          : 'Partial Payment Recorded',
     text: isPayableSettlementMode.value
       ? isFullPayment
         ? 'Payable bill has been fully settled and moved to Paid Bills.'
         : `Partial payment recorded. Remaining payable: ${formatCurrency(remainingAfter)}.`
       : isBatchPayMode.value
         ? `${result.entries.length} bills have been verified and paid.`
-        : 'Bill entry has been verified and paid.',
+        : isFullPayment
+          ? 'Bill entry has been verified and paid.'
+          : `Paid ${formatCurrency(Number(result.entry?.paid_amount) || 0)}. Remaining Due ${formatCurrency(remainingAfter)} moved to Bills Payable.`,
     confirmButtonColor: '#22C55E',
   })
 
@@ -1215,8 +1327,24 @@ watch(
       return
     }
 
-    // Bills To Pay — allow changing Cash / Bank / Due at payment time.
-    if (isDuePaymentMethod(method)) {
+    // Bills To Pay — Cash / Bank for the Pay Now portion.
+    if (!form.payment_account_category && billsToPayNowAmount.value > 0) {
+      form.payment_account_category = 'main'
+    }
+
+    const methodKey = String(method || '').toLowerCase()
+    if (methodKey === 'cash' || methodKey === 'bank') {
+      form.main_account_type = methodKey === 'bank' ? 'Bank' : 'Cash'
+    }
+  }
+)
+
+watch(
+  () => form.pay_now_amount,
+  () => {
+    if (isPayableSettlementMode.value || isBatchPayMode.value || isReadonly.value) return
+
+    if (billsToPayNowAmount.value <= 0) {
       form.payment_account_category = ''
       form.main_account_type = ''
       form.payment_account_type = ''
@@ -1229,9 +1357,32 @@ watch(
       form.payment_account_category = 'main'
     }
 
-    const methodKey = String(method || '').toLowerCase()
+    const methodKey = String(form.payment_method || '').toLowerCase()
     if (methodKey === 'cash' || methodKey === 'bank') {
       form.main_account_type = methodKey === 'bank' ? 'Bank' : 'Cash'
+    } else {
+      form.payment_method = 'cash'
+      form.main_account_type = 'Cash'
+    }
+  }
+)
+
+watch(
+  () => form.amount,
+  (amount, previousAmount) => {
+    if (isPayableSettlementMode.value || isBatchPayMode.value || isReadonly.value) return
+
+    const next = Number(amount)
+    const prev = Number(previousAmount)
+    if (Number.isNaN(next) || next < 0) return
+
+    // Keep Pay Now in sync when it still matched the previous full bill amount.
+    const payNow = Number(form.pay_now_amount)
+    if (
+      !Number.isNaN(prev) &&
+      Math.abs(payNow - prev) < 0.005
+    ) {
+      form.pay_now_amount = amount
     }
   }
 )

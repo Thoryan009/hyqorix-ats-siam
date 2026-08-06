@@ -16,6 +16,7 @@ class FinanceBillEntryUpdateRequest extends FormRequest
     {
         return [
             'amount' => ['required', 'numeric', 'min:0.01'],
+            'pay_amount' => ['nullable', 'numeric', 'min:0'],
             'particular' => ['nullable', 'string', 'max:500'],
             'reference_no' => ['nullable', 'string', 'max:255'],
             'voucher_no' => ['nullable', 'string', 'max:255'],

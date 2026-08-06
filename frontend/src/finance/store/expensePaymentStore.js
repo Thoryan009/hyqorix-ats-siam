@@ -1025,10 +1025,34 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
     }
 
     const paymentMethod = payload.payment_method || existing.payment_method
+    const billTotal = Number(payload.amount)
+    const payAmountRaw = payload.pay_amount
+    const payAmount =
+      payAmountRaw !== undefined && payAmountRaw !== null && payAmountRaw !== ''
+        ? Number(payAmountRaw)
+        : paymentMethod === 'due'
+          ? 0
+          : billTotal
+
+    if (!billTotal || billTotal <= 0) {
+      return { ok: false, message: 'Please enter a valid bill amount.' }
+    }
+
+    if (Number.isNaN(payAmount) || payAmount < 0) {
+      return { ok: false, message: 'Please enter a valid pay amount.' }
+    }
+
+    if (payAmount > billTotal) {
+      return { ok: false, message: 'Pay amount cannot exceed the bill amount.' }
+    }
+
     let accountData = {}
 
-    if (paymentMethod !== 'due') {
-      const accountResult = resolvePaymentAccount(payload)
+    if (payAmount > 0) {
+      const accountResult = resolvePaymentAccount({
+        ...payload,
+        payment_method: paymentMethod === 'due' ? 'cash' : paymentMethod,
+      })
       if (!accountResult.ok) {
         return accountResult
       }
@@ -1042,18 +1066,17 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
       }
     }
 
-    const amount = Number(payload.amount)
-    if (!amount || amount <= 0) {
-      return { ok: false, message: 'Please enter a valid bill amount.' }
-    }
-
     if (existing.is_manual_request && !payload.manual_approval_manager_id) {
       return { ok: false, message: 'Please select the manager who approved this manual bill.' }
     }
 
     try {
       const response = await approveEntry(payload.id, {
-        ...buildBillEntryUpdatePayload(payload),
+        ...buildBillEntryUpdatePayload({
+          ...payload,
+          pay_amount: payAmount,
+          payment_method: payAmount <= 0 ? 'due' : paymentMethod === 'due' ? 'cash' : paymentMethod,
+        }),
         ...accountData,
       })
       const entry = mapBillEntryFromApi(extractBillEntryRow(response))
@@ -1106,6 +1129,7 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
         ...payload,
         id: entry.id,
         amount: Number(entry.amount) || 0,
+        pay_amount: Number(entry.amount) || 0,
         particular: entry.particular || payload.particular || '',
         reference_no: entry.reference_no || payload.reference_no || '',
         voucher_no: entry.voucher_no || payload.voucher_no || '',
