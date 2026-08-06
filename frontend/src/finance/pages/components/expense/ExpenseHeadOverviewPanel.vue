@@ -72,7 +72,7 @@ const categoryStore = useExpenseCategoryStore()
 
 const goToBillEntry = (categoryId, headId) => {
   router.push({
-    path: '/finance/bill-generation',
+    path: '/finance/bills-and-purchases',
     query: {
       category_id: String(categoryId),
       head_id: String(headId),

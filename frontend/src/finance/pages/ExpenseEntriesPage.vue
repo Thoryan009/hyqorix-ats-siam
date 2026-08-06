@@ -32,9 +32,9 @@
             </span>
           </BaseButton>
         </router-link>
-        <router-link to="/finance/bill-generation" v-can="'bill_generation.create'">
+        <router-link to="/finance/bills-and-purchases" v-can="'bill_generation.create'">
           <BaseButton v-can="'transaction.view'" class="bg-primary text-white hover:opacity-90">
-            <i class="fa fa-plus mr-1"></i> Bill Generation
+            <i class="fa fa-plus mr-1"></i> Bills & Purchases
           </BaseButton>
         </router-link>
       </div>

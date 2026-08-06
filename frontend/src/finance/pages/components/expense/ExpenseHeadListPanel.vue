@@ -151,7 +151,7 @@ const router = useRouter()
 
 const goToBillEntry = (row) => {
   router.push({
-    path: '/finance/bill-generation',
+    path: '/finance/bills-and-purchases',
     query: {
       category_id: String(row.category_id),
       head_id: String(row.id),

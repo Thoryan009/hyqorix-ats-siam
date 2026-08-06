@@ -9,12 +9,12 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <router-link to="/finance/bill-generation">
+        <router-link to="/finance/bills-and-purchases">
           <BaseButton
             v-can="'bill_generation.create'"
             :className="'border border-gray-300 bg-white text-gray-800 hover:bg-gray-50'"
           >
-            <i class="fa fa-file-text-o mr-1"></i> Bill Generation
+            <i class="fa fa-file-text-o mr-1"></i> Bills & Purchases
           </BaseButton>
         </router-link>
         <router-link

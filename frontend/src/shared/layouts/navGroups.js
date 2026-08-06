@@ -202,7 +202,7 @@ export const navGroups = [
       // },
       {
         name: 'navigation.bill_generation',
-        path: '/finance/bill-generation',
+        path: '/finance/bills-and-purchases',
         icon: 'fa fa-file-text-o',
         permission: 'bill_generation.create',
         section: 'Operations',

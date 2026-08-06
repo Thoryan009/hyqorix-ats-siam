@@ -264,12 +264,16 @@ export default [
   },
   {
     path: '/finance/bill-generation',
+    redirect: '/finance/bills-and-purchases',
+  },
+  {
+    path: '/finance/bills-and-purchases',
     component: DashboardLayout,
     meta: { requiresAuth: true },
     children: [
       {
         path: '',
-        name: 'Bill Generation',
+        name: 'Bills & Purchases',
         component: BillGenerationPage,
         meta: {
           permissions: ['bill_generation.create'],

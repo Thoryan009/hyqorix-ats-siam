@@ -433,7 +433,7 @@ const applyRouteTab = () => {
   // Bill Generation moved to its own Finance nav page
   if (tab === 'bill_entry' || tab === 'pay_expense' || route.query.category_id || route.query.head_id) {
     router.replace({
-      path: '/finance/bill-generation',
+      path: '/finance/bills-and-purchases',
       query: {
         ...(route.query.category_id ? { category_id: route.query.category_id } : {}),
         ...(route.query.head_id ? { head_id: route.query.head_id } : {}),
