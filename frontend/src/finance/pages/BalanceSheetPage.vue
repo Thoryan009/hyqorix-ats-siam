@@ -239,7 +239,6 @@ const summary = ref({
   total_equity: 0,
   total_liabilities_and_equity: 0,
   current_year_profit: 0,
-  retained_earnings: 0,
   difference: 0,
   is_balanced: true,
 })
@@ -305,7 +304,6 @@ async function loadReport() {
       total_equity: Number(data?.summary?.total_equity || 0),
       total_liabilities_and_equity: Number(data?.summary?.total_liabilities_and_equity || 0),
       current_year_profit: Number(data?.summary?.current_year_profit || 0),
-      retained_earnings: Number(data?.summary?.retained_earnings || 0),
       difference: Number(data?.summary?.difference || 0),
       is_balanced: data?.summary?.is_balanced !== false,
     }

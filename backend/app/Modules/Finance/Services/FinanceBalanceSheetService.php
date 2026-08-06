@@ -137,23 +137,6 @@ class FinanceBalanceSheetService
         $currentYearProfit = round((float) ($statement['summary']['net_profit'] ?? 0), 2);
         $trialBalanceNetProfit = $this->computeTrialBalanceNetProfit($trialBalance['rows'] ?? []);
 
-        $totalAssets = round(array_sum(array_column($assets, 'amount')), 2);
-        $totalLiabilities = round(array_sum(array_column($liabilities, 'amount')), 2);
-        $equityLedgerTotal = round(array_sum(array_column($equity, 'amount')), 2);
-
-        // Closing profit bridges mapped Assets to Liabilities + equity ledger (A = L + E + P).
-        $requiredProfitClose = round($totalAssets - $totalLiabilities - $equityLedgerTotal, 2);
-        $retainedEarnings = round($requiredProfitClose - $currentYearProfit, 2);
-
-        if (abs($retainedEarnings) >= 0.005) {
-            $equity[] = $this->lineItem(
-                $retainedEarnings >= 0 ? 'Retained Earnings' : 'Retained Loss',
-                $retainedEarnings,
-                'retained_earnings',
-                0
-            );
-        }
-
         if (abs($currentYearProfit) >= 0.005) {
             $equity[] = $this->lineItem(
                 $currentYearProfit >= 0 ? 'Current Year Profit' : 'Current Year Loss',
@@ -187,8 +170,6 @@ class FinanceBalanceSheetService
                 'total_equity' => $totalEquity,
                 'total_liabilities_and_equity' => $totalLiabilitiesAndEquity,
                 'current_year_profit' => $currentYearProfit,
-                'retained_earnings' => $retainedEarnings,
-                'required_profit_close' => $requiredProfitClose,
                 'trial_balance_net_profit' => $trialBalanceNetProfit,
                 'trial_balance_is_balanced' => (bool) ($trialBalance['is_balanced'] ?? false),
                 'difference' => $difference,
@@ -257,8 +238,7 @@ class FinanceBalanceSheetService
     private function equityClosingSortRank(string $category): int
     {
         return match ($category) {
-            'retained_earnings' => 1,
-            'current_year_profit' => 2,
+            'current_year_profit' => 1,
             default => 0,
         };
     }
