@@ -66,8 +66,15 @@ export function normalizeExpensePayment(payment) {
 
   return {
     ...payment,
-    category_id: Number(payment.category_id),
-    head_id: Number(payment.head_id),
+    entry_type: payment.entry_type || 'expense_bill',
+    category_id:
+      payment.category_id != null && payment.category_id !== ''
+        ? Number(payment.category_id)
+        : null,
+    head_id:
+      payment.head_id != null && payment.head_id !== '' ? Number(payment.head_id) : null,
+    asset_account_id: payment.asset_account_id ?? null,
+    asset_account_name: payment.asset_account_name ?? '',
     amount: Number(payment.amount ?? 0),
     paid_amount: Number(payment.paid_amount ?? 0),
     payable_remaining: Number(

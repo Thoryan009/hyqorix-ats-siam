@@ -29,10 +29,10 @@ export function extractBillEntryRow(payload) {
 
 export function buildBillEntryPayload(payload, accountData = {}) {
   const receiptFiles = normalizeReceiptFiles(payload.receipt_path)
+  const entryType = payload.entry_type === 'asset_purchase' ? 'asset_purchase' : 'expense_bill'
 
-  return {
-    category_id: Number(payload.category_id),
-    head_id: Number(payload.head_id),
+  const base = {
+    entry_type: entryType,
     amount: Number(payload.amount),
     payment_date: payload.payment_date,
     payment_method: payload.payment_method || 'cash',
@@ -40,6 +40,24 @@ export function buildBillEntryPayload(payload, accountData = {}) {
     reference_no: payload.reference_no?.trim() || '',
     remarks: payload.remarks?.trim() || '',
     receipt_path: receiptFiles.length ? receiptFiles : undefined,
+    requested_by_id: payload.requested_by_id ?? payload.requested_by?.id ?? null,
+    requested_by_name: payload.requested_by_name ?? payload.requested_by?.name ?? '',
+    requested_by_email: payload.requested_by_email ?? payload.requested_by?.email ?? '',
+    requested_by_type: payload.requested_by_type ?? payload.requested_by?.type ?? '',
+    status: payload.status === 'pending' ? 'pending' : 'submitted',
+  }
+
+  if (entryType === 'asset_purchase') {
+    return {
+      ...base,
+      asset_account_id: Number(payload.asset_account_id),
+    }
+  }
+
+  return {
+    ...base,
+    category_id: Number(payload.category_id),
+    head_id: Number(payload.head_id),
     linked_account_category: payload.linked_account_category || accountData.linked_account_category || '',
     linked_account_id: payload.linked_account_id || accountData.linked_account_id || null,
     linked_account_name: accountData.linked_account_name || '',
@@ -50,11 +68,6 @@ export function buildBillEntryPayload(payload, accountData = {}) {
     expense_cost_category_name: accountData.expense_cost_category_name || '',
     application_id: payload.application_id ? Number(payload.application_id) : null,
     demand_letter_id: payload.demand_letter_id ? Number(payload.demand_letter_id) : null,
-    requested_by_id: payload.requested_by_id ?? payload.requested_by?.id ?? null,
-    requested_by_name: payload.requested_by_name ?? payload.requested_by?.name ?? '',
-    requested_by_email: payload.requested_by_email ?? payload.requested_by?.email ?? '',
-    requested_by_type: payload.requested_by_type ?? payload.requested_by?.type ?? '',
-    status: payload.status === 'pending' ? 'pending' : 'submitted',
   }
 }
 

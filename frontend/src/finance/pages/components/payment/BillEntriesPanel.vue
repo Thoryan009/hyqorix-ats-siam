@@ -7,8 +7,10 @@
           <BaseInput v-model="filters.search" placeholder="Search bill entries..." />
         </div>
 
-        <div class="flex min-w-[200px] flex-col">
-          <label class="mb-1 text-sm text-gray-700">Expense Category</label>
+        <div v-if="showCategoryFilter" class="flex min-w-[200px] flex-col">
+          <label class="mb-1 text-sm text-gray-700">
+            {{ entryType === 'asset_purchase' ? 'Type' : 'Expense Category' }}
+          </label>
           <BaseSelect
             v-model="filters.categoryId"
             :options="categoryFilterOptions"
@@ -109,7 +111,9 @@
             </th>
             <th class="border-b border-gray-200 px-3 py-2 text-left">Bill Date</th>
             <th class="border-b border-gray-200 px-3 py-2 text-left">Category</th>
-            <th class="border-b border-gray-200 px-3 py-2 text-left">Expense Head</th>
+            <th class="border-b border-gray-200 px-3 py-2 text-left">
+              {{ entryType === 'asset_purchase' ? 'Asset Account' : 'Expense Head' }}
+            </th>
             <th class="border-b border-gray-200 px-3 py-2 text-left">Linked Account</th>
             <th class="border-b border-gray-200 px-3 py-2 text-left">Candidate / DL</th>
             <th class="border-b border-gray-200 px-3 py-2 text-left">Bill No</th>
@@ -456,6 +460,11 @@ const props = defineProps({
     validator: (value) =>
       ['all', 'submitted', 'pending', 'processed', 'payable', 'rejected'].includes(value),
   },
+  entryType: {
+    type: String,
+    default: 'all',
+    validator: (value) => ['all', 'expense_bill', 'asset_purchase'].includes(value),
+  },
 })
 
 const router = useRouter()
@@ -469,6 +478,10 @@ const isBatchGroupedScope = computed(() =>
 const isBatchSelectableScope = computed(
   () => props.statusScope === 'submitted' || props.statusScope === 'pending'
 )
+
+const showCategoryFilter = computed(() => props.entryType !== 'asset_purchase')
+
+const entryType = computed(() => props.entryType)
 
 const batchHeaderClass = computed(() => {
   if (props.statusScope === 'pending') return 'border-amber-100 bg-amber-50/80'
@@ -570,27 +583,29 @@ const showStatusFilter = computed(
 )
 
 const scopedPayments = computed(() => {
+  let rows = paymentStore.payments
+
   if (props.statusScope === 'submitted') {
-    return paymentStore.payments.filter((entry) => entry.status === 'submitted')
+    rows = rows.filter((entry) => entry.status === 'submitted')
+  } else if (props.statusScope === 'pending') {
+    rows = rows.filter((entry) => entry.status === 'pending')
+  } else if (props.statusScope === 'processed') {
+    rows = rows.filter((entry) => isProcessedBill(entry))
+  } else if (props.statusScope === 'rejected') {
+    rows = rows.filter((entry) => entry.status === 'rejected')
+  } else if (props.statusScope === 'payable') {
+    rows = rows.filter((entry) => isPayableBill(entry))
   }
 
-  if (props.statusScope === 'pending') {
-    return paymentStore.payments.filter((entry) => entry.status === 'pending')
+  if (props.entryType === 'asset_purchase') {
+    return rows.filter((entry) => entry.entry_type === 'asset_purchase')
   }
 
-  if (props.statusScope === 'processed') {
-    return paymentStore.payments.filter((entry) => isProcessedBill(entry))
+  if (props.entryType === 'expense_bill') {
+    return rows.filter((entry) => (entry.entry_type || 'expense_bill') !== 'asset_purchase')
   }
 
-  if (props.statusScope === 'rejected') {
-    return paymentStore.payments.filter((entry) => entry.status === 'rejected')
-  }
-
-  if (props.statusScope === 'payable') {
-    return paymentStore.payments.filter((entry) => isPayableBill(entry))
-  }
-
-  return paymentStore.payments
+  return rows
 })
 
 const filteredRows = computed(() => {
@@ -599,13 +614,14 @@ const filteredRows = computed(() => {
   return scopedPayments.value.filter((entry) => {
     const matchesSearch =
       !query ||
-      entry.category_name.toLowerCase().includes(query) ||
+      String(entry.category_name || '').toLowerCase().includes(query) ||
+      String(entry.asset_account_name || '').toLowerCase().includes(query) ||
       entry.candidate_name?.toLowerCase().includes(query) ||
       entry.passport_no?.toLowerCase().includes(query) ||
       entry.job_name?.toLowerCase().includes(query) ||
       entry.demand_letter?.toLowerCase().includes(query) ||
       entry.client_name?.toLowerCase().includes(query) ||
-      entry.head_name.toLowerCase().includes(query) ||
+      String(entry.head_name || '').toLowerCase().includes(query) ||
       getLinkedBillAccountTypeLabel(entry).toLowerCase().includes(query) ||
       getLinkedBillAccountName(entry).toLowerCase().includes(query) ||
       entry.particular.toLowerCase().includes(query) ||
@@ -685,6 +701,12 @@ const hasActiveFilters = computed(
 )
 
 const emptyTitle = computed(() => {
+  if (props.statusScope === 'submitted' && props.entryType === 'asset_purchase') {
+    return 'No submitted purchases awaiting manager approval.'
+  }
+  if (props.statusScope === 'submitted' && props.entryType === 'expense_bill') {
+    return 'No submitted expense bills awaiting manager approval.'
+  }
   if (props.statusScope === 'submitted') return 'No submitted bills awaiting manager approval.'
   if (props.statusScope === 'pending') return 'No expense bills ready to pay.'
   if (props.statusScope === 'processed') return 'No processed bill entries yet.'
@@ -694,8 +716,14 @@ const emptyTitle = computed(() => {
 })
 
 const emptyHint = computed(() => {
+  if (props.statusScope === 'submitted' && props.entryType === 'asset_purchase') {
+    return 'Submit an Asset Purchase from Bills & Purchases to see it here.'
+  }
+  if (props.statusScope === 'submitted' && props.entryType === 'expense_bill') {
+    return 'New expense bills appear here after staff submit from Bills & Purchases.'
+  }
   if (props.statusScope === 'submitted') {
-    return 'New bills appear here after staff submit from Bill Generation.'
+    return 'New bills appear here after staff submit from Bills & Purchases.'
   }
   if (props.statusScope === 'pending') {
     return 'Bills appear here after a manager approves them from Submitted Bills.'

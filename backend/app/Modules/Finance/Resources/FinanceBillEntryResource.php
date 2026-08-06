@@ -11,10 +11,17 @@ class FinanceBillEntryResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'entry_type' => $this->entry_type ?? 'expense_bill',
             'category_id' => $this->expense_category_id,
-            'category_name' => $this->expenseCategory?->name,
+            'category_name' => $this->entry_type === 'asset_purchase'
+                ? 'Asset Purchase'
+                : $this->expenseCategory?->name,
             'head_id' => $this->expense_head_id,
-            'head_name' => $this->expenseHead?->name,
+            'head_name' => $this->entry_type === 'asset_purchase'
+                ? ($this->assetAccount?->account_name ?? '')
+                : $this->expenseHead?->name,
+            'asset_account_id' => $this->asset_account_id,
+            'asset_account_name' => $this->assetAccount?->account_name ?? '',
             'amount' => (float) $this->amount,
             'paid_amount' => (float) ($this->paid_amount ?? 0),
             'payable_remaining' => round(max((float) $this->amount - (float) ($this->paid_amount ?? 0), 0), 2),

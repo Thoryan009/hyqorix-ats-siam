@@ -49,7 +49,7 @@
             <p class="text-xs text-slate-500">Enter bill or purchase details and submit when ready</p>
           </div>
           <span
-            v-if="selectedHead"
+            v-if="!isAssetPurchase && selectedHead"
             class="hidden rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600 sm:inline"
           >
             Prev. billed {{ formatCurrency(totalPaidForHead) }}
@@ -57,6 +57,26 @@
         </div>
 
         <div class="px-4 py-4 sm:px-5">
+          <div class="mb-4 space-y-2">
+            <BaseLabel>Entry Type</BaseLabel>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="option in billEntryTypeOptions"
+                :key="option.id"
+                type="button"
+                class="rounded-lg border px-4 py-2 text-sm font-semibold transition-all"
+                :class="
+                  form.entry_type === option.id
+                    ? option.activeClass
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                "
+                @click="form.entry_type = option.id"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div class="space-y-1.5">
               <BaseLabel for="payment_date">Bill Date</BaseLabel>
@@ -73,6 +93,25 @@
               />
             </div>
 
+            <template v-if="isAssetPurchase">
+              <div class="space-y-1.5 sm:col-span-2">
+                <BaseLabel for="asset_account_id">Asset Account</BaseLabel>
+                <BaseSelect
+                  id="asset_account_id"
+                  v-model="form.asset_account_id"
+                  :options="purchaseAssetAccountOptions"
+                  placeholder="Select purchase-linked asset account"
+                  :required="true"
+                  :disabled="!purchaseAssetAccountOptions.length"
+                />
+                <p v-if="!purchaseAssetAccountOptions.length" class="text-xs text-amber-600">
+                  No asset accounts are linked to purchase. Enable “Link to Purchase” on an asset
+                  account first.
+                </p>
+              </div>
+            </template>
+
+            <template v-else>
             <div class="space-y-1.5">
               <BaseLabel for="category_id">Expense Category</BaseLabel>
               <BaseSelect
@@ -231,13 +270,14 @@
             <div v-if="isClientRecruitmentCost" class="sm:col-span-2">
               <ClientRecruitmentDlSelector v-model="form.demand_letter_id" />
             </div>
+            </template>
 
             <div v-if="!isOperatingCost" class="space-y-1.5 sm:col-span-2">
               <BaseLabel for="particular">Particular</BaseLabel>
               <BaseInput
                 id="particular"
                 v-model="form.particular"
-                placeholder="Expense bill particular"
+                :placeholder="isAssetPurchase ? 'Asset purchase particular' : 'Expense bill particular'"
               />
             </div>
 
@@ -275,7 +315,7 @@
                   Total {{ formatCurrency(totalBillAmount) }}
                 </span>
               </div>
-              <p v-else-if="selectedHead" class="text-xs text-slate-500">
+              <p v-else-if="!isAssetPurchase && selectedHead" class="text-xs text-slate-500">
                 Base price {{ formatCurrency(selectedHead.base_price) }}
                 <span
                   v-if="hasLegacyExpenseCostAccountType && !selectedExpenseCostAccount"
@@ -445,6 +485,8 @@ import { partyTypesWithAccounts } from '@/finance/config/partyAccountConfigs'
 import { useAccountStore } from '@/finance/store/accountStore'
 import { usePartyAccountsStore } from '@/finance/store/partyAccountsStore'
 import { useAgentAccountStore } from '@/finance/store/agentAccountStore'
+import { useFinanceAccountStore } from '@/finance/store/financeAccountStore'
+import { ACCOUNT_CATEGORIES } from '@/finance/data/accountCategoryCodes'
 import { useAuthQuery } from '@/modules/auth/queries/useAuthQuery'
 import Swal from 'sweetalert2'
 
@@ -468,7 +510,21 @@ const expenseCostAccountsStore = useExpenseCostAccountsStore()
 const accountStore = useAccountStore()
 const partyAccountsStore = usePartyAccountsStore()
 const agentAccountStore = useAgentAccountStore()
+const financeAccountStore = useFinanceAccountStore()
 const { data: authData } = useAuthQuery()
+
+const billEntryTypeOptions = [
+  {
+    id: 'expense_bill',
+    label: 'Expense Bill',
+    activeClass: 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500',
+  },
+  {
+    id: 'asset_purchase',
+    label: 'Asset Purchase',
+    activeClass: 'border-sky-500 bg-sky-50 text-sky-800 ring-1 ring-sky-500',
+  },
+]
 
 const submitLoading = ref(false)
 const submitMode = ref('submitted')
@@ -636,9 +692,11 @@ function buildPrintLinkedAccounts(result = null) {
 const getRequestedByPayload = () => authData.value?.data ?? {}
 
 const createDefaultForm = () => ({
+  entry_type: 'expense_bill',
   payment_date: new Date().toISOString().slice(0, 10),
   category_id: props.initialCategoryId ? String(props.initialCategoryId) : '',
   head_id: props.initialHeadId ? String(props.initialHeadId) : '',
+  asset_account_id: '',
   amount: '',
   payment_method: 'cash',
   particular: '',
@@ -749,6 +807,25 @@ const paymentMethodOptions = paymentMethods.map((method) => ({
 
 const selectedPaymentMethodLabel = computed(
   () => paymentMethodOptions.find((method) => method.id === form.payment_method)?.name ?? '—'
+)
+
+const isAssetPurchase = computed(() => form.entry_type === 'asset_purchase')
+
+const selectedAssetAccount = computed(
+  () =>
+    financeAccountStore
+      .getAccountsByCategory(ACCOUNT_CATEGORIES.ASSET)
+      .find((account) => Number(account.id) === Number(form.asset_account_id)) ?? null
+)
+
+const purchaseAssetAccountOptions = computed(() =>
+  financeAccountStore
+    .getAccountsByCategory(ACCOUNT_CATEGORIES.ASSET)
+    .filter((account) => account.status === 'Active' && account.link_to_purchase)
+    .map((account) => ({
+      id: account.id,
+      name: `${account.account_name} — ${formatCurrency(account.balance ?? account.current_balance ?? 0)}`,
+    }))
 )
 
 const categoryOptions = computed(() =>
@@ -1145,7 +1222,27 @@ function handleManualSubmit() {
 async function handleSubmit(statusOrEvent = 'submitted') {
   const status = statusOrEvent === 'pending' ? 'pending' : 'submitted'
 
-  if (isDirectCost.value && !form.job_id) {
+  if (isAssetPurchase.value) {
+    if (!form.asset_account_id) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Asset Account Required',
+        text: 'Please select an asset account linked to purchase.',
+        confirmButtonColor: '#22C55E',
+      })
+      return
+    }
+
+    if (!(Number(form.amount) > 0)) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Amount Required',
+        text: 'Please enter a valid purchase amount.',
+        confirmButtonColor: '#22C55E',
+      })
+      return
+    }
+  } else if (isDirectCost.value && !form.job_id) {
     await Swal.fire({
       icon: 'warning',
       title: 'Job Required',
@@ -1233,13 +1330,15 @@ async function handleSubmit(statusOrEvent = 'submitted') {
     billDate: form.payment_date,
     paymentMethodLabel: selectedPaymentMethodLabel.value,
     referenceNo: form.reference_no,
-    categoryName: selectedCategoryName.value,
-    categoryCode: selectedCategory.value?.code || '',
-    expenseHeadName: isOperatingCost.value
-      ? selectedOperatingLines.value.length > 1
-        ? `${selectedOperatingLines.value.length} expense heads`
-        : printLineItems.value[0]?.expenseHeadName || '—'
-      : selectedHead.value?.name || '—',
+    categoryName: isAssetPurchase.value ? 'Asset Purchase' : selectedCategoryName.value,
+    categoryCode: isAssetPurchase.value ? '' : selectedCategory.value?.code || '',
+    expenseHeadName: isAssetPurchase.value
+      ? selectedAssetAccount.value?.account_name || '—'
+      : isOperatingCost.value
+        ? selectedOperatingLines.value.length > 1
+          ? `${selectedOperatingLines.value.length} expense heads`
+          : printLineItems.value[0]?.expenseHeadName || '—'
+        : selectedHead.value?.name || '—',
     particular: isOperatingCost.value
       ? printLineItems.value.map((item) => item.description).join(', ')
       : form.particular,
@@ -1253,8 +1352,10 @@ async function handleSubmit(statusOrEvent = 'submitted') {
   }
 
   const billPayload = {
+    entry_type: form.entry_type,
     category_id: form.category_id,
     head_id: form.head_id,
+    asset_account_id: form.asset_account_id,
     amount: form.amount,
     payment_date: form.payment_date,
     payment_method: form.payment_method,
@@ -1271,7 +1372,9 @@ async function handleSubmit(statusOrEvent = 'submitted') {
   }
 
   let result
-  if (isDirectCost.value) {
+  if (isAssetPurchase.value) {
+    result = await paymentStore.payAssetPurchase(billPayload)
+  } else if (isDirectCost.value) {
     result = await paymentStore.payExpenseBatch({
       ...billPayload,
       application_ids: form.application_ids,
@@ -1366,11 +1469,18 @@ function printSubmittedBill() {
 }
 
 function createAnotherBill() {
+  const keepEntryType = form.entry_type
   const keepCategoryId = form.category_id
   const keepHeadId = form.head_id
+  const keepAssetAccountId = form.asset_account_id
   submittedBill.value = null
   resetForm()
   showOptionalDetails.value = false
+  form.entry_type = keepEntryType
+  if (keepEntryType === 'asset_purchase') {
+    form.asset_account_id = keepAssetAccountId
+    return
+  }
   form.category_id = keepCategoryId
   if (!isCategoryCode(
     categoryStore.categories.find((category) => Number(category.id) === Number(keepCategoryId)),
@@ -1392,6 +1502,7 @@ onMounted(async () => {
     categoryStore.fetchCategories(),
     headStore.fetchHeads(),
     paymentStore.fetchBillEntries(),
+    financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.ASSET, true),
     expenseCostAccountsStore.fetchAccounts('direct_cost'),
     expenseCostAccountsStore.fetchAccounts('client_recruitment_cost'),
     expenseCostAccountsStore.fetchAccounts('operating_cost'),
@@ -1400,6 +1511,25 @@ onMounted(async () => {
     ...partyTypesWithAccounts.map((partyType) => partyAccountsStore.fetchAccounts(partyType)),
   ])
 })
+
+watch(
+  () => form.entry_type,
+  (entryType) => {
+    if (entryType === 'asset_purchase') {
+      form.category_id = ''
+      form.head_id = ''
+      form.application_ids = []
+      form.job_id = ''
+      form.demand_letter_id = ''
+      form.operating_lines = []
+      form.linked_account_category = ''
+      form.linked_account_id = ''
+      return
+    }
+
+    form.asset_account_id = ''
+  }
+)
 
 watch(
   () => form.category_id,

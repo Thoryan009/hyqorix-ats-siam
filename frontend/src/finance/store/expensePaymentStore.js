@@ -124,6 +124,23 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
     () => payments.value.filter((payment) => payment.status === 'submitted').length,
   )
 
+  const submittedExpenseBillCount = computed(
+    () =>
+      payments.value.filter(
+        (payment) =>
+          payment.status === 'submitted' &&
+          (payment.entry_type || 'expense_bill') !== 'asset_purchase',
+      ).length,
+  )
+
+  const submittedPurchaseCount = computed(
+    () =>
+      payments.value.filter(
+        (payment) =>
+          payment.status === 'submitted' && payment.entry_type === 'asset_purchase',
+      ).length,
+  )
+
   const pendingBillCount = computed(
     () => payments.value.filter((payment) => payment.status === 'pending').length,
   )
@@ -826,6 +843,69 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
     }
   }
 
+  async function payAssetPurchase(payload) {
+    const amount = Number(payload.amount)
+    const paymentDate = payload.payment_date || new Date().toISOString().slice(0, 10)
+    const assetAccountId = Number(payload.asset_account_id)
+
+    if (!paymentDate) {
+      return { ok: false, message: 'Please select a bill date.' }
+    }
+
+    if (!assetAccountId) {
+      return { ok: false, message: 'Please select an asset account.' }
+    }
+
+    if (!amount || amount <= 0) {
+      return { ok: false, message: 'Please enter a valid payment amount.' }
+    }
+
+    const { useFinanceAccountStore } = await import('./financeAccountStore')
+    const { ACCOUNT_CATEGORIES } = await import('../data/accountCategoryCodes')
+    const financeAccountStore = useFinanceAccountStore()
+    await financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.ASSET, true)
+
+    const assetAccount = financeAccountStore
+      .getAccountsByCategory(ACCOUNT_CATEGORIES.ASSET)
+      .find((account) => Number(account.id) === assetAccountId)
+
+    if (!assetAccount) {
+      return { ok: false, message: 'Asset account was not found.' }
+    }
+
+    if (assetAccount.status !== 'Active') {
+      return { ok: false, message: 'Selected asset account is not active.' }
+    }
+
+    if (!assetAccount.link_to_purchase) {
+      return { ok: false, message: 'Selected asset account is not linked to purchase.' }
+    }
+
+    const particular =
+      payload.particular?.trim() || `Asset Purchase - ${assetAccount.account_name}`
+
+    try {
+      const apiPayload = buildBillEntryPayload({
+        ...payload,
+        entry_type: 'asset_purchase',
+        asset_account_id: assetAccountId,
+        amount,
+        payment_date: paymentDate,
+        particular,
+        ...resolveRequestedBy(payload),
+      })
+
+      const response = await submitData(apiPayload)
+      const payment = mapBillEntryFromApi(extractBillEntryRow(response))
+
+      upsertPayment(payment)
+
+      return { ok: true, payment }
+    } catch (error) {
+      return { ok: false, message: getApiErrorMessage(error, 'Failed to save asset purchase.') }
+    }
+  }
+
   function deletePayment(id) {
     payments.value = payments.value.filter((payment) => payment.id !== id)
   }
@@ -1294,6 +1374,8 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
     thisMonthPaidAmount,
     pendingBillCount,
     submittedBillCount,
+    submittedExpenseBillCount,
+    submittedPurchaseCount,
     approvedBillCount,
     payableBillCount,
     fetchBillEntries,
@@ -1303,6 +1385,7 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
     getBilledApplicationIdsByHead,
     hasApplicationBillForHead,
     payExpense,
+    payAssetPurchase,
     payExpenseBatch,
     payExpenseMultiHead,
     managerApproveBillEntry,

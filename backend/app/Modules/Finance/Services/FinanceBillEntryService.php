@@ -906,6 +906,15 @@ class FinanceBillEntryService extends BaseCachedService
 
     private function buildCreatePayload(array $data, bool $generateVoucher = true): array
     {
+        $entryType = strtolower(trim((string) ($data['entry_type'] ?? 'expense_bill')));
+        if (!in_array($entryType, ['expense_bill', 'asset_purchase'], true)) {
+            $entryType = 'expense_bill';
+        }
+
+        if ($entryType === 'asset_purchase') {
+            return $this->buildAssetPurchaseCreatePayload($data, $generateVoucher);
+        }
+
         $categoryId = (int) ($data['category_id'] ?? $data['expense_category_id'] ?? 0);
         $headId = (int) ($data['head_id'] ?? $data['expense_head_id'] ?? 0);
         $paymentDate = $data['payment_date'] ?? now()->toDateString();
@@ -929,6 +938,7 @@ class FinanceBillEntryService extends BaseCachedService
         $voucherNo = $referenceNo !== '' ? $referenceNo : ($generateVoucher ? $this->nextVoucherNo('BILL', Carbon::parse($paymentDate)) : null);
 
         $payload = [
+            'entry_type' => 'expense_bill',
             'expense_category_id' => $categoryId,
             'expense_head_id' => $headId,
             'amount' => (float) $data['amount'],
@@ -967,6 +977,57 @@ class FinanceBillEntryService extends BaseCachedService
         }
 
         return $payload;
+    }
+
+    private function buildAssetPurchaseCreatePayload(array $data, bool $generateVoucher = true): array
+    {
+        $assetAccountId = (int) ($data['asset_account_id'] ?? 0);
+        $assetAccount = FinanceAccount::query()
+            ->where('id', $assetAccountId)
+            ->where('category', 'asset')
+            ->where('link_to_purchase', true)
+            ->where('status', 'active')
+            ->first();
+
+        if (!$assetAccount) {
+            throw ValidationException::withMessages([
+                'asset_account_id' => ['Please select a valid purchase-linked asset account.'],
+            ]);
+        }
+
+        $paymentDate = $data['payment_date'] ?? now()->toDateString();
+        $referenceNo = trim((string) ($data['reference_no'] ?? ''));
+        $voucherNo = $referenceNo !== '' ? $referenceNo : ($generateVoucher ? $this->nextVoucherNo('BILL', Carbon::parse($paymentDate)) : null);
+        $accountName = trim((string) $assetAccount->account_name);
+
+        return [
+            'entry_type' => 'asset_purchase',
+            'expense_category_id' => null,
+            'expense_head_id' => null,
+            'asset_account_id' => $assetAccount->id,
+            'amount' => (float) $data['amount'],
+            'payment_method' => $data['payment_method'] ?? 'cash',
+            'payment_date' => $paymentDate,
+            'particular' => trim((string) ($data['particular'] ?? "Asset Purchase - {$accountName}")),
+            'reference_no' => $referenceNo,
+            'voucher_no' => $voucherNo,
+            'batch_ref' => trim((string) ($data['batch_ref'] ?? '')) ?: null,
+            'request_no' => trim((string) ($data['request_no'] ?? '')) ?: null,
+            'remarks' => trim((string) ($data['remarks'] ?? '')),
+            'receipt_path' => $data['receipt_path'] ?? null,
+            'status' => $this->resolveCreateStatus($data),
+            'is_manual_request' => $this->resolveCreateStatus($data) === 'pending',
+            'approval_remarks' => '',
+            'linked_account_category' => null,
+            'linked_account_id' => null,
+            'linked_account_name' => null,
+            'linked_account_type' => null,
+            'expense_cost_type' => null,
+            'expense_cost_account_id' => null,
+            'expense_cost_account_name' => null,
+            'expense_cost_category_name' => null,
+            ...$this->resolveRequestedByFields($data),
+        ];
     }
 
     private function resolveCreateStatus(array $data): string
