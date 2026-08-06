@@ -45,8 +45,8 @@
           class="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5"
         >
           <div>
-            <h3 class="text-sm font-semibold text-slate-900">Generate Bill</h3>
-            <p class="text-xs text-slate-500">Enter bill details and submit when ready</p>
+            <h3 class="text-sm font-semibold text-slate-900">Bills & Purchases</h3>
+            <p class="text-xs text-slate-500">Enter bill or purchase details and submit when ready</p>
           </div>
           <span
             v-if="selectedHead"
@@ -1300,7 +1300,7 @@ async function handleSubmit(statusOrEvent = 'submitted') {
   if (!result.ok) {
     await Swal.fire({
       icon: 'error',
-      title: 'Bill Generation Failed',
+      title: 'Bills & Purchases Failed',
       text: result.message,
       confirmButtonColor: '#22C55E',
     })
