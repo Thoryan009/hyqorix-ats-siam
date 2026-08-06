@@ -229,7 +229,6 @@ export default {
     transactions: 'Transactions',
     expense_setup: 'Expense Setup',
     gross_profit_report: 'Gross Profit Report',
-    income_tax: 'Income Tax',
 
     hr_access_control: 'HR & Access Control',
     employee_management: 'Employee Management',

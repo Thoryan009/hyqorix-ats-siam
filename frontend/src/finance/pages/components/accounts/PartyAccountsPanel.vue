@@ -5,6 +5,7 @@
 
     <template v-if="isPartyAccountsType(partyType)">
       <CreateBankAccountModal v-if="partyType === 'banks'" />
+      <CreateOwnerAccountModal v-else-if="partyType === 'owners'" />
       <CreatePartyAccountModal v-else :party-type="partyType" />
       <EditPartyAccountModal :party-type="partyType" />
     </template>
@@ -231,6 +232,7 @@ import CreateAgentAccountModal from './CreateAgentAccountModal.vue'
 import EditAgentAccountModal from './EditAgentAccountModal.vue'
 import CreatePartyAccountModal from './CreatePartyAccountModal.vue'
 import CreateBankAccountModal from './CreateBankAccountModal.vue'
+import CreateOwnerAccountModal from './CreateOwnerAccountModal.vue'
 import EditPartyAccountModal from './EditPartyAccountModal.vue'
 
 const props = defineProps({

@@ -149,7 +149,7 @@ class FinanceTrialBalanceService
             // - applicants → Bills Receivable
             // - clients → Income Receivable (e.g. Client Commission Receivable)
             // - vendor / staff / principal → Asset & Liabilities accounts (Other Transaction)
-            if (in_array($category, ['agent', 'applicant', 'client', 'vendor', 'staff', 'principal', 'banks'], true)) {
+            if (in_array($category, ['agent', 'applicant', 'client', 'vendor', 'staff', 'principal', 'banks', 'owners'], true)) {
                 continue;
             }
 

@@ -6,7 +6,6 @@ use App\Modules\Finance\Models\ExpenseCategory;
 use App\Modules\Finance\Models\ExpenseHead;
 use App\Modules\Finance\Models\FinanceAccountLedgerEntry;
 use App\Modules\Finance\Models\FinanceBillEntry;
-use App\Modules\Finance\Models\FinanceIncomeTax;
 use App\Modules\Finance\Models\FinanceIncomeCollection;
 use App\Modules\Finance\Models\IncomeHead;
 use Illuminate\Support\Facades\DB;
@@ -202,70 +201,25 @@ class FinanceIncomeStatementService
 
         $totalIncomeCollections = round($totalIncomeCollections, 2);
         $totalIncome = round($grossProfit + $totalIncomeCollections, 2);
-        $netProfitBeforeTax = round($totalIncome - $totalExpenses, 2);
-
-        // Apply saved Income Tax (assessment-year) to show Profit After Tax.
-        $incomeTaxAmount = 0.0;
-        $taxYear = null;
-
-        $fromDate = $filters['from_date'] ?? null;
-        $toDate = $filters['to_date'] ?? null;
-
-        if (!empty($fromDate) && !empty($toDate)) {
-            $fromYear = (int) date('Y', strtotime($fromDate));
-            $toYear = (int) date('Y', strtotime($toDate));
-
-            // Only apply income tax when the statement range is within one assessment year.
-            if ($fromYear === $toYear) {
-                $taxYear = $toYear;
-            }
-        } elseif (!empty($toDate)) {
-            $taxYear = (int) date('Y', strtotime($toDate));
-        } elseif (!empty($fromDate)) {
-            $taxYear = (int) date('Y', strtotime($fromDate));
-        }
-
-        if (!empty($taxYear)) {
-            $incomeTax = FinanceIncomeTax::query()
-                ->where('year', $taxYear)
-                ->where('status', 'active')
-                ->latest('id')
-                ->first();
-
-            $incomeTaxAmount = round((float) ($incomeTax?->tax_amount ?? 0), 2);
-        }
-
-        $netProfitAfterTax = round($netProfitBeforeTax - $incomeTaxAmount, 2);
+        $netProfit = round($totalIncome - $totalExpenses, 2);
 
         // Two-sided account balance: Net Profit c/d on debit when profit,
         // Net Loss c/d on credit when loss.
-        if ($incomeTaxAmount > 0) {
-            // Income Tax reduces profit → show on the Debit side before the closing balance.
-            $debitLines[] = [
-                'label' => 'Income Tax',
-                'amount' => $incomeTaxAmount,
-                'is_balancing' => false,
-            ];
-        }
-
-        // Two-sided account balance should show *before-tax* profit/loss.
-        if ($netProfitBeforeTax >= 0) {
+        if ($netProfit >= 0) {
             $debitLines[] = [
                 'label' => 'Net Profit c/d',
-                'amount' => $netProfitBeforeTax,
+                'amount' => $netProfit,
                 'is_balancing' => true,
             ];
         } else {
             $creditLines[] = [
                 'label' => 'Net Loss c/d',
-                'amount' => abs($netProfitBeforeTax),
+                'amount' => abs($netProfit),
                 'is_balancing' => true,
             ];
         }
 
-        // Totals row should represent Profit Before Tax.
-        // Income Tax is displayed as an expense line, but it is deducted after the table.
-        $debitTotal = round(array_sum(array_column($debitLines, 'amount')) - $incomeTaxAmount, 2);
+        $debitTotal = round(array_sum(array_column($debitLines, 'amount')), 2);
         $creditTotal = round(array_sum(array_column($creditLines, 'amount')), 2);
 
         return [
@@ -278,12 +232,8 @@ class FinanceIncomeStatementService
                 'total_income_collections' => $totalIncomeCollections,
                 'total_income' => $totalIncome,
                 'total_operating_expense' => $totalExpenses,
-                'income_tax_amount' => $incomeTaxAmount,
-                'tax_year' => $taxYear,
-                'net_profit_before_tax' => $netProfitBeforeTax,
-                'net_profit' => $netProfitAfterTax,
-                'is_profit' => $netProfitAfterTax >= 0,
-                'is_profit_before_tax' => $netProfitBeforeTax >= 0,
+                'net_profit' => $netProfit,
+                'is_profit' => $netProfit >= 0,
             ],
         ];
     }

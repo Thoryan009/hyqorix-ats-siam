@@ -305,13 +305,6 @@ export const navGroups = [
         permission: 'balance_sheet.view',
         section: 'Reports',
       },
-      {
-        name: 'navigation.income_tax',
-        path: '/finance/income-tax',
-        icon: 'fa fa-percent',
-        permission: 'income_tax.view',
-        section: 'Reports',
-      },
       // {
       //   name: 'navigation.generate_bill',
       //   path: '/finance/agent-bills/generate',

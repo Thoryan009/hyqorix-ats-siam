@@ -100,10 +100,16 @@ class FinanceAccountRequest extends FormRequest
                 ->ignore($accountId);
         }
 
-        if ($category && in_array($category, ['agent', 'vendor', 'principal', 'client', 'staff', 'banks'], true)) {
+        if ($category && in_array($category, ['agent', 'vendor', 'principal', 'client', 'staff', 'banks', 'owners'], true)) {
             $rules['opening_amount'][] = 'prohibited';
             $rules['opening_amount_type'][] = 'prohibited';
             $rules['main_account_id'][] = 'prohibited';
+        }
+
+        if ($category === 'owners') {
+            $rules['account_name'][] = Rule::unique('finance_accounts', 'account_name')
+                ->where(fn ($query) => $query->where('category', 'owners'))
+                ->ignore($accountId);
         }
 
         if ($category === 'banks') {

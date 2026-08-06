@@ -22,6 +22,7 @@ export const ACCOUNT_CATEGORIES = {
   STAFF: 'staff',
   APPLICANT: 'applicant',
   BANKS: 'banks',
+  OWNERS: 'owners',
 }
 
 export const ACCOUNT_CATEGORY_OPTIONS = [
@@ -42,6 +43,7 @@ export const ACCOUNT_CATEGORY_OPTIONS = [
   { id: ACCOUNT_CATEGORIES.STAFF, name: 'Staff Account' },
   { id: ACCOUNT_CATEGORIES.APPLICANT, name: 'Applicant Account' },
   { id: ACCOUNT_CATEGORIES.BANKS, name: 'Bank Account' },
+  { id: ACCOUNT_CATEGORIES.OWNERS, name: 'Owner Account' },
 ]
 
 /** Legacy expense cost tab keys → unified account category */
@@ -65,6 +67,7 @@ export const PARTY_TYPE_TO_ACCOUNT_CATEGORY = {
   staff: ACCOUNT_CATEGORIES.STAFF,
   applicant: ACCOUNT_CATEGORIES.APPLICANT,
   banks: ACCOUNT_CATEGORIES.BANKS,
+  owners: ACCOUNT_CATEGORIES.OWNERS,
 }
 
 export function getAccountCategoryFromCostType(costType) {

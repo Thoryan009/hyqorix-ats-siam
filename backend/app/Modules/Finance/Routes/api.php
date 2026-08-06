@@ -14,7 +14,6 @@ use App\Modules\Finance\Controllers\Api\FinanceGrossProfitReportController;
 use App\Modules\Finance\Controllers\Api\FinanceIncomeStatementController;
 use App\Modules\Finance\Controllers\Api\FinanceBalanceSheetController;
 use App\Modules\Finance\Controllers\Api\FinanceTrialBalanceController;
-use App\Modules\Finance\Controllers\Api\FinanceIncomeTaxController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('finance-reports/gross-profit', [FinanceGrossProfitReportController::class, 'index'])
@@ -25,10 +24,6 @@ Route::get('finance-reports/income-statement', [FinanceIncomeStatementController
     ->middleware('permission:income_statement.view');
 Route::get('finance-reports/balance-sheet', [FinanceBalanceSheetController::class, 'index'])
     ->middleware('permission:balance_sheet.view');
-
-Route::get('finance-income-taxes/year-context', [FinanceIncomeTaxController::class, 'yearContext'])
-    ->middleware('permission:income_tax.view');
-Route::crud('finance-income-taxes', FinanceIncomeTaxController::class, 'income_tax');
 
 Route::get('finance-income-collections', [FinanceIncomeCollectionController::class, 'index'])
     ->middleware('permission:receive_payment.create');

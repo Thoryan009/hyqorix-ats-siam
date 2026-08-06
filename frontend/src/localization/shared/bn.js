@@ -236,7 +236,6 @@ export default {
     transactions: 'লেনদেন',
     expense_setup: 'ব্যয় সেটআপ',
     gross_profit_report: 'মোট লাভ রিপোর্ট',
-    income_tax: 'আয়কর',
 
     hr_access_control: 'এইচআর ও অ্যাক্সেস নিয়ন্ত্রণ',
     employee_management: 'কর্মচারী ম্যানেজমেন্ট',

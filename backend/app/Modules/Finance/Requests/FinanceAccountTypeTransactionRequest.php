@@ -19,6 +19,7 @@ class FinanceAccountTypeTransactionRequest extends FormRequest
         'client',
         'applicant',
         'banks',
+        'owners',
     ];
 
     private const TRANSACTION_TYPES = [
@@ -134,11 +135,21 @@ class FinanceAccountTypeTransactionRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
+            $type = (string) $this->input('transaction_type');
+            $isAdjustment = in_array($type, ['adjust_minus', 'adjust_plus'], true);
+
             $selected = array_filter([
                 'owners_equity_account_id' => $this->input('owners_equity_account_id'),
                 'asset_account_id' => $this->input('asset_account_id'),
                 'liabilities_account_id' => $this->input('liabilities_account_id'),
             ], fn ($value) => !empty($value));
+
+            if (!$isAdjustment && count($selected) === 0) {
+                $message = "Please select one of Owner's Equity, Asset, or Liabilities account.";
+                $validator->errors()->add('owners_equity_account_id', $message);
+                $validator->errors()->add('asset_account_id', $message);
+                $validator->errors()->add('liabilities_account_id', $message);
+            }
 
             if (count($selected) > 1) {
                 $message = "Please select only one of Owner's Equity, Asset, or Liabilities account.";

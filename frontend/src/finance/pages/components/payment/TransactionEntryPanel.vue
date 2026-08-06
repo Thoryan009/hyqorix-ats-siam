@@ -85,7 +85,10 @@
             </div>
 
             <div v-if="!isAdjustmentType" class="space-y-2">
-              <BaseLabel for="txn_owners_equity_account_id">Owner's Equity Account</BaseLabel>
+              <BaseLabel for="txn_owners_equity_account_id">
+                Owner's Equity Account
+                <span class="text-red-500">*</span>
+              </BaseLabel>
               <BaseSearchSelect
                 id="txn_owners_equity_account_id"
                 v-model="form.owners_equity_account_id"
@@ -97,7 +100,10 @@
             </div>
 
             <div v-if="!isAdjustmentType" class="space-y-2">
-              <BaseLabel for="txn_asset_account_id">Asset Account</BaseLabel>
+              <BaseLabel for="txn_asset_account_id">
+                Asset Account
+                <span class="text-red-500">*</span>
+              </BaseLabel>
               <BaseSearchSelect
                 id="txn_asset_account_id"
                 v-model="form.asset_account_id"
@@ -109,7 +115,10 @@
             </div>
 
             <div v-if="!isAdjustmentType" class="space-y-2">
-              <BaseLabel for="txn_liabilities_account_id">Liabilities Account</BaseLabel>
+              <BaseLabel for="txn_liabilities_account_id">
+                Liabilities Account
+                <span class="text-red-500">*</span>
+              </BaseLabel>
               <BaseSearchSelect
                 id="txn_liabilities_account_id"
                 v-model="form.liabilities_account_id"
@@ -120,6 +129,10 @@
               />
             </div>
           </div>
+
+          <p v-if="!isAdjustmentType" class="text-xs text-gray-500">
+            Select exactly one of Owner's Equity, Asset, or Liabilities account (required).
+          </p>
 
           <div v-if="!isAdjustmentType && hasExtraAccountSelected" class="space-y-2">
             <BaseLabel>Cash Direction</BaseLabel>
@@ -610,6 +623,15 @@ function mapAccountOption(account) {
     }
   }
 
+  if (category === ACCOUNT_CATEGORIES.OWNERS) {
+    const ownerName = account.owners_name || account.account_name
+    const ownerCode = account.owners_code || account.code
+    return {
+      id: account.id,
+      name: `Owner — ${ownerCode ? `${ownerCode} — ` : ''}${ownerName} — ৳${balance}`,
+    }
+  }
+
   const config = getPartyConfig(category)
   if (config) {
     return {
@@ -784,6 +806,16 @@ watch(
 )
 
 async function handleSubmit() {
+  if (!isAdjustmentType.value && !hasExtraAccountSelected.value) {
+    await Swal.fire({
+      icon: 'warning',
+      title: 'Account Required',
+      text: "Please select one of Owner's Equity, Asset, or Liabilities account.",
+      confirmButtonColor: '#22C55E',
+    })
+    return
+  }
+
   if (hasExtraAccountSelected.value && !['payment', 'receive'].includes(form.transaction_direction)) {
     await Swal.fire({
       icon: 'warning',

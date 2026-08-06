@@ -25,7 +25,6 @@ import GrossProfitReportPage from './pages/GrossProfitReportPage.vue'
 import TrialBalancePage from './pages/TrialBalancePage.vue'
 import IncomeStatementPage from './pages/IncomeStatementPage.vue'
 import BalanceSheetPage from './pages/BalanceSheetPage.vue'
-import IncomeTaxPage from './pages/IncomeTaxPage.vue'
 import DashboardLayout from '@/shared/layouts/DashboardLayout.vue'
 
 function createPartyLedgerRoutes(partyType, tabId, ledgerName, printName) {
@@ -162,6 +161,7 @@ export default [
     'Principal Ledger Print',
   ),
   ...createPartyLedgerRoutes('banks', 'bank-accounts', 'Bank Ledger', 'Bank Ledger Print'),
+  ...createPartyLedgerRoutes('owners', 'owner-accounts', 'Owner Ledger', 'Owner Ledger Print'),
   // Legacy vendor print path (vendorId param)
 
   {
@@ -423,21 +423,6 @@ export default [
         component: BalanceSheetPage,
         meta: {
           permissions: ['balance_sheet.view'],
-        },
-      },
-    ],
-  },
-  {
-    path: '/finance/income-tax',
-    component: DashboardLayout,
-    meta: { requiresAuth: true },
-    children: [
-      {
-        path: '',
-        name: 'Income Tax',
-        component: IncomeTaxPage,
-        meta: {
-          permissions: ['income_tax.view'],
         },
       },
     ],

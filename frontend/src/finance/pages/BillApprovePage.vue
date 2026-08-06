@@ -397,6 +397,20 @@
               </p>
             </div>
 
+            <div
+              v-if="!isPayableSettlementMode && !isReadonly"
+              class="mb-3 space-y-1"
+            >
+              <BaseLabel for="pay_payment_method">Payment Method</BaseLabel>
+              <BaseSelect
+                id="pay_payment_method"
+                v-model="form.payment_method"
+                :options="billsToPayPaymentMethodOptions"
+                placeholder="Select payment method"
+                :required="true"
+              />
+            </div>
+
             <p
               v-if="isDuePayment"
               class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
@@ -735,6 +749,10 @@ const settlementPaymentMethodOptions = computed(() => {
 
   return options
 })
+
+const billsToPayPaymentMethodOptions = computed(() =>
+  paymentMethods.filter((method) => ['cash', 'bank', 'due'].includes(method.id))
+)
 
 const isPayableSettlementMode = computed(() => route.name === 'Bill Payable Payment')
 
@@ -1171,29 +1189,49 @@ async function handleReject() {
 watch(
   () => form.payment_method,
   (method, previousMethod) => {
-    if (!isPayableSettlementMode.value) return
+    if (isPayableSettlementMode.value) {
+      if (String(method || '').toLowerCase() === 'income_link') {
+        form.payment_account_category = ''
+        form.main_account_type = ''
+        form.payment_account_type = ''
+        form.payment_account_id = ''
+        form.payment_account_name = ''
 
-    if (String(method || '').toLowerCase() === 'income_link') {
+        const linkedName = linkedIncomeHead.value?.name || 'Income Link'
+        const headName = form.head_name || entry.value?.head_name || 'expense head'
+        form.particular = `Payable settled via Income Link (${linkedName}) — ${headName}`
+        return
+      }
+
+      // Restore original particular when leaving Income Link.
+      if (String(previousMethod || '').toLowerCase() === 'income_link') {
+        form.particular = originalParticular.value || form.particular
+      }
+
+      // Bills Payable no longer filters main accounts by Cash/Bank type.
+      if (!form.payment_account_category) {
+        form.payment_account_category = 'main'
+      }
+      return
+    }
+
+    // Bills To Pay — allow changing Cash / Bank / Due at payment time.
+    if (isDuePaymentMethod(method)) {
       form.payment_account_category = ''
       form.main_account_type = ''
       form.payment_account_type = ''
       form.payment_account_id = ''
       form.payment_account_name = ''
-
-      const linkedName = linkedIncomeHead.value?.name || 'Income Link'
-      const headName = form.head_name || entry.value?.head_name || 'expense head'
-      form.particular = `Payable settled via Income Link (${linkedName}) — ${headName}`
       return
     }
 
-    // Restore original particular when leaving Income Link.
-    if (String(previousMethod || '').toLowerCase() === 'income_link') {
-      form.particular = originalParticular.value || form.particular
-    }
-
-    // Bills Payable no longer filters main accounts by Cash/Bank type.
     if (!form.payment_account_category) {
       form.payment_account_category = 'main'
+    }
+
+    const methodKey = String(method || '').toLowerCase()
+    if (methodKey === 'cash' || methodKey === 'bank') {
+      form.main_account_type = methodKey === 'bank' ? 'Bank' : 'Cash'
     }
   }
 )

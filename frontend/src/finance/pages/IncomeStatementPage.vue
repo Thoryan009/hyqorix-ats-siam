@@ -9,7 +9,7 @@
       </div>
     </PageHeader>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div
         v-for="card in summaryCards"
         :key="card.title"
@@ -111,42 +111,16 @@
     </div>
 
     <div
-      class="mt-5 flex flex-col gap-3 rounded-lg border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+      v-if="!loading"
+      class="mt-5 rounded-lg border p-4 text-center text-base font-semibold"
+      :class="
+        summary.is_profit
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+          : 'border-red-200 bg-red-50 text-red-800'
+      "
     >
-      <div>
-        <h3 class="text-base font-semibold text-gray-900">Income Tax Deduction</h3>
-        <p class="mt-1 text-sm text-gray-500">
-          Net Profit After Tax = Net Profit Before Tax − Income Tax
-        </p>
-      </div>
-      <div class="w-full sm:w-105">
-        <div class="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
-          <div class="flex items-center justify-between gap-3 text-sm">
-            <span class="text-gray-600">Net Profit / Loss (Before Tax)</span>
-            <span
-              class="font-semibold tabular-nums"
-              :class="summary.is_profit_before_tax ? 'text-emerald-700' : 'text-red-700'"
-            >
-              {{ formatCurrency(Math.abs(summary.net_profit_before_tax)) }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between gap-3 text-sm">
-            <span class="text-gray-600">Less: Income Tax</span>
-            <span class="font-semibold tabular-nums text-gray-900">
-              {{ formatCurrency(summary.income_tax_amount) }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between gap-3 pt-2 text-sm">
-            <span class="text-gray-800 font-medium">Net Profit / Loss (After Tax)</span>
-            <span
-              class="font-bold tabular-nums"
-              :class="summary.is_profit ? 'text-emerald-700' : 'text-red-700'"
-            >
-              {{ formatCurrency(Math.abs(summary.net_profit)) }}
-            </span>
-          </div>
-        </div>
-      </div>
+      {{ summary.is_profit ? 'Net Profit' : 'Net Loss' }}:
+      {{ formatCurrency(Math.abs(summary.net_profit)) }}
     </div>
   </SectionHeader>
 </template>
@@ -173,12 +147,8 @@ const summary = ref({
   total_income_collections: 0,
   total_income: 0,
   total_operating_expense: 0,
-  income_tax_amount: 0,
-  tax_year: null,
-  net_profit_before_tax: 0,
   net_profit: 0,
   is_profit: true,
-  is_profit_before_tax: true,
 })
 
 const yearOptions = computed(() => {
@@ -223,14 +193,9 @@ const summaryCards = computed(() => [
     valueClass: 'text-gray-900',
   },
   {
-    title: 'Income Tax',
-    value: formatCurrency(summary.value.income_tax_amount),
-    valueClass: summary.value.income_tax_amount > 0 ? 'text-gray-900' : 'text-gray-400',
-  },
-  {
-    title: summary.value.is_profit_before_tax ? 'Net Profit Before Tax' : 'Net Loss Before Tax',
-    value: formatCurrency(Math.abs(summary.value.net_profit_before_tax)),
-    valueClass: summary.value.is_profit_before_tax ? 'text-emerald-700' : 'text-red-700',
+    title: summary.value.is_profit ? 'Net Profit' : 'Net Loss',
+    value: formatCurrency(Math.abs(summary.value.net_profit)),
+    valueClass: summary.value.is_profit ? 'text-emerald-700' : 'text-red-700',
   },
 ])
 
@@ -275,12 +240,8 @@ async function loadReport() {
       total_income_collections: Number(data?.summary?.total_income_collections || 0),
       total_income: Number(data?.summary?.total_income || 0),
       total_operating_expense: Number(data?.summary?.total_operating_expense || 0),
-      income_tax_amount: Number(data?.summary?.income_tax_amount || 0),
-      tax_year: data?.summary?.tax_year ?? null,
-      net_profit_before_tax: Number(data?.summary?.net_profit_before_tax || 0),
       net_profit: Number(data?.summary?.net_profit || 0),
       is_profit: data?.summary?.is_profit !== false,
-      is_profit_before_tax: data?.summary?.is_profit_before_tax !== false,
     }
   } catch (error) {
     toast.error(error?.message || 'Failed to load income statement.')

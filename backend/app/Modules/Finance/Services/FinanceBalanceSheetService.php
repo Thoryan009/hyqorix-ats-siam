@@ -58,6 +58,7 @@ class FinanceBalanceSheetService
         'client',
         'applicant',
         'banks',
+        'owners',
     ];
 
     public function __construct(

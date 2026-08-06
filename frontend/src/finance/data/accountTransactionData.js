@@ -7,6 +7,7 @@ export const accountTransactionCategoryOptions = [
   { id: 'client', name: 'Client Account' },
   { id: 'applicant', name: 'Applicant Account' },
   { id: 'banks', name: 'Bank Account' },
+  { id: 'owners', name: 'Owner Account' },
 ]
 
 export const mainAccountTypeOptions = [
@@ -39,7 +40,16 @@ export const accountTransactionDisplayTypes = [
   { id: 'transfer', label: 'Transfer', icon: 'fa fa-exchange' },
 ]
 
-const partyCategories = ['staff', 'agent', 'vendor', 'principal', 'client', 'applicant', 'banks']
+const partyCategories = [
+  'staff',
+  'agent',
+  'vendor',
+  'principal',
+  'client',
+  'applicant',
+  'banks',
+  'owners',
+]
 
 export function isPartyAccountCategory(category) {
   return partyCategories.includes(category)

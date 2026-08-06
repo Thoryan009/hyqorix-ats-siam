@@ -41,6 +41,7 @@ class FinanceAccountService extends BaseCachedService
         'client',
         'staff',
         'banks',
+        'owners',
     ];
 
     public function __construct(protected FinanceAccountRepository $repository)

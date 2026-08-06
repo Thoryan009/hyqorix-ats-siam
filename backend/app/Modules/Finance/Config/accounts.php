@@ -25,6 +25,7 @@ return [
         'staff',
         'applicant',
         'banks',
+        'owners',
     ],
 
     /** Expense category `code` → finance account `category` */
