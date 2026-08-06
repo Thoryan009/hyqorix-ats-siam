@@ -546,7 +546,117 @@ class FinanceAccountService extends BaseCachedService
             return 'Expense Payable';
         }
 
-        if (preg_match('/payable$/i', $name)) {
+        if (str_ends_with(strtolower($name), 'payable')) {
+            return $name;
+        }
+
+        return $name.' Payable';
+    }
+
+    /**
+     * Per asset-account purchase payable (Office Equipment Payable, …).
+     */
+    public function ensureAssetPurchasePayableAccount(FinanceAccount $assetAccount): FinanceAccount
+    {
+        return $this->mutate(function () use ($assetAccount) {
+            $account = $this->model->firstOrNew([
+                'category' => 'liabilities',
+                'code' => 'PAY-AST-'.$assetAccount->id,
+            ]);
+
+            $assetName = trim((string) $assetAccount->account_name);
+            $account->account_name = $this->assetPurchasePayableAccountName($assetName);
+            $account->metadata = array_merge($account->metadata ?? [], [
+                'asset_account_id' => $assetAccount->id,
+            ]);
+            $account->status = 'active';
+
+            if (!$account->exists) {
+                $account->balance = 0;
+                $account->opening_balance = 0;
+            }
+
+            $account->save();
+
+            return $account;
+        });
+    }
+
+    public function recordAssetPurchasePayableEntry(
+        FinanceAccount $assetAccount,
+        float $amount,
+        string $side,
+        string $entryDate,
+        string $voucherNo,
+        ?int $typeTransactionId = null,
+        string $particular = '',
+        string $paymentMethod = '',
+        string $remarks = '',
+        string $clientName = '',
+        ?int $billEntryId = null,
+    ): void {
+        if ($amount <= 0) {
+            return;
+        }
+
+        $side = strtolower($side) === 'dr' ? 'dr' : 'cr';
+        $account = $this->ensureAssetPurchasePayableAccount($assetAccount);
+        $voucherNo = trim($voucherNo);
+        $particular = trim($particular) !== ''
+            ? trim($particular)
+            : $account->account_name;
+
+        $existingEntry = null;
+        if ($typeTransactionId || $voucherNo !== '') {
+            $existingEntry = FinanceAccountLedgerEntry::query()
+                ->where('finance_account_id', $account->id)
+                ->where(function ($query) use ($typeTransactionId, $voucherNo, $side) {
+                    if ($typeTransactionId) {
+                        $query->where('finance_account_type_transaction_id', $typeTransactionId)
+                            ->where($side === 'dr' ? 'dr_amount' : 'cr_amount', '>', 0);
+                    }
+                    if ($voucherNo !== '') {
+                        $query->orWhere(function ($inner) use ($voucherNo, $side) {
+                            $inner->where('voucher_no', $voucherNo)
+                                ->where($side === 'dr' ? 'dr_amount' : 'cr_amount', '>', 0);
+                        });
+                    }
+                })
+                ->first();
+        }
+
+        if ($existingEntry) {
+            return;
+        }
+
+        FinanceAccountLedgerEntry::create([
+            'finance_account_id' => $account->id,
+            'finance_bill_entry_id' => $billEntryId,
+            'finance_account_type_transaction_id' => $typeTransactionId,
+            'entry_date' => $entryDate,
+            'particular' => $particular,
+            'voucher_no' => $voucherNo !== '' ? $voucherNo : null,
+            'client_name' => $clientName !== '' ? $clientName : null,
+            'dr_amount' => $side === 'dr' ? $amount : 0,
+            'discount' => 0,
+            'cr_amount' => $side === 'cr' ? $amount : 0,
+            'payment_method' => $paymentMethod,
+            'remarks' => $remarks !== '' ? $remarks : null,
+        ]);
+
+        $delta = $side === 'cr' ? $amount : -$amount;
+        $account->balance = round((float) $account->balance + $delta, 2);
+        $account->save();
+    }
+
+    private function assetPurchasePayableAccountName(string $assetName): string
+    {
+        $name = trim($assetName);
+        if ($name === '') {
+            return 'Asset Purchase Payable';
+        }
+
+        if (str_ends_with(strtolower($name), 'payable')) {
             return $name;
         }
 

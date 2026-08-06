@@ -75,6 +75,8 @@ export function normalizeExpensePayment(payment) {
       payment.head_id != null && payment.head_id !== '' ? Number(payment.head_id) : null,
     asset_account_id: payment.asset_account_id ?? null,
     asset_account_name: payment.asset_account_name ?? '',
+    vendor_account_id: payment.vendor_account_id ?? null,
+    vendor_account_name: payment.vendor_account_name ?? '',
     amount: Number(payment.amount ?? 0),
     paid_amount: Number(payment.paid_amount ?? 0),
     payable_remaining: Number(

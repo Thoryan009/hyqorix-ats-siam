@@ -121,7 +121,7 @@
                     Payment Method
                   </p>
                   <p class="mt-0.5 text-sm font-semibold capitalize text-slate-900">
-                    {{ paymentMethodLabel }}
+                    {{ submittedPaymentMethodLabel }}
                   </p>
                 </div>
               </div>
@@ -159,6 +159,17 @@
                   Entry Remarks
                 </p>
                 <p class="mt-0.5 text-sm leading-snug text-slate-700">{{ form.remarks }}</p>
+              </div>
+
+              <div v-if="form.vendor_account_name" class="grid grid-cols-2 gap-3 py-3">
+                <div>
+                  <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    Vendor Account
+                  </p>
+                  <p class="mt-0.5 text-sm font-semibold text-slate-900">
+                    {{ form.vendor_account_name }}
+                  </p>
+                </div>
               </div>
 
               <div v-if="hasLinkedBillAccountDisplay" class="grid grid-cols-2 gap-3 py-3">
@@ -399,6 +410,20 @@
               </div>
 
               <template v-if="!isReadonly && !isBatchPayMode">
+                <div
+                  v-if="showBillsToPayPaymentMethod"
+                  class="space-y-1"
+                >
+                  <BaseLabel for="pay_payment_method">Payment Method</BaseLabel>
+                  <BaseSelect
+                    id="pay_payment_method"
+                    v-model="form.payment_method"
+                    :options="billsToPayPaymentMethodOptions"
+                    placeholder="Select payment method"
+                    :required="true"
+                  />
+                </div>
+
                 <div class="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
                   <div>
                     <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
@@ -412,6 +437,7 @@
                       :max="Number(form.amount) || undefined"
                       step="0.01"
                       :required="true"
+                      :disabled="isDuePayment"
                       :className="'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-lg font-bold tabular-nums text-slate-900'"
                     />
                   </div>
@@ -438,20 +464,6 @@
                   Pay Now cannot exceed the bill amount.
                 </p>
               </template>
-            </div>
-
-            <div
-              v-if="!isPayableSettlementMode && !isReadonly && showBillsToPayPaymentMethod"
-              class="mb-3 space-y-1"
-            >
-              <BaseLabel for="pay_payment_method">Payment Method (Pay Now)</BaseLabel>
-              <BaseSelect
-                id="pay_payment_method"
-                v-model="form.payment_method"
-                :options="billsToPayPaymentMethodOptions"
-                placeholder="Select payment method"
-                :required="true"
-              />
             </div>
 
             <p
@@ -707,7 +719,6 @@ import { formatRequestedByParagraph } from '@/finance/data/expensePaymentData'
 import {
   billAccountCategoryOptions,
   getBillAccountCategoryLabel,
-  mapPaymentMethodToMainAccountType,
   isDuePaymentMethod,
 } from '@/finance/data/billApprovalAccountData'
 import { paymentMethods } from '@/finance/data/paymentData'
@@ -737,6 +748,7 @@ const form = reactive({
   category_name: '',
   head_id: '',
   head_name: '',
+  vendor_account_name: '',
   amount: '',
   pay_amount: '',
   pay_now_amount: '',
@@ -787,6 +799,7 @@ const form = reactive({
 
 const approvalManagers = ref([])
 const manualApprovalFileError = ref('')
+const isHydratingApprovalForm = ref(false)
 
 const MAX_MANUAL_APPROVAL_BYTES = 4 * 1024 * 1024
 
@@ -812,7 +825,7 @@ const settlementPaymentMethodOptions = computed(() => {
 })
 
 const billsToPayPaymentMethodOptions = computed(() =>
-  paymentMethods.filter((method) => ['cash', 'bank'].includes(method.id))
+  paymentMethods.filter((method) => ['cash', 'bank', 'due'].includes(method.id))
 )
 
 const billsToPayBillTotal = computed(() => Math.max(Number(form.amount) || 0, 0))
@@ -829,7 +842,7 @@ const payNowExceedsBillAmount = computed(() => {
   return billsToPayNowAmount.value > billsToPayBillTotal.value + 0.0001
 })
 const showBillsToPayPaymentMethod = computed(
-  () => !isBatchPayMode.value && billsToPayNowAmount.value > 0
+  () => !isBatchPayMode.value && !isPayableSettlementMode.value
 )
 
 const isPayableSettlementMode = computed(() => route.name === 'Bill Payable Payment')
@@ -923,9 +936,15 @@ function getFinanceAccountBalance(accountId) {
 
 const paymentAccountOptions = computed(() => {
   if (form.payment_account_category === 'main') {
+    const mainType = String(form.main_account_type || '').trim()
+
     return financeAccountStore
       .getAccountsByCategory(ACCOUNT_CATEGORIES.MAIN)
       .filter((account) => account.status === 'Active')
+      .filter((account) => {
+        if (!mainType) return true
+        return String(account.account_type || '').toLowerCase() === mainType.toLowerCase()
+      })
       .map(mapPaymentAccountOption)
   }
 
@@ -996,10 +1015,24 @@ const paymentMethodLabel = computed(() => {
   return fallback?.name ?? form.payment_method
 })
 
+const submittedPaymentMethodLabel = computed(() => {
+  const method = String(entry.value?.payment_method || '').toLowerCase()
+  if (!method) return '—'
+  const option = paymentMethods.find((item) => item.id === method)
+  return option?.name ?? method
+})
+
+function resolveMainAccountTypeFromPaymentMethod(method) {
+  const key = String(method || '').toLowerCase()
+  if (key === 'bank') return 'Bank'
+  if (key === 'cash') return 'Cash'
+  return ''
+}
+
 const isDuePayment = computed(() => {
   if (isPayableSettlementMode.value) return false
   if (!isBatchPayMode.value) {
-    return billsToPayNowAmount.value <= 0
+    return billsToPayNowAmount.value <= 0 || isDuePaymentMethod(form.payment_method)
   }
   return isDuePaymentMethod(form.payment_method)
 })
@@ -1089,6 +1122,12 @@ function formatDisplayDate(value) {
 function populateForm(bill) {
   if (!bill) return
 
+  const submittedMethod = String(bill.payment_method || 'cash').toLowerCase()
+  const submittedMainType =
+    bill.payment_account_category === 'main'
+      ? bill.payment_account_type || resolveMainAccountTypeFromPaymentMethod(submittedMethod)
+      : resolveMainAccountTypeFromPaymentMethod(submittedMethod)
+
   Object.assign(form, {
     id: bill.id,
     payment_date: bill.payment_date || '',
@@ -1096,17 +1135,17 @@ function populateForm(bill) {
     category_name: bill.category_name || '',
     head_id: String(bill.head_id || ''),
     head_name: bill.head_name || '',
+    vendor_account_name: bill.vendor_account_name || '',
     amount: bill.amount ?? '',
     pay_amount: '',
     pay_now_amount:
       route.name === 'Bill Payable Payment'
         ? ''
-        : bill.payment_method === 'due'
+        : isDuePaymentMethod(submittedMethod)
           ? 0
           : bill.amount ?? '',
     paid_amount: bill.paid_amount ?? 0,
-    payment_method:
-      bill.payment_method === 'due' ? 'cash' : bill.payment_method || 'cash',
+    payment_method: submittedMethod,
     particular: bill.particular || '',
     reference_no: bill.reference_no || '',
     voucher_no: bill.voucher_no || '',
@@ -1136,8 +1175,8 @@ function populateForm(bill) {
     payment_account_category: bill.payment_account_category || '',
     main_account_type:
       bill.payment_account_category === 'main'
-        ? bill.payment_account_type || mapPaymentMethodToMainAccountType(bill.payment_method)
-        : '',
+        ? submittedMainType
+        : submittedMainType,
     payment_account_type: bill.payment_account_type || '',
     payment_account_id: bill.payment_account_id ? String(bill.payment_account_id) : '',
     payment_account_name: bill.payment_account_name || '',
@@ -1166,10 +1205,12 @@ function populateForm(bill) {
     !bill.payment_account_category &&
     bill.status === 'pending' &&
     !form.payment_account_category &&
-    bill.payment_method !== 'due'
+    !isDuePaymentMethod(submittedMethod)
   ) {
     form.payment_account_category = 'main'
-    form.main_account_type = ''
+    if (!form.main_account_type) {
+      form.main_account_type = submittedMainType
+    }
   }
 
   if (route.name === 'Bill Payable Payment' && bill.payment_method === 'due') {
@@ -1205,7 +1246,9 @@ const buildPayload = () => ({
       ? {}
       : { pay_amount: form.pay_now_amount }),
   payment_method:
-    !isPayableSettlementMode.value && !isBatchPayMode.value && billsToPayNowAmount.value <= 0
+    !isPayableSettlementMode.value &&
+    !isBatchPayMode.value &&
+    (billsToPayNowAmount.value <= 0 || isDuePaymentMethod(form.payment_method))
       ? 'due'
       : form.payment_method,
   manual_approval_manager_id: isManualRequestBill.value ? form.manual_approval_manager_id : null,
@@ -1327,7 +1370,17 @@ watch(
       return
     }
 
-    // Bills To Pay — Cash / Bank for the Pay Now portion.
+    // Bills To Pay — Cash / Bank / Due for the Pay Now portion.
+    if (isDuePaymentMethod(method)) {
+      form.pay_now_amount = 0
+      form.payment_account_category = ''
+      form.main_account_type = ''
+      form.payment_account_type = ''
+      form.payment_account_id = ''
+      form.payment_account_name = ''
+      return
+    }
+
     if (!form.payment_account_category && billsToPayNowAmount.value > 0) {
       form.payment_account_category = 'main'
     }
@@ -1335,6 +1388,9 @@ watch(
     const methodKey = String(method || '').toLowerCase()
     if (methodKey === 'cash' || methodKey === 'bank') {
       form.main_account_type = methodKey === 'bank' ? 'Bank' : 'Cash'
+      if (billsToPayNowAmount.value <= 0) {
+        form.pay_now_amount = form.amount || ''
+      }
     }
   }
 )
@@ -1343,8 +1399,10 @@ watch(
   () => form.pay_now_amount,
   () => {
     if (isPayableSettlementMode.value || isBatchPayMode.value || isReadonly.value) return
+    if (isHydratingApprovalForm.value) return
 
     if (billsToPayNowAmount.value <= 0) {
+      form.payment_method = 'due'
       form.payment_account_category = ''
       form.main_account_type = ''
       form.payment_account_type = ''
@@ -1360,7 +1418,7 @@ watch(
     const methodKey = String(form.payment_method || '').toLowerCase()
     if (methodKey === 'cash' || methodKey === 'bank') {
       form.main_account_type = methodKey === 'bank' ? 'Bank' : 'Cash'
-    } else {
+    } else if (!isDuePaymentMethod(form.payment_method)) {
       form.payment_method = 'cash'
       form.main_account_type = 'Cash'
     }
@@ -1415,8 +1473,8 @@ watch(
         ? `${account.account_name} — ${account.account_label}`
         : ''
 
-      // Keep payment method aligned with the selected main account type.
-      if (!isIncomeLinkMethod.value && !isDuePayment.value) {
+      // Keep payment method aligned when the user changes account (not during initial load).
+      if (!isHydratingApprovalForm.value && !isIncomeLinkMethod.value && !isDuePayment.value) {
         const accountType = String(account?.account_type || '').toLowerCase()
         if (accountType === 'bank') form.payment_method = 'bank'
         else if (accountType === 'cash') form.payment_method = 'cash'
@@ -1505,6 +1563,7 @@ async function loadPage() {
 
   entry.value = bill
   batchEntries.value = siblings.length > 1 ? siblings : bill ? [bill] : []
+  isHydratingApprovalForm.value = true
   populateForm(bill)
 
   if (batchEntries.value.length > 1) {
@@ -1517,6 +1576,7 @@ async function loadPage() {
 
   await nextTick()
   await autoSelectFirstPaymentAccount()
+  isHydratingApprovalForm.value = false
   scrollPageToTop()
 }
 

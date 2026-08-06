@@ -35,12 +35,17 @@ export function getPayableRemainingAmount(entry = {}) {
   return Math.max(Math.round((total - paid) * 100) / 100, 0)
 }
 
+export function isAssetPurchaseBill(entry = {}) {
+  entry = entry ?? {}
+  return entry.entry_type === 'asset_purchase'
+}
+
 export function isPayableBill(entry = {}) {
   entry = entry ?? {}
   return (
     entry.status === 'approved' &&
     isDuePaymentMethod(entry.payment_method) &&
-    isExpenseAccountBill(entry) &&
+    (isExpenseAccountBill(entry) || isAssetPurchaseBill(entry)) &&
     getPayableRemainingAmount(entry) > 0
   )
 }

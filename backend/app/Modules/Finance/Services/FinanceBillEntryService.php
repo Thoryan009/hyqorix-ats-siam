@@ -355,17 +355,56 @@ class FinanceBillEntryService extends BaseCachedService
                     ...$manualApprovalFields,
                 ]);
 
-                $expenseAccount = $this->resolveExpenseAccountForBill($billEntry);
-                if ($expenseAccount) {
-                    $expenseAccount = FinanceAccount::query()
+                $isAssetPurchase = ($billEntry->entry_type ?? 'expense_bill') === 'asset_purchase';
+                $assetAccount = null;
+                $vendorAccount = null;
+                $expenseAccount = null;
+
+                if ($isAssetPurchase) {
+                    $assetAccount = $this->resolveAssetAccountForBill($billEntry);
+                    if (!$assetAccount) {
+                        throw ValidationException::withMessages([
+                            'asset_account_id' => ['No asset account is linked to this purchase bill.'],
+                        ]);
+                    }
+
+                    $assetAccount = FinanceAccount::query()
                         ->lockForUpdate()
-                        ->findOrFail($expenseAccount->id);
+                        ->findOrFail($assetAccount->id);
+                    $this->assertActiveFinanceAccount($assetAccount);
 
-                    $this->assertActiveFinanceAccount($expenseAccount);
+                    $vendorAccount = $this->resolveVendorAccountForBill($billEntry);
+                    if (!$vendorAccount) {
+                        throw ValidationException::withMessages([
+                            'vendor_account_id' => ['No vendor account is linked to this asset purchase bill.'],
+                        ]);
+                    }
 
-                    // Persist expense ledger link so Bills Payable / reports can filter the bill.
-                    $billEntry->update($this->buildExpenseAccountLinkFields($expenseAccount, $billEntry));
+                    $vendorAccount = FinanceAccount::query()
+                        ->lockForUpdate()
+                        ->findOrFail($vendorAccount->id);
+                    $this->assertActiveFinanceAccount($vendorAccount);
+
+                    $billEntry->update([
+                        'linked_account_id' => $assetAccount->id,
+                        'linked_account_name' => $this->accountLabel($assetAccount),
+                        'linked_account_category' => 'asset',
+                        'linked_account_type' => 'Asset',
+                    ]);
                     $billEntry->refresh();
+                } else {
+                    $expenseAccount = $this->resolveExpenseAccountForBill($billEntry);
+                    if ($expenseAccount) {
+                        $expenseAccount = FinanceAccount::query()
+                            ->lockForUpdate()
+                            ->findOrFail($expenseAccount->id);
+
+                        $this->assertActiveFinanceAccount($expenseAccount);
+
+                        // Persist expense ledger link so Bills Payable / reports can filter the bill.
+                        $billEntry->update($this->buildExpenseAccountLinkFields($expenseAccount, $billEntry));
+                        $billEntry->refresh();
+                    }
                 }
 
                 $paymentAccount = null;
@@ -389,6 +428,7 @@ class FinanceBillEntryService extends BaseCachedService
                     }
                 }
 
+                $ledgerAccount = $assetAccount ?? $expenseAccount;
                 $typeTransaction = $this->createBillPaymentTransaction(
                     $hasCashPayment ? $payAmount : $billTotal,
                     $paymentDate,
@@ -397,18 +437,102 @@ class FinanceBillEntryService extends BaseCachedService
                     $approvalRemarks ?: $remarks,
                     $voucherNo,
                     $paymentAccount,
-                    $expenseAccount,
+                    $ledgerAccount,
                     $paymentFields
                 );
                 $typeTransactionId = $typeTransaction?->id;
 
-                $expenseBillParticular = $particular !== '' ? $particular : 'Bill approved';
+                $expenseBillParticular = $particular !== '' ? $particular : ($isAssetPurchase ? 'Asset purchase approved' : 'Bill approved');
                 $paymentMethodLabel = $this->resolveBillPaymentMethodLabel(
                     $hasCashPayment ? $cashMethod : 'due',
                     $paymentFields
                 );
 
-                if ($expenseAccount) {
+                if ($assetAccount) {
+                    // Asset ledger: DR full purchase amount.
+                    $this->postBillLedgerEntry(
+                        $assetAccount,
+                        $billEntry->id,
+                        $billTotal,
+                        $paymentDate,
+                        $expenseBillParticular,
+                        $voucherNo,
+                        $billEntry->client_name ?? '',
+                        $hasDueRemaining ? null : ($hasCashPayment ? $paymentMethodLabel : null),
+                        $approvalRemarks ?: $remarks ?: 'Asset purchase approved',
+                        $typeTransactionId,
+                        false
+                    );
+
+                    if ($vendorAccount) {
+                        // Vendor ledger: DR full purchase amount (charge).
+                        $this->postBillLedgerEntry(
+                            $vendorAccount,
+                            $billEntry->id,
+                            $billTotal,
+                            $paymentDate,
+                            $expenseBillParticular,
+                            $voucherNo,
+                            $this->accountLabel($assetAccount),
+                            $hasDueRemaining ? null : ($hasCashPayment ? $paymentMethodLabel : null),
+                            $approvalRemarks ?: $remarks ?: 'Asset purchase approved',
+                            $typeTransactionId,
+                            false
+                        );
+
+                        if ($hasCashPayment) {
+                            $settleVoucherNo = $voucherNo !== ''
+                                ? sprintf('%s-P%s', $voucherNo, $typeTransactionId ?: now()->timestamp)
+                                : sprintf('BILL-PAY-%d', $billEntry->id);
+                            $this->postBillLedgerEntry(
+                                $vendorAccount,
+                                $billEntry->id,
+                                $payAmount,
+                                $paymentDate,
+                                $expenseBillParticular,
+                                $settleVoucherNo,
+                                $this->accountLabel($assetAccount),
+                                $paymentMethodLabel,
+                                $approvalRemarks ?: 'Partial asset purchase payment against due',
+                                $typeTransactionId,
+                                true
+                            );
+                        }
+                    } elseif ($hasDueRemaining) {
+                        $this->accountService->recordAssetPurchasePayableEntry(
+                            $assetAccount,
+                            $billTotal,
+                            'cr',
+                            $paymentDate,
+                            $voucherNo,
+                            $typeTransactionId,
+                            $expenseBillParticular !== '' ? $expenseBillParticular : 'Due payable',
+                            'Due',
+                            $approvalRemarks ?: $remarks ?: 'Asset purchase approved as due',
+                            (string) ($billEntry->client_name ?? ''),
+                            $billEntry->id
+                        );
+
+                        if ($hasCashPayment) {
+                            $settleVoucherNo = $voucherNo !== ''
+                                ? sprintf('%s-P%s', $voucherNo, $typeTransactionId ?: now()->timestamp)
+                                : sprintf('BILL-PAY-%d', $billEntry->id);
+                            $this->accountService->recordAssetPurchasePayableEntry(
+                                $assetAccount,
+                                $payAmount,
+                                'dr',
+                                $paymentDate,
+                                $settleVoucherNo,
+                                $typeTransactionId,
+                                $expenseBillParticular,
+                                $paymentMethodLabel,
+                                $approvalRemarks ?: 'Partial asset purchase payment against due',
+                                (string) ($billEntry->client_name ?? ''),
+                                $billEntry->id
+                            );
+                        }
+                    }
+                } elseif ($expenseAccount) {
                     // Expense head ledger: always DR full bill charge.
                     $this->postBillLedgerEntry(
                         $expenseAccount,
@@ -504,7 +628,7 @@ class FinanceBillEntryService extends BaseCachedService
                 $this->accountService->flushCache();
                 $this->typeTransactionService->flushCache();
 
-                return $billEntry->fresh(['expenseCategory', 'expenseHead']);
+                return $billEntry->fresh(['expenseCategory', 'expenseHead', 'assetAccount', 'vendorAccount']);
             });
         });
     }
@@ -523,14 +647,30 @@ class FinanceBillEntryService extends BaseCachedService
             ]);
         }
 
-        $expenseAccount = $this->resolveExpenseAccountForBill($billEntry);
-        if (!$expenseAccount) {
+        $isAssetPurchase = ($billEntry->entry_type ?? 'expense_bill') === 'asset_purchase';
+        $assetAccount = $isAssetPurchase ? $this->resolveAssetAccountForBill($billEntry) : null;
+        $vendorAccount = $isAssetPurchase ? $this->resolveVendorAccountForBill($billEntry) : null;
+        $expenseAccount = !$isAssetPurchase ? $this->resolveExpenseAccountForBill($billEntry) : null;
+
+        if ($isAssetPurchase && !$assetAccount) {
+            throw ValidationException::withMessages([
+                'asset_account_id' => ['No asset account is linked to this purchase bill.'],
+            ]);
+        }
+
+        if ($isAssetPurchase && !$vendorAccount) {
+            throw ValidationException::withMessages([
+                'vendor_account_id' => ['No vendor account is linked to this asset purchase bill.'],
+            ]);
+        }
+
+        if (!$isAssetPurchase && !$expenseAccount) {
             throw ValidationException::withMessages([
                 'account_id' => ['No expense account is linked to this bill.'],
             ]);
         }
 
-        return $this->mutate(function () use ($billEntry, $data, $expenseAccount) {
+        return $this->mutate(function () use ($billEntry, $data, $expenseAccount, $assetAccount, $vendorAccount, $isAssetPurchase) {
             $paymentMethod = strtolower((string) ($data['payment_method'] ?? 'cash'));
             if ($paymentMethod === 'due') {
                 throw ValidationException::withMessages([
@@ -544,7 +684,7 @@ class FinanceBillEntryService extends BaseCachedService
                 ]);
             }
 
-            return DB::transaction(function () use ($billEntry, $data, $expenseAccount, $paymentMethod) {
+            return DB::transaction(function () use ($billEntry, $data, $expenseAccount, $assetAccount, $vendorAccount, $isAssetPurchase, $paymentMethod) {
                 $billTotal = round((float) $billEntry->amount, 2);
                 $alreadyPaid = round((float) ($billEntry->paid_amount ?? 0), 2);
                 $remaining = round(max($billTotal - $alreadyPaid, 0), 2);
@@ -573,14 +713,32 @@ class FinanceBillEntryService extends BaseCachedService
                 }
 
                 $isIncomeLink = $paymentMethod === 'income_link';
+                if ($isAssetPurchase && $isIncomeLink) {
+                    throw ValidationException::withMessages([
+                        'payment_method' => ['Income link settlement is not available for asset purchase bills.'],
+                    ]);
+                }
+
                 $incomeAccount = null;
                 $paymentAccount = null;
                 $paymentFields = [];
 
-                $expenseAccount = FinanceAccount::query()
-                    ->lockForUpdate()
-                    ->findOrFail($expenseAccount->id);
-                $this->assertActiveFinanceAccount($expenseAccount);
+                if ($isAssetPurchase) {
+                    $assetAccount = FinanceAccount::query()
+                        ->lockForUpdate()
+                        ->findOrFail($assetAccount->id);
+                    $this->assertActiveFinanceAccount($assetAccount);
+
+                    $vendorAccount = FinanceAccount::query()
+                        ->lockForUpdate()
+                        ->findOrFail($vendorAccount->id);
+                    $this->assertActiveFinanceAccount($vendorAccount);
+                } else {
+                    $expenseAccount = FinanceAccount::query()
+                        ->lockForUpdate()
+                        ->findOrFail($expenseAccount->id);
+                    $this->assertActiveFinanceAccount($expenseAccount);
+                }
 
                 if ($isIncomeLink) {
                     $incomeAccount = $this->accountService->resolveBillsPayableLinkedIncomeAccount();
@@ -623,6 +781,7 @@ class FinanceBillEntryService extends BaseCachedService
                         : ($isIncomeLink ? 'Partial payable bill via income link' : 'Partial payable bill payment'));
 
                 $counterpartyAccount = $paymentAccount ?? $incomeAccount;
+                $ledgerAccount = $isAssetPurchase ? $assetAccount : $expenseAccount;
                 $typeTransaction = $this->createBillPaymentTransaction(
                     $payAmount,
                     $paymentDate,
@@ -631,44 +790,64 @@ class FinanceBillEntryService extends BaseCachedService
                     $ledgerRemarks,
                     $voucherNo,
                     $counterpartyAccount,
-                    $expenseAccount,
+                    $ledgerAccount,
                     $paymentFields
                 );
                 $typeTransactionId = $typeTransaction?->id;
 
-                // Expense head ledger: CR for the payment / settle amount.
-                $this->postBillLedgerEntry(
-                    $expenseAccount,
-                    $billEntry->id,
-                    $payAmount,
-                    $paymentDate,
-                    $ledgerParticular,
-                    $voucherNo,
-                    $billEntry->client_name ?? '',
-                    $paymentMethodLabel,
-                    $ledgerRemarks,
-                    $typeTransactionId,
-                    true
-                );
-
-                // Clear {Head} Payable liability for the settled amount.
-                $expenseHead = $this->resolveExpenseHeadForBill($billEntry, $expenseAccount);
-                if ($expenseHead) {
+                if ($isAssetPurchase) {
                     $settleVoucherNo = $voucherNo !== ''
                         ? sprintf('%s-P%s', $voucherNo, $typeTransactionId ?: now()->timestamp)
                         : sprintf('BILL-PAY-%d', $billEntry->id);
-                    $this->accountService->recordExpensePayableEntry(
-                        $expenseHead,
+                    // Vendor ledger: CR payment when settling due payable.
+                    $this->postBillLedgerEntry(
+                        $vendorAccount,
+                        $billEntry->id,
                         $payAmount,
-                        'dr',
                         $paymentDate,
-                        $settleVoucherNo,
-                        $typeTransactionId,
                         $ledgerParticular,
+                        $settleVoucherNo,
+                        $this->accountLabel($assetAccount),
                         $paymentMethodLabel,
                         $ledgerRemarks,
-                        (string) ($billEntry->client_name ?? '')
+                        $typeTransactionId,
+                        true
                     );
+                } else {
+                    // Expense head ledger: CR for the payment / settle amount.
+                    $this->postBillLedgerEntry(
+                        $expenseAccount,
+                        $billEntry->id,
+                        $payAmount,
+                        $paymentDate,
+                        $ledgerParticular,
+                        $voucherNo,
+                        $billEntry->client_name ?? '',
+                        $paymentMethodLabel,
+                        $ledgerRemarks,
+                        $typeTransactionId,
+                        true
+                    );
+
+                    // Clear {Head} Payable liability for the settled amount.
+                    $expenseHead = $this->resolveExpenseHeadForBill($billEntry, $expenseAccount);
+                    if ($expenseHead) {
+                        $settleVoucherNo = $voucherNo !== ''
+                            ? sprintf('%s-P%s', $voucherNo, $typeTransactionId ?: now()->timestamp)
+                            : sprintf('BILL-PAY-%d', $billEntry->id);
+                        $this->accountService->recordExpensePayableEntry(
+                            $expenseHead,
+                            $payAmount,
+                            'dr',
+                            $paymentDate,
+                            $settleVoucherNo,
+                            $typeTransactionId,
+                            $ledgerParticular,
+                            $paymentMethodLabel,
+                            $ledgerRemarks,
+                            (string) ($billEntry->client_name ?? '')
+                        );
+                    }
                 }
 
                 if ($paymentAccount) {
@@ -726,7 +905,7 @@ class FinanceBillEntryService extends BaseCachedService
                 $this->accountService->flushCache();
                 $this->typeTransactionService->flushCache();
 
-                return $billEntry->fresh(['expenseCategory', 'expenseHead']);
+                return $billEntry->fresh(['expenseCategory', 'expenseHead', 'assetAccount', 'vendorAccount']);
             });
         });
     }
@@ -995,6 +1174,19 @@ class FinanceBillEntryService extends BaseCachedService
             ]);
         }
 
+        $vendorAccountId = (int) ($data['vendor_account_id'] ?? 0);
+        $vendorAccount = FinanceAccount::query()
+            ->where('id', $vendorAccountId)
+            ->where('category', 'vendor')
+            ->where('status', 'active')
+            ->first();
+
+        if (!$vendorAccount) {
+            throw ValidationException::withMessages([
+                'vendor_account_id' => ['Please select a valid vendor account.'],
+            ]);
+        }
+
         $paymentDate = $data['payment_date'] ?? now()->toDateString();
         $referenceNo = trim((string) ($data['reference_no'] ?? ''));
         $voucherNo = $referenceNo !== '' ? $referenceNo : ($generateVoucher ? $this->nextVoucherNo('BILL', Carbon::parse($paymentDate)) : null);
@@ -1005,6 +1197,7 @@ class FinanceBillEntryService extends BaseCachedService
             'expense_category_id' => null,
             'expense_head_id' => null,
             'asset_account_id' => $assetAccount->id,
+            'vendor_account_id' => $vendorAccount->id,
             'amount' => (float) $data['amount'],
             'payment_method' => $data['payment_method'] ?? 'cash',
             'payment_date' => $paymentDate,
@@ -1353,6 +1546,34 @@ class FinanceBillEntryService extends BaseCachedService
         }
 
         return $this->accountService->ensureExpenseHeadAccount($expenseHead);
+    }
+
+    private function resolveAssetAccountForBill(FinanceBillEntry $billEntry): ?FinanceAccount
+    {
+        $accountId = (int) ($billEntry->asset_account_id ?? $billEntry->linked_account_id ?? 0);
+        if ($accountId <= 0) {
+            return null;
+        }
+
+        return FinanceAccount::query()
+            ->where('id', $accountId)
+            ->where('category', 'asset')
+            ->where('status', 'active')
+            ->first();
+    }
+
+    private function resolveVendorAccountForBill(FinanceBillEntry $billEntry): ?FinanceAccount
+    {
+        $accountId = (int) ($billEntry->vendor_account_id ?? 0);
+        if ($accountId <= 0) {
+            return null;
+        }
+
+        return FinanceAccount::query()
+            ->where('id', $accountId)
+            ->where('category', 'vendor')
+            ->where('status', 'active')
+            ->first();
     }
 
     private function resolveExpenseHeadForBill(

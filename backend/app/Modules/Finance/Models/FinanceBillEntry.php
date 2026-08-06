@@ -116,6 +116,11 @@ class FinanceBillEntry extends Model
         return $this->belongsTo(FinanceAccount::class, 'asset_account_id');
     }
 
+    public function vendorAccount(): BelongsTo
+    {
+        return $this->belongsTo(FinanceAccount::class, 'vendor_account_id');
+    }
+
     public function application(): BelongsTo
     {
         return $this->belongsTo(Application::class);

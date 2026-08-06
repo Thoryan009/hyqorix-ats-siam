@@ -32,7 +32,7 @@ class FinanceBillEntryRepository extends BaseRepository
 
     protected function applyEagerLoads(Builder $query, array $filters): void
     {
-        $query->with(['expenseCategory', 'expenseHead']);
+        $query->with(['expenseCategory', 'expenseHead', 'assetAccount', 'vendorAccount']);
     }
 
     protected function applyOrder(Builder $query, array $filters): void

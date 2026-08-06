@@ -847,6 +847,7 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
     const amount = Number(payload.amount)
     const paymentDate = payload.payment_date || new Date().toISOString().slice(0, 10)
     const assetAccountId = Number(payload.asset_account_id)
+    const vendorAccountId = Number(payload.vendor_account_id)
 
     if (!paymentDate) {
       return { ok: false, message: 'Please select a bill date.' }
@@ -856,6 +857,10 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
       return { ok: false, message: 'Please select an asset account.' }
     }
 
+    if (!vendorAccountId) {
+      return { ok: false, message: 'Please select a vendor account.' }
+    }
+
     if (!amount || amount <= 0) {
       return { ok: false, message: 'Please enter a valid payment amount.' }
     }
@@ -863,7 +868,11 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
     const { useFinanceAccountStore } = await import('./financeAccountStore')
     const { ACCOUNT_CATEGORIES } = await import('../data/accountCategoryCodes')
     const financeAccountStore = useFinanceAccountStore()
-    await financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.ASSET, true)
+    const partyAccountsStore = usePartyAccountsStore()
+    await Promise.all([
+      financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.ASSET, true),
+      partyAccountsStore.fetchAccounts('vendor', true),
+    ])
 
     const assetAccount = financeAccountStore
       .getAccountsByCategory(ACCOUNT_CATEGORIES.ASSET)
@@ -881,6 +890,15 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
       return { ok: false, message: 'Selected asset account is not linked to purchase.' }
     }
 
+    const vendorAccount = partyAccountsStore.getAccount('vendor', vendorAccountId)
+    if (!vendorAccount) {
+      return { ok: false, message: 'Vendor account was not found.' }
+    }
+
+    if (vendorAccount.status !== 'Active') {
+      return { ok: false, message: 'Selected vendor account is not active.' }
+    }
+
     const particular =
       payload.particular?.trim() || `Asset Purchase - ${assetAccount.account_name}`
 
@@ -889,6 +907,7 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
         ...payload,
         entry_type: 'asset_purchase',
         asset_account_id: assetAccountId,
+        vendor_account_id: vendorAccountId,
         amount,
         payment_date: paymentDate,
         particular,

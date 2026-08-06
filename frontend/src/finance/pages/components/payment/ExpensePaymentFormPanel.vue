@@ -109,6 +109,21 @@
                   account first.
                 </p>
               </div>
+
+              <div class="space-y-1.5 sm:col-span-2">
+                <BaseLabel for="vendor_account_id">Vendor Account</BaseLabel>
+                <BaseSelect
+                  id="vendor_account_id"
+                  v-model="form.vendor_account_id"
+                  :options="vendorAccountOptions"
+                  placeholder="Select vendor account"
+                  :required="true"
+                  :disabled="!vendorAccountOptions.length"
+                />
+                <p v-if="!vendorAccountOptions.length" class="text-xs text-amber-600">
+                  No active vendor accounts found. Create a vendor account first.
+                </p>
+              </div>
             </template>
 
             <template v-else>
@@ -697,6 +712,7 @@ const createDefaultForm = () => ({
   category_id: props.initialCategoryId ? String(props.initialCategoryId) : '',
   head_id: props.initialHeadId ? String(props.initialHeadId) : '',
   asset_account_id: '',
+  vendor_account_id: '',
   amount: '',
   payment_method: 'cash',
   particular: '',
@@ -825,6 +841,16 @@ const purchaseAssetAccountOptions = computed(() =>
     .map((account) => ({
       id: account.id,
       name: `${account.account_name} — ${formatCurrency(account.balance ?? account.current_balance ?? 0)}`,
+    }))
+)
+
+const vendorAccountOptions = computed(() =>
+  partyAccountsStore
+    .getAccounts('vendor')
+    .filter((account) => account.status === 'Active')
+    .map((account) => ({
+      id: account.id,
+      name: `${account.vendor_name || account.account_name} — ${formatCurrency(account.balance ?? account.current_balance ?? 0)}`,
     }))
 )
 
@@ -1233,6 +1259,16 @@ async function handleSubmit(statusOrEvent = 'submitted') {
       return
     }
 
+    if (!form.vendor_account_id) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Vendor Account Required',
+        text: 'Please select a vendor account for this asset purchase.',
+        confirmButtonColor: '#22C55E',
+      })
+      return
+    }
+
     if (!(Number(form.amount) > 0)) {
       await Swal.fire({
         icon: 'warning',
@@ -1356,6 +1392,7 @@ async function handleSubmit(statusOrEvent = 'submitted') {
     category_id: form.category_id,
     head_id: form.head_id,
     asset_account_id: form.asset_account_id,
+    vendor_account_id: form.vendor_account_id,
     amount: form.amount,
     payment_date: form.payment_date,
     payment_method: form.payment_method,
@@ -1524,10 +1561,12 @@ watch(
       form.operating_lines = []
       form.linked_account_category = ''
       form.linked_account_id = ''
+      form.vendor_account_id = ''
       return
     }
 
     form.asset_account_id = ''
+    form.vendor_account_id = ''
   }
 )
 

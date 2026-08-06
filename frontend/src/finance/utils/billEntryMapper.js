@@ -48,9 +48,10 @@ export function buildBillEntryPayload(payload, accountData = {}) {
   }
 
   if (entryType === 'asset_purchase') {
-    return {
+      return {
       ...base,
       asset_account_id: Number(payload.asset_account_id),
+      vendor_account_id: Number(payload.vendor_account_id),
     }
   }
 

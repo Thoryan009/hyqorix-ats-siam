@@ -57,7 +57,7 @@ class FinanceBillEntryController extends Controller
         $entry = $this->service->createBillEntry($data);
 
         return apiSuccess(
-            new FinanceBillEntryResource($entry->load(['expenseCategory', 'expenseHead', 'assetAccount'])),
+            new FinanceBillEntryResource($entry->load(['expenseCategory', 'expenseHead', 'assetAccount', 'vendorAccount'])),
             'created'
         );
     }

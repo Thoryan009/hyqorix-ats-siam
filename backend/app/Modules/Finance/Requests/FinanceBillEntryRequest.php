@@ -63,6 +63,14 @@ class FinanceBillEntryRequest extends FormRequest
                         ->where('status', 'active');
                 }),
             ];
+            $rules['vendor_account_id'] = [
+                'required',
+                'integer',
+                Rule::exists('finance_accounts', 'id')->where(function ($query) {
+                    $query->where('category', 'vendor')
+                        ->where('status', 'active');
+                }),
+            ];
             $rules['category_id'] = ['prohibited'];
             $rules['head_id'] = ['prohibited'];
         } else {
