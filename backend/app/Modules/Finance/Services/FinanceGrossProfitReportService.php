@@ -404,7 +404,8 @@ class FinanceGrossProfitReportService
     /**
      * Avg C.R.E. per demand letter =
      * (sum of approved Client Recruitment Expense bills) /
-     * (ATS applications under that demand letter, excluding declined/rejected current process).
+     * (unique candidates in Receipt List / payment-collection for that DL,
+     *  excluding declined/rejected current process).
      *
      * @param  list<int>  $workOrderIds
      * @return array<int, float>
@@ -426,27 +427,63 @@ class FinanceGrossProfitReportService
             ->groupBy('work_order_id')
             ->pluck('total_amount', 'work_order_id');
 
-        $applications = Application::query()
-            ->with(['currentProcess'])
-            ->where('application_status', 'ATS')
-            ->whereHas('jobList', function ($query) use ($workOrderIds) {
-                $query->whereIn('work_order_id', $workOrderIds);
-            })
-            ->get(['id', 'job_list_id', 'application_status']);
+        $jobListIds = DB::table('job_lists')
+            ->whereIn('work_order_id', $workOrderIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
 
-        $jobWorkOrderMap = DB::table('job_lists')
-            ->whereIn('id', $applications->pluck('job_list_id')->filter()->unique()->all())
-            ->pluck('work_order_id', 'id');
+        if ($jobListIds === []) {
+            return array_fill_keys($workOrderIds, 0.0);
+        }
+
+        // Receipt List candidates (payment-collection) for jobs under these DLs.
+        $receiptApplicationIds = FinanceSaleCollection::query()
+            ->where(function ($query) use ($jobListIds) {
+                $query
+                    ->whereIn('job_list_id', $jobListIds)
+                    ->orWhereIn('application_id', function ($sub) use ($jobListIds) {
+                        $sub->select('id')
+                            ->from('applications')
+                            ->whereIn('job_list_id', $jobListIds);
+                    });
+            })
+            ->distinct()
+            ->pluck('application_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($receiptApplicationIds === []) {
+            return array_fill_keys($workOrderIds, 0.0);
+        }
+
+        $applications = Application::query()
+            ->with(['currentProcess.process', 'jobList'])
+            ->whereIn('id', $receiptApplicationIds)
+            ->get(['id', 'job_list_id']);
 
         $counts = [];
         foreach ($applications as $application) {
             $processStatus = strtolower((string) ($application->currentProcess?->status ?? ''));
-            if (in_array($processStatus, ['declined', 'rejected'], true)) {
+            $processName = strtolower((string) (
+                $application->resolved_current_process
+                ?? $application->currentProcess?->process?->name
+                ?? ''
+            ));
+
+            if (
+                in_array($processStatus, ['declined', 'rejected'], true)
+                || in_array($processName, ['declined', 'rejected'], true)
+            ) {
                 continue;
             }
 
-            $workOrderId = (int) ($jobWorkOrderMap[$application->job_list_id] ?? 0);
-            if ($workOrderId <= 0) {
+            $workOrderId = (int) ($application->jobList?->work_order_id ?? 0);
+            if ($workOrderId <= 0 || !in_array($workOrderId, $workOrderIds, true)) {
                 continue;
             }
 
