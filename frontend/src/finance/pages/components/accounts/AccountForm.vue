@@ -42,23 +42,6 @@
     </div>
 
     <div class="space-y-2">
-      <BaseLabel for="current_balance">Balance (BDT)</BaseLabel>
-      <BaseInput
-        id="current_balance"
-        v-model="localForm.current_balance"
-        type="number"
-        min="0"
-        step="1"
-        placeholder="Eg: 125000"
-        :required="true"
-        :disabled="isBalanceLocked"
-      />
-      <p v-if="isBalanceLocked" class="text-xs text-amber-700">
-        Balance cannot be edited after the account has a positive balance. Use transfer, deposit, or withdraw instead.
-      </p>
-    </div>
-
-    <div class="space-y-2">
       <BaseLabel for="status">Status</BaseLabel>
       <BaseSelect
         id="status"
@@ -106,10 +89,6 @@ const statusOptions = accountStatusOptions.map((option) => ({
 
 const isBankType = computed(() => localForm.value.account_type === 'Bank')
 
-const isBalanceLocked = computed(
-  () => props.isEdit && Number(localForm.value.current_balance) > 0
-)
-
 const bankOptions = computed(() =>
   bankStore.banks.map((bank) => ({
     id: bank.id,
@@ -123,10 +102,7 @@ const isFormValid = computed(() => {
   }
 
   return Boolean(
-    localForm.value.account_name &&
-      localForm.value.account_type &&
-      localForm.value.current_balance !== '' &&
-      localForm.value.status
+    localForm.value.account_name && localForm.value.account_type && localForm.value.status
   )
 })
 

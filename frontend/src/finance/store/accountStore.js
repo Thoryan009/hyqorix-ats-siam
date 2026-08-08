@@ -273,8 +273,6 @@ export const useAccountStore = defineStore('paymentAccount', () => {
   }
 
   async function addAccount(payload) {
-    const openingBalance = Number(payload.current_balance) || 0
-
     const result = await financeAccountStore.createAccount({
       category: ACCOUNT_CATEGORIES.MAIN,
       account_name: payload.account_name,
@@ -282,8 +280,6 @@ export const useAccountStore = defineStore('paymentAccount', () => {
       account_type: payload.account_type,
       bank_id: payload.account_type === 'Bank' ? Number(payload.bank_id) || null : null,
       icon: getIconForType(payload.account_type),
-      balance: openingBalance,
-      opening_balance: openingBalance,
       status: payload.status ?? 'Active',
     })
 
@@ -295,7 +291,7 @@ export const useAccountStore = defineStore('paymentAccount', () => {
   }
 
   async function updateAccount(payload) {
-    const updatePayload = {
+    const result = await financeAccountStore.updateAccount({
       id: payload.id,
       category: ACCOUNT_CATEGORIES.MAIN,
       account_name: payload.account_name,
@@ -304,13 +300,7 @@ export const useAccountStore = defineStore('paymentAccount', () => {
       bank_id: payload.account_type === 'Bank' ? Number(payload.bank_id) || null : null,
       icon: getIconForType(payload.account_type),
       status: payload.status ?? 'Active',
-    }
-
-    if (Number(payload.current_balance) <= 0) {
-      updatePayload.balance = Number(payload.current_balance) || 0
-    }
-
-    const result = await financeAccountStore.updateAccount(updatePayload)
+    })
 
     if (result.ok) {
       await refreshAccounts()

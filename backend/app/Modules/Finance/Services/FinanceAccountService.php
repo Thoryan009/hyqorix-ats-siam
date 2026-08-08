@@ -120,7 +120,7 @@ class FinanceAccountService extends BaseCachedService
             unset($data['opening_amount'], $data['opening_amount_type'], $data['main_account_id']);
 
             $category = (string) ($data['category'] ?? '');
-            if (in_array($category, self::PARTY_ZERO_BALANCE_CATEGORIES, true)) {
+            if (in_array($category, self::PARTY_ZERO_BALANCE_CATEGORIES, true) || $category === 'main') {
                 $data['balance'] = 0;
                 $data['opening_balance'] = 0;
 
@@ -1594,10 +1594,7 @@ class FinanceAccountService extends BaseCachedService
     public function updateFinanceAccount(FinanceAccount $financeAccount, array $data): FinanceAccount
     {
         return $this->mutate(function () use ($financeAccount, $data) {
-            if (
-                $financeAccount->category === 'main'
-                && (float) $financeAccount->balance > 0
-            ) {
+            if ($financeAccount->category === 'main') {
                 unset($data['balance'], $data['opening_balance']);
             }
 

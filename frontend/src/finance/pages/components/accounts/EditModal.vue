@@ -32,7 +32,6 @@ const formData = ref({
   account_label: '',
   account_type: 'Cash',
   bank_id: '',
-  current_balance: '',
   status: 'Active',
 })
 

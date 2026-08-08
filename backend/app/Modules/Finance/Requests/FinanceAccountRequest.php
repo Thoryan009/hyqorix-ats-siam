@@ -109,6 +109,14 @@ class FinanceAccountRequest extends FormRequest
                 ->ignore($accountId);
         }
 
+        if ($category === 'main') {
+            $rules['balance'][] = 'prohibited';
+            $rules['opening_balance'][] = 'prohibited';
+            $rules['opening_amount'][] = 'prohibited';
+            $rules['opening_amount_type'][] = 'prohibited';
+            $rules['main_account_id'][] = 'prohibited';
+        }
+
         if ($category && in_array($category, ['agent', 'vendor', 'principal', 'client', 'staff', 'banks', 'owners'], true)) {
             $rules['opening_amount'][] = 'prohibited';
             $rules['opening_amount_type'][] = 'prohibited';
