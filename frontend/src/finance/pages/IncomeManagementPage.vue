@@ -63,12 +63,11 @@
       </div>
 
       <div class="p-4">
-        <IncomeCategoryPanel v-if="activeTab === 'categories'" embedded />
-
         <IncomeHeadListPanel
-          v-else-if="activeTab === 'heads'"
+          v-if="activeTab === 'heads'"
           :initial-category-id="selectedCategoryId"
         />
+        <IncomeCategoryPanel v-else-if="activeTab === 'categories'" embedded />
       </div>
     </div>
   </SectionHeader>
@@ -90,28 +89,28 @@ const headStore = useIncomeHeadStore()
 const route = useRoute()
 const router = useRouter()
 
-const activeTab = ref('categories')
+const activeTab = ref('heads')
 const selectedCategoryId = ref('')
 
 const pageTabs = [
-  { id: 'categories', label: 'Income Categories', icon: 'fa fa-tags' },
   { id: 'heads', label: 'Income Heads', icon: 'fa fa-list-alt' },
+  { id: 'categories', label: 'Income Categories', icon: 'fa fa-tags' },
 ]
 
 const tabMeta = {
-  categories: {
-    title: 'Income Categories',
-    description: 'View and manage income categories used for income tracking',
-    subtitle: 'Manage income categories and their status',
-  },
   heads: {
     title: 'Income Heads',
     description: 'Manage income heads and base prices under each category',
     subtitle: 'Manage income heads with category-wise base prices',
   },
+  categories: {
+    title: 'Income Categories',
+    description: 'View and manage income categories used for income tracking',
+    subtitle: 'Manage income categories and their status',
+  },
 }
 
-const activeTabMeta = computed(() => tabMeta[activeTab.value] ?? tabMeta.categories)
+const activeTabMeta = computed(() => tabMeta[activeTab.value] ?? tabMeta.heads)
 const pageSubtitle = computed(() => activeTabMeta.value.subtitle)
 
 const totalBasePrice = computed(() => headStore.totalBasePrice)
@@ -184,7 +183,7 @@ const applyRouteTab = () => {
   if (pageTabs.some((item) => item.id === tab)) {
     activeTab.value = tab
   } else {
-    activeTab.value = 'categories'
+    activeTab.value = 'heads'
   }
 
   selectedCategoryId.value = categoryId ? String(categoryId) : ''

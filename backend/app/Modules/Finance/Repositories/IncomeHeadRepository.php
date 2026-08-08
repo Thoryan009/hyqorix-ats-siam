@@ -24,11 +24,11 @@ class IncomeHeadRepository extends BaseRepository
         );
 
         if (!empty($filters['category_id'])) {
-            $query->where('income_category_id', (int) $filters['category_id']);
+            $query->where('income_heads.income_category_id', (int) $filters['category_id']);
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $this->normalizeStatus($filters['status']));
+            $query->where('income_heads.status', $this->normalizeStatus($filters['status']));
         }
     }
 
@@ -39,7 +39,12 @@ class IncomeHeadRepository extends BaseRepository
 
     protected function applyOrder(Builder $query, array $filters): void
     {
-        $query->orderBy('sort_order')->orderBy('name');
+        $query
+            ->leftJoin('income_categories', 'income_heads.income_category_id', '=', 'income_categories.id')
+            ->orderBy('income_categories.name')
+            ->orderBy('income_heads.sort_order')
+            ->orderBy('income_heads.name')
+            ->select('income_heads.*');
     }
 
     protected function applySearch(Builder $query, ?string $search): void
@@ -51,7 +56,7 @@ class IncomeHeadRepository extends BaseRepository
         $search = trim($search);
 
         $query->where(function (Builder $q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
+            $q->where('income_heads.name', 'like', "%{$search}%")
                 ->orWhereHas('incomeCategory', fn (Builder $categoryQuery) => $categoryQuery->where('name', 'like', "%{$search}%"));
         });
     }
@@ -67,10 +72,10 @@ class IncomeHeadRepository extends BaseRepository
         $this->applyFilters($query, $filters);
 
         $totalCount = (int) (clone $query)->count();
-        $totalBasePrice = round((float) (clone $query)->sum('base_price'), 2);
+        $totalBasePrice = round((float) (clone $query)->sum('income_heads.base_price'), 2);
 
         $activeQuery = clone $query;
-        $activeQuery->where('status', 'active');
+        $activeQuery->where('income_heads.status', 'active');
 
         return [
             'total_count' => $totalCount,

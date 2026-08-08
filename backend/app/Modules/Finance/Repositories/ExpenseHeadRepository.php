@@ -18,11 +18,11 @@ class ExpenseHeadRepository extends BaseRepository
         $this->applySearch($query, $filters['search'] ?? null);
 
         if (!empty($filters['category_id'])) {
-            $query->where('expense_category_id', (int) $filters['category_id']);
+            $query->where('expense_heads.expense_category_id', (int) $filters['category_id']);
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $this->normalizeStatus($filters['status']));
+            $query->where('expense_heads.status', $this->normalizeStatus($filters['status']));
         }
     }
 
@@ -50,7 +50,7 @@ class ExpenseHeadRepository extends BaseRepository
         $search = trim($search);
 
         $query->where(function (Builder $q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
+            $q->where('expense_heads.name', 'like', "%{$search}%")
                 ->orWhereHas('expenseCategory', fn (Builder $categoryQuery) => $categoryQuery->where('name', 'like', "%{$search}%"));
         });
     }
@@ -66,10 +66,10 @@ class ExpenseHeadRepository extends BaseRepository
         $this->applyFilters($query, $filters);
 
         $totalCount = (int) (clone $query)->count();
-        $totalBasePrice = round((float) (clone $query)->sum('base_price'), 2);
+        $totalBasePrice = round((float) (clone $query)->sum('expense_heads.base_price'), 2);
 
         $activeQuery = clone $query;
-        $activeQuery->where('status', 'active');
+        $activeQuery->where('expense_heads.status', 'active');
 
         return [
             'total_count' => $totalCount,
