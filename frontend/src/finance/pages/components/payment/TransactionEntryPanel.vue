@@ -895,19 +895,14 @@ onMounted(async () => {
   if (props.transactionOnly) {
     activePaymentMode.value = TRANSACTION_MODE
     setTransactionType(form.transaction_type || accountTransactionTypes[0]?.id || 'loan')
-  } else if (!route.query.payment_mode || route.query.payment_mode === 'transaction') {
+    await financeAccountStore.fetchAllCategories()
+    return
+  }
+
+  if (!route.query.payment_mode || route.query.payment_mode === 'transaction') {
     setPaymentMode(BILLS_TO_PAY_MODE)
   }
 
-  await Promise.all([
-    financeAccountStore.fetchAllCategories(),
-    paymentStore.fetchBillSummary(),
-    paymentStore.fetchBillEntries({
-      force: true,
-      page: 1,
-      perPage: 10,
-      filters: { status: 'pending' },
-    }),
-  ])
+  // Bills modes: parent loads bill summary; BillEntriesPanel loads list data.
 })
 </script>

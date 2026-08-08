@@ -127,7 +127,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
@@ -508,12 +508,39 @@ const applyRouteTab = () => {
 
 watch(() => route.query, applyRouteTab, { immediate: true, deep: true })
 
-onMounted(async () => {
-  await Promise.all([
-    paymentStore.fetchBillSummary(),
-    incomeCollectionStore.fetchCollections({ force: true, page: 1, perPage: 10 }),
-    saleEntryStore.fetchReceivableBills(true),
-    saleEntryStore.fetchSaleEntries({ force: true, page: 1, perPage: 10 }),
-  ])
-})
+async function loadActiveTabData() {
+  if (activeTab.value === 'transaction_entry') {
+    await paymentStore.fetchBillSummary()
+    return
+  }
+
+  if (activeTab.value === 'other_transaction') {
+    return
+  }
+
+  if (activeTab.value === 'sale_entry') {
+    if (receiveType.value === 'income') {
+      await incomeCollectionStore.fetchCollections({ force: true, page: 1, perPage: 10 })
+      return
+    }
+
+    if (receiveType.value === 'bills_receivable') {
+      await saleEntryStore.fetchReceivableBills(true)
+      return
+    }
+
+    await Promise.all([
+      saleEntryStore.fetchSaleEntries({ force: true, page: 1, perPage: 10 }),
+      saleEntryStore.fetchReceivableBills(true),
+    ])
+  }
+}
+
+watch(
+  [activeTab, receiveType],
+  () => {
+    loadActiveTabData()
+  },
+  { immediate: true }
+)
 </script>
