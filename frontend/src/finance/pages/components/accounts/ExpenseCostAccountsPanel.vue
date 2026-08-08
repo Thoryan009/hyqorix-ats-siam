@@ -413,7 +413,7 @@ const setPerPage = (value) => {
 onMounted(async () => {
   await Promise.all([
     categoryStore.fetchCategories(true),
-    headStore.fetchHeads(true),
+    headStore.fetchHeads({ force: true, page: 1, perPage: 300 }),
   ])
 })
 </script>

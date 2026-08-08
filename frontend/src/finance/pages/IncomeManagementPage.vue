@@ -114,13 +114,8 @@ const tabMeta = {
 const activeTabMeta = computed(() => tabMeta[activeTab.value] ?? tabMeta.categories)
 const pageSubtitle = computed(() => activeTabMeta.value.subtitle)
 
-const totalBasePrice = computed(() =>
-  headStore.heads.reduce((sum, head) => sum + Number(head.base_price || 0), 0)
-)
-
-const activeHeadCount = computed(
-  () => headStore.heads.filter((head) => head.status === 'Active').length
-)
+const totalBasePrice = computed(() => headStore.totalBasePrice)
+const activeHeadCount = computed(() => headStore.activeHeadCount)
 
 const summaryCards = computed(() => [
   {
@@ -133,7 +128,7 @@ const summaryCards = computed(() => [
   },
   {
     title: 'Income Heads',
-    value: headStore.heads.length,
+    value: headStore.totalHeads,
     subtitle: 'Total income head records',
     icon: 'fa fa-list-alt',
     iconBg: 'bg-emerald-50',
@@ -198,6 +193,6 @@ const applyRouteTab = () => {
 watch(() => route.query, applyRouteTab, { immediate: true, deep: true })
 
 onMounted(async () => {
-  await Promise.all([categoryStore.fetchCategories(), headStore.fetchHeads()])
+  await Promise.all([categoryStore.fetchCategories(), headStore.fetchHeadSummary()])
 })
 </script>

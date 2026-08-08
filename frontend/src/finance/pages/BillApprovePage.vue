@@ -1530,7 +1530,7 @@ async function loadPage() {
     paymentStore.fetchBillSummary(),
     financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.MAIN, true),
     financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.STAFF, true),
-    incomeHeadStore.fetchHeads(true),
+    incomeHeadStore.fetchHeads({ force: true, page: 1, perPage: 300 }),
     loadApprovalManagers(),
   ])
 

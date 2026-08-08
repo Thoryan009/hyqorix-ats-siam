@@ -35,7 +35,7 @@
 
     <BaseTable
       :columns="columns"
-      :rows="paginatedRows"
+      :rows="tableRows"
       :current-page="page"
       :per-page="perPage"
       show-actions
@@ -110,7 +110,7 @@
     </BaseTable>
 
     <BasePagination
-      :total="filteredRows.length"
+      :total="paginationTotal"
       :showing="showing"
       :links="links"
       :per-page="perPage"
@@ -201,38 +201,14 @@ const perPage = ref(10)
 const showing = ref(0)
 const links = ref([])
 
-const enrichedHeads = computed(() =>
+const tableRows = computed(() =>
   headStore.heads.map((head) => ({
     ...head,
-    category_name: categoryMap.value[head.category_id] ?? '—',
+    category_name: head.category_name || categoryMap.value[head.category_id] || '—',
   }))
 )
 
-const filteredRows = computed(() => {
-  const query = filters.search.trim().toLowerCase()
-
-  return enrichedHeads.value.filter((head) => {
-    const matchesSearch =
-      !query ||
-      head.name.toLowerCase().includes(query) ||
-      head.category_name.toLowerCase().includes(query)
-
-    const matchesCategory =
-      !filters.categoryId || Number(head.category_id) === Number(filters.categoryId)
-
-    const matchesStatus =
-      !filters.status ||
-      filters.status === 'all' ||
-      head.status === filters.status
-
-    return matchesSearch && matchesCategory && matchesStatus
-  })
-})
-
-const paginatedRows = computed(() => {
-  const start = (page.value - 1) * perPage.value
-  return filteredRows.value.slice(start, start + perPage.value)
-})
+const paginationTotal = computed(() => headStore.paginationMeta.total ?? 0)
 
 const hasActiveFilters = computed(() =>
   Boolean(
@@ -241,6 +217,33 @@ const hasActiveFilters = computed(() =>
       (filters.status && filters.status !== 'Active')
   )
 )
+
+function buildListFilters() {
+  const apiFilters = {}
+
+  if (filters.search.trim()) {
+    apiFilters.search = filters.search.trim()
+  }
+
+  if (filters.categoryId) {
+    apiFilters.category_id = filters.categoryId
+  }
+
+  if (filters.status && filters.status !== 'all') {
+    apiFilters.status = filters.status
+  }
+
+  return apiFilters
+}
+
+async function loadHeads() {
+  await headStore.fetchHeads({
+    force: true,
+    page: page.value,
+    perPage: perPage.value,
+    filters: buildListFilters(),
+  })
+}
 
 const resetFilters = () => {
   filters.search = ''
@@ -258,25 +261,46 @@ watch(
 )
 
 const updatePagination = () => {
-  const count = filteredRows.value.length
-  const lastPage = Math.max(1, Math.ceil(count / perPage.value))
-  const to = Math.min(page.value * perPage.value, count)
+  const meta = headStore.paginationMeta
+  showing.value = Number(meta.to) || 0
+  links.value = Array.isArray(meta.links) ? meta.links : []
 
-  showing.value = to
-  links.value = Array.from({ length: lastPage }, (_, index) => ({
-    label: String(index + 1),
-    active: page.value === index + 1,
-    url: page.value === index + 1 ? null : '#',
-  }))
-
+  const lastPage = Math.max(1, Number(meta.last_page) || 1)
   if (page.value > lastPage) {
     page.value = lastPage
   }
 }
 
-watch([filteredRows, page, perPage, () => headStore.heads.length], updatePagination, {
-  immediate: true,
-})
+watch(
+  () => [
+    headStore.paginationMeta.total,
+    headStore.paginationMeta.to,
+    headStore.paginationMeta.last_page,
+    headStore.paginationMeta.links,
+  ],
+  updatePagination,
+  { immediate: true, deep: true }
+)
+
+let reloadTimer = null
+function scheduleReload(resetPage = false) {
+  if (resetPage && page.value !== 1) {
+    page.value = 1
+    return
+  }
+
+  clearTimeout(reloadTimer)
+  reloadTimer = setTimeout(() => {
+    loadHeads()
+  }, 250)
+}
+
+watch(
+  () => [filters.search, filters.categoryId, filters.status],
+  () => scheduleReload(true)
+)
+
+watch([page, perPage], () => scheduleReload(false))
 
 const setPage = (value) => {
   if (value && value !== page.value) {
@@ -290,6 +314,7 @@ const setPerPage = (value) => {
 }
 
 onMounted(async () => {
-  await Promise.all([categoryStore.fetchCategories(), headStore.fetchHeads()])
+  await categoryStore.fetchCategories()
+  await loadHeads()
 })
 </script>

@@ -45,6 +45,8 @@ Route::prefix('expense-categories')->group(function () {
 Route::prefix('expense-heads')->group(function () {
     Route::get('/', [ExpenseHeadController::class, 'index'])
         ->middleware('permission:account_setup.view|bill_generation.create');
+    Route::get('/summary', [ExpenseHeadController::class, 'summary'])
+        ->middleware('permission:account_setup.view|bill_generation.create');
     Route::post('/', [ExpenseHeadController::class, 'store'])
         ->middleware('permission:account_setup.create');
     Route::get('{expenseHead}', [ExpenseHeadController::class, 'show'])
@@ -62,6 +64,8 @@ Route::prefix('income-categories')->group(function () {
 });
 Route::prefix('income-heads')->group(function () {
     Route::get('/', [IncomeHeadController::class, 'index'])
+        ->middleware('permission:account_setup.view');
+    Route::get('/summary', [IncomeHeadController::class, 'summary'])
         ->middleware('permission:account_setup.view');
     Route::post('/', [IncomeHeadController::class, 'store'])
         ->middleware('permission:account_setup.create');

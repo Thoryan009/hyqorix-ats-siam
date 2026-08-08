@@ -659,7 +659,7 @@ onMounted(async () => {
     accountStore.fetchActiveAccounts(true),
     partyAccountsStore.fetchAccounts('applicant'),
     partyAccountsStore.fetchAccounts('client'),
-    expenseHeadStore.fetchHeads(true),
+    expenseHeadStore.fetchHeads({ force: true, page: 1, perPage: 300 }),
   ])
   await loadEntry()
 })

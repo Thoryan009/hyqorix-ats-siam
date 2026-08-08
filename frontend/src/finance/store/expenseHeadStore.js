@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useModalHelpers } from '@/shared/composables/useModalHelpers'
 import {
   fetchAll,
+  fetchSummary,
   submitData,
   updateData,
 } from '../services/expenseHeadService'
@@ -15,8 +16,29 @@ export const useExpenseHeadStore = defineStore('expenseHead', () => {
   const heads = ref([])
   const isLoading = ref(false)
   const isLoaded = ref(false)
+  const paginationMeta = ref({
+    total: 0,
+    from: 0,
+    to: 0,
+    current_page: 1,
+    per_page: 10,
+    last_page: 1,
+    links: [],
+  })
+  const summaryData = ref({
+    total_count: 0,
+    active_count: 0,
+    total_base_price: 0,
+  })
+  const lastFetchParams = ref({
+    page: 1,
+    perPage: 10,
+    filters: {},
+  })
 
-  const totalHeads = computed(() => heads.value.length)
+  const totalHeads = computed(() => summaryData.value.total_count)
+  const activeHeadCount = computed(() => summaryData.value.active_count)
+  const totalBasePrice = computed(() => summaryData.value.total_base_price)
 
   function getApiErrorMessage(error, fallback = 'Request failed.') {
     return (
@@ -41,27 +63,101 @@ export const useExpenseHeadStore = defineStore('expenseHead', () => {
     }
   }
 
-  async function fetchHeads(force = false) {
+  function normalizeFetchOptions(options = true) {
+    if (typeof options === 'boolean') {
+      return {
+        force: options,
+        page: lastFetchParams.value.page,
+        perPage: lastFetchParams.value.perPage,
+        filters: { ...lastFetchParams.value.filters },
+      }
+    }
+
+    return {
+      force: options.force !== false,
+      page: Number(options.page) || lastFetchParams.value.page || 1,
+      perPage: Number(options.perPage) || lastFetchParams.value.perPage || 10,
+      filters: { ...(options.filters ?? lastFetchParams.value.filters ?? {}) },
+    }
+  }
+
+  function extractPaginationMeta(payload, page, perPage, rowCount) {
+    const meta = payload?.meta ?? {}
+    const total = Number(meta.total ?? rowCount) || 0
+    const currentPage = Number(meta.current_page ?? page) || 1
+    const perPageValue = Number(meta.per_page ?? perPage) || perPage
+    const lastPage = Math.max(1, Number(meta.last_page) || Math.ceil(total / perPageValue) || 1)
+    const from = Number(meta.from ?? (total === 0 ? 0 : (currentPage - 1) * perPageValue + 1))
+    const to = Number(meta.to ?? (total === 0 ? 0 : Math.min(currentPage * perPageValue, total)))
+
+    const links =
+      Array.isArray(meta.links) && meta.links.length
+        ? meta.links
+        : Array.from({ length: lastPage }, (_, index) => ({
+            label: String(index + 1),
+            active: currentPage === index + 1,
+            url: currentPage === index + 1 ? null : '#',
+          }))
+
+    return {
+      total,
+      from,
+      to,
+      current_page: currentPage,
+      per_page: perPageValue,
+      last_page: lastPage,
+      links,
+    }
+  }
+
+  function mapHead(head) {
+    return {
+      ...head,
+      category_id: Number(head.category_id ?? head.expense_category_id),
+    }
+  }
+
+  async function fetchHeadSummary(filters = {}) {
+    try {
+      const { data, error } = await fetchSummary(filters)
+      if (error) throw error
+      const payload = data?.data ?? {}
+      summaryData.value = {
+        total_count: Number(payload.total_count) || 0,
+        active_count: Number(payload.active_count) || 0,
+        total_base_price: Number(payload.total_base_price) || 0,
+      }
+    } catch {
+      // Keep prior summary on failure.
+    }
+  }
+
+  async function fetchHeads(options = true) {
+    const { force, page, perPage, filters } = normalizeFetchOptions(options)
+
     if (isLoading.value) return
     if (isLoaded.value && !force) return
 
     isLoading.value = true
+    lastFetchParams.value = { page, perPage, filters }
 
     try {
-      const { data, error } = await fetchAll(1, 300, {})
+      const [{ data, error }] = await Promise.all([
+        fetchAll(page, perPage, filters),
+        fetchHeadSummary({}),
+      ])
       if (error) throw error
-      heads.value = (data?.data ?? []).map((head) => ({
-        ...head,
-        category_id: Number(head.category_id ?? head.expense_category_id),
-      }))
+
+      const rows = (data?.data ?? []).map(mapHead)
+      heads.value = rows
+      paginationMeta.value = extractPaginationMeta(data, page, perPage, rows.length)
       isLoaded.value = true
+    } catch {
+      heads.value = []
+      paginationMeta.value = extractPaginationMeta(null, page, perPage, 0)
     } finally {
       isLoading.value = false
     }
-  }
-
-  function findHeadIndex(headId) {
-    return heads.value.findIndex((head) => Number(head.id) === Number(headId))
   }
 
   function getHeadsByCategory(categoryId) {
@@ -125,14 +221,12 @@ export const useExpenseHeadStore = defineStore('expenseHead', () => {
     try {
       const response = await submitData(mapPayload(payload, linkResult.data))
       const created = response?.data
-      if (created) {
-        heads.value.push({
-          ...created,
-          category_id: Number(created.category_id ?? created.expense_category_id),
-        })
-      } else {
-        await fetchHeads(true)
-      }
+      await fetchHeads({
+        force: true,
+        page: lastFetchParams.value.page,
+        perPage: lastFetchParams.value.perPage,
+        filters: lastFetchParams.value.filters,
+      })
       return { ok: true, head: created }
     } catch (error) {
       return { ok: false, message: getApiErrorMessage(error, 'Failed to create expense head.') }
@@ -162,7 +256,12 @@ export const useExpenseHeadStore = defineStore('expenseHead', () => {
 
     try {
       await updateData({ id: payload.id, ...mapPayload(payload, linkResult.data) })
-      await fetchHeads(true)
+      await fetchHeads({
+        force: true,
+        page: lastFetchParams.value.page,
+        perPage: lastFetchParams.value.perPage,
+        filters: lastFetchParams.value.filters,
+      })
       return { ok: true }
     } catch (error) {
       return { ok: false, message: getApiErrorMessage(error, 'Failed to update expense head.') }
@@ -178,10 +277,16 @@ export const useExpenseHeadStore = defineStore('expenseHead', () => {
     heads,
     isLoading,
     isLoaded,
+    paginationMeta,
+    summaryData,
+    lastFetchParams,
     totalHeads,
+    activeHeadCount,
+    totalBasePrice,
     handleToggleModal,
     handleReset,
     fetchHeads,
+    fetchHeadSummary,
     getHeadsByCategory,
     getHead,
     getBillsReceivableLinkedHead,

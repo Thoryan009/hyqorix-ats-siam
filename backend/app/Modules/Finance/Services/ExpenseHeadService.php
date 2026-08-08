@@ -24,6 +24,14 @@ class ExpenseHeadService extends BaseCachedService
         );
     }
 
+    public function getSummary(array $filters = []): array
+    {
+        return $this->remember(
+            $this->filtersCacheKey([...$filters, '_summary' => true]),
+            fn () => $this->repository->getSummary($filters)
+        );
+    }
+
     public function getExpenseHead(ExpenseHead $expenseHead): ExpenseHead
     {
         return $this->remember(

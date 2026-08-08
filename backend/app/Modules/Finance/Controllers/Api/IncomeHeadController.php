@@ -28,6 +28,15 @@ class IncomeHeadController extends Controller
         );
     }
 
+    public function summary(ApiIndexRequest $request): JsonResponse
+    {
+        $filters = $request->filters();
+        $filters['status'] = $request->get('status');
+        $filters['category_id'] = $request->get('category_id');
+
+        return apiSuccess($this->service->getSummary($filters), 'fetched');
+    }
+
     public function store(IncomeHeadRequest $request): JsonResponse
     {
         $head = $this->service->createIncomeHead($request->validated());

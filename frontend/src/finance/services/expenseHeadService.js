@@ -8,7 +8,7 @@ const response = (api) => ({
   error: api.error.value,
 })
 
-export async function fetchAll(page = 1, perPage = 500, filters = {}) {
+export async function fetchAll(page = 1, perPage = 10, filters = {}) {
   const api = useApi()
   const url = buildUrl(BASE_URL, {
     page,
@@ -16,6 +16,13 @@ export async function fetchAll(page = 1, perPage = 500, filters = {}) {
     ...filters,
   })
 
+  await api.sendRequest(url)
+  return response(api)
+}
+
+export async function fetchSummary(filters = {}) {
+  const api = useApi()
+  const url = buildUrl(`${BASE_URL}/summary`, filters)
   await api.sendRequest(url)
   return response(api)
 }

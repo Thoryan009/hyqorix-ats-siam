@@ -60,4 +60,22 @@ class IncomeHeadRepository extends BaseRepository
     {
         return strtolower($status) === 'inactive' ? 'inactive' : 'active';
     }
+
+    public function getSummary(array $filters = []): array
+    {
+        $query = $this->baseQuery();
+        $this->applyFilters($query, $filters);
+
+        $totalCount = (int) (clone $query)->count();
+        $totalBasePrice = round((float) (clone $query)->sum('base_price'), 2);
+
+        $activeQuery = clone $query;
+        $activeQuery->where('status', 'active');
+
+        return [
+            'total_count' => $totalCount,
+            'active_count' => (int) $activeQuery->count(),
+            'total_base_price' => $totalBasePrice,
+        ];
+    }
 }

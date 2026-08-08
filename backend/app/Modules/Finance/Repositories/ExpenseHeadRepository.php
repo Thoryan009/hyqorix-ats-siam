@@ -33,7 +33,12 @@ class ExpenseHeadRepository extends BaseRepository
 
     protected function applyOrder(Builder $query, array $filters): void
     {
-        $query->orderBy('sort_order')->orderBy('name');
+        $query
+            ->leftJoin('expense_categories', 'expense_heads.expense_category_id', '=', 'expense_categories.id')
+            ->orderBy('expense_categories.name')
+            ->orderBy('expense_heads.sort_order')
+            ->orderBy('expense_heads.name')
+            ->select('expense_heads.*');
     }
 
     protected function applySearch(Builder $query, ?string $search): void
@@ -53,5 +58,23 @@ class ExpenseHeadRepository extends BaseRepository
     private function normalizeStatus(string $status): string
     {
         return strtolower($status) === 'inactive' ? 'inactive' : 'active';
+    }
+
+    public function getSummary(array $filters = []): array
+    {
+        $query = $this->baseQuery();
+        $this->applyFilters($query, $filters);
+
+        $totalCount = (int) (clone $query)->count();
+        $totalBasePrice = round((float) (clone $query)->sum('base_price'), 2);
+
+        $activeQuery = clone $query;
+        $activeQuery->where('status', 'active');
+
+        return [
+            'total_count' => $totalCount,
+            'active_count' => (int) $activeQuery->count(),
+            'total_base_price' => $totalBasePrice,
+        ];
     }
 }

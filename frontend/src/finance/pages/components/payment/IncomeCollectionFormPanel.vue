@@ -1121,7 +1121,7 @@ async function handleSubmit() {
 onMounted(async () => {
   await Promise.all([
     categoryStore.fetchCategories(true),
-    headStore.fetchHeads(true),
+    headStore.fetchHeads({ force: true, page: 1, perPage: 300 }),
     accountStore.fetchActiveAccounts(true),
     incomeAccountsStore.fetchAccounts('client_income'),
     incomeAccountsStore.fetchAccounts('other_income'),
