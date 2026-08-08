@@ -6,7 +6,7 @@ import { useSettingsQuery } from './modules/home/queries/useSettingsQuery';
 
 document.title = `${app.name}`;
 
-const { data, isLoading } = useSettingsQuery(1)
+const { data, isLoading } = useSettingsQuery()
 
 
 const settingsData = computed(() => data.value?.data || {})

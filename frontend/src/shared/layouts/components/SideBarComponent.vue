@@ -202,7 +202,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { navGroups } from '@/shared/layouts/navGroups'
 import { usePermission } from '@/shared/composables/usePermission'
-import { useSettingsQuery } from '@/modules/setting/queries/useSettingsQuery'
+import { useSettingsQuery } from '@/modules/home/queries/useSettingsQuery'
 import { useTranslate } from '@/shared/composables/useTranslate'
 
 const { t } = useTranslate()
@@ -271,8 +271,8 @@ watch(
   { immediate: true },
 )
 
-const { data } = useSettingsQuery(1)
-const settingsData = computed(() => data.value?.data?.data || {})
+const { data } = useSettingsQuery()
+const settingsData = computed(() => data.value?.data || {})
 </script>
 
 <style scoped>

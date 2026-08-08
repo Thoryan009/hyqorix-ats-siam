@@ -8,6 +8,7 @@ export function useSettingMutations(moduleName, options = {}) {
   const handleSuccess = (data, variables) => {
     toast.success(`${moduleName} updated successfully`)
     queryClient.invalidateQueries(['settings'])
+    queryClient.invalidateQueries(['public-settings'])
     options.onSuccess?.(data, variables)
   }
 

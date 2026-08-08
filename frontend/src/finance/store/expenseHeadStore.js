@@ -142,10 +142,7 @@ export const useExpenseHeadStore = defineStore('expenseHead', () => {
     lastFetchParams.value = { page, perPage, filters }
 
     try {
-      const [{ data, error }] = await Promise.all([
-        fetchAll(page, perPage, filters),
-        fetchHeadSummary({}),
-      ])
+      const { data, error } = await fetchAll(page, perPage, filters)
       if (error) throw error
 
       const rows = (data?.data ?? []).map(mapHead)
@@ -227,6 +224,7 @@ export const useExpenseHeadStore = defineStore('expenseHead', () => {
         perPage: lastFetchParams.value.perPage,
         filters: lastFetchParams.value.filters,
       })
+      await fetchHeadSummary({})
       return { ok: true, head: created }
     } catch (error) {
       return { ok: false, message: getApiErrorMessage(error, 'Failed to create expense head.') }
@@ -262,6 +260,7 @@ export const useExpenseHeadStore = defineStore('expenseHead', () => {
         perPage: lastFetchParams.value.perPage,
         filters: lastFetchParams.value.filters,
       })
+      await fetchHeadSummary({})
       return { ok: true }
     } catch (error) {
       return { ok: false, message: getApiErrorMessage(error, 'Failed to update expense head.') }

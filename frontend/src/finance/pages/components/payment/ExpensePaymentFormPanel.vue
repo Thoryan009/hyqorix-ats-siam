@@ -495,8 +495,8 @@ import {
   getLinkedBillAccountTypeLabel,
   hasLinkedBillAccount,
 } from '@/finance/utils/linkedAccountOptions'
-import { normalizeLinkedAccounts } from '@/finance/data/expenseHeadAccountLinkData'
-import { partyTypesWithAccounts } from '@/finance/config/partyAccountConfigs'
+import { normalizeLinkedAccounts, isExpenseCostAccountCategory } from '@/finance/data/expenseHeadAccountLinkData'
+import { getPartyConfig } from '@/finance/config/partyAccountConfigs'
 import { useAccountStore } from '@/finance/store/accountStore'
 import { usePartyAccountsStore } from '@/finance/store/partyAccountsStore'
 import { useAgentAccountStore } from '@/finance/store/agentAccountStore'
@@ -943,6 +943,51 @@ function getOperatingHeadRecord(headId) {
   )
 }
 
+async function ensureStoresForLinkedCategories(categories = []) {
+  const unique = [...new Set((categories || []).filter(Boolean))]
+  if (!unique.length) return
+
+  await Promise.all(
+    unique.map((category) => {
+      if (isExpenseCostAccountCategory(category)) {
+        return expenseCostAccountsStore.fetchAccounts(category)
+      }
+      if (category === 'main') {
+        return accountStore.fetchActiveAccounts()
+      }
+      if (category === 'agent') {
+        return agentAccountStore.fetchAccounts()
+      }
+      if (getPartyConfig(category)) {
+        return partyAccountsStore.fetchAccounts(category)
+      }
+      return Promise.resolve()
+    })
+  )
+}
+
+async function ensureLinkedAccountsForHead(head) {
+  const links = normalizeLinkedAccounts(head?.linked_accounts)
+  await ensureStoresForLinkedCategories(links.map((link) => link.account_category))
+}
+
+async function ensureAssetPurchaseAccounts() {
+  await Promise.all([
+    financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.ASSET),
+    partyAccountsStore.fetchAccounts('vendor'),
+  ])
+}
+
+async function ensureHeadBillContext(headId) {
+  if (!headId) return
+  await paymentStore.fetchBillEntries({
+    force: true,
+    page: 1,
+    perPage: 300,
+    filters: { head_id: headId },
+  })
+}
+
 function getOperatingHeadLinkedGroups(head) {
   const fullHead = getOperatingHeadRecord(head?.id ?? head)
   if (!fullHead) return []
@@ -968,9 +1013,11 @@ function selectOperatingHeadLinkedAccount(headId, category, accountId) {
   line.linked_account_id = accountId ? String(accountId) : ''
 }
 
-function autoSelectOperatingHeadLinkedAccount(head) {
+async function autoSelectOperatingHeadLinkedAccount(head) {
   const line = getOperatingLine(head.id)
   if (!line) return
+
+  await ensureLinkedAccountsForHead(head)
 
   const groups = getOperatingHeadLinkedGroups(head)
   if (!groups.length) {
@@ -1016,7 +1063,7 @@ function setOperatingHeadBillNo(headId, billNo) {
   }
 }
 
-function toggleOperatingHead(head, checked) {
+async function toggleOperatingHead(head, checked) {
   if (checked) {
     if (isOperatingHeadSelected(head.id)) return
     form.operating_lines.push({
@@ -1026,7 +1073,7 @@ function toggleOperatingHead(head, checked) {
       linked_account_category: '',
       linked_account_id: '',
     })
-    autoSelectOperatingHeadLinkedAccount(head)
+    await autoSelectOperatingHeadLinkedAccount(head)
     return
   }
 
@@ -1118,9 +1165,13 @@ const selectLinkedAccount = (category, accountId) => {
   form.linked_account_id = accountId ? String(accountId) : ''
 }
 
-const autoSelectLinkedAccount = () => {
+const autoSelectLinkedAccount = async () => {
   form.linked_account_category = ''
   form.linked_account_id = ''
+
+  if (!selectedHead.value) return
+
+  await ensureLinkedAccountsForHead(selectedHead.value)
 
   const groups = linkedAccountGroups.value
   if (!groups.length) return
@@ -1197,10 +1248,13 @@ watch(
 
 watch(
   () => form.head_id,
-  () => {
+  async (headId) => {
     form.application_ids = []
     form.job_id = ''
-    autoSelectLinkedAccount()
+    if (headId) {
+      await ensureHeadBillContext(headId)
+    }
+    await autoSelectLinkedAccount()
     applyParticular()
     applyBasePrice()
   }
@@ -1505,7 +1559,7 @@ function printSubmittedBill() {
   submittedBillPreviewRef.value?.printBill?.()
 }
 
-function createAnotherBill() {
+async function createAnotherBill() {
   const keepEntryType = form.entry_type
   const keepCategoryId = form.category_id
   const keepHeadId = form.head_id
@@ -1516,6 +1570,7 @@ function createAnotherBill() {
   form.entry_type = keepEntryType
   if (keepEntryType === 'asset_purchase') {
     form.asset_account_id = keepAssetAccountId
+    await ensureAssetPurchaseAccounts()
     return
   }
   form.category_id = keepCategoryId
@@ -1529,7 +1584,13 @@ function createAnotherBill() {
   form.job_id = ''
   form.demand_letter_id = ''
   form.operating_lines = []
-  autoSelectLinkedAccount()
+  if (form.category_id) {
+    await expenseCostAccountsStore.ensureAccountsForCategoryId(form.category_id)
+  }
+  if (form.head_id) {
+    await ensureHeadBillContext(form.head_id)
+  }
+  await autoSelectLinkedAccount()
   applyParticular()
   form.amount = selectedHead.value?.base_price ? Number(selectedHead.value.base_price) : ''
 }
@@ -1538,26 +1599,23 @@ onMounted(async () => {
   await Promise.all([
     categoryStore.fetchCategories(true),
     headStore.fetchHeads({ force: true, page: 1, perPage: 300 }),
-    paymentStore.fetchBillSummary(),
-    paymentStore.fetchBillEntries({
-      force: true,
-      page: 1,
-      perPage: 100,
-      filters: {},
-    }),
-    financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.ASSET, true),
-    expenseCostAccountsStore.fetchAccounts('direct_cost'),
-    expenseCostAccountsStore.fetchAccounts('client_recruitment_cost'),
-    expenseCostAccountsStore.fetchAccounts('operating_cost'),
-    accountStore.fetchActiveAccounts(true),
-    agentAccountStore.fetchAccounts(),
-    ...partyTypesWithAccounts.map((partyType) => partyAccountsStore.fetchAccounts(partyType)),
   ])
+
+  if (form.category_id) {
+    await expenseCostAccountsStore.ensureAccountsForCategoryId(form.category_id)
+  }
+
+  if (form.head_id) {
+    await ensureHeadBillContext(form.head_id)
+    await autoSelectLinkedAccount()
+    applyParticular()
+    applyBasePrice()
+  }
 })
 
 watch(
   () => form.entry_type,
-  (entryType) => {
+  async (entryType) => {
     if (entryType === 'asset_purchase') {
       form.category_id = ''
       form.head_id = ''
@@ -1568,6 +1626,7 @@ watch(
       form.linked_account_category = ''
       form.linked_account_id = ''
       form.vendor_account_id = ''
+      await ensureAssetPurchaseAccounts()
       return
     }
 
