@@ -85,9 +85,6 @@ const summaryCards = computed(() => [
 ])
 
 onMounted(async () => {
-  await Promise.all([
-    transactionStore.fetchTransactions(true),
-    paymentStore.fetchBillEntries(),
-  ])
+  await paymentStore.fetchBillSummary()
 })
 </script>

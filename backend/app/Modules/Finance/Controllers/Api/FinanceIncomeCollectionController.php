@@ -29,6 +29,17 @@ class FinanceIncomeCollectionController extends Controller
         );
     }
 
+    public function summary(ApiIndexRequest $request): JsonResponse
+    {
+        $filters = $request->filters();
+        $filters['category_id'] = $request->get('category_id');
+        $filters['head_id'] = $request->get('head_id');
+        $filters['from_date'] = $request->get('from_date');
+        $filters['to_date'] = $request->get('to_date');
+
+        return apiSuccess($this->service->getSummary($filters), 'fetched');
+    }
+
     public function store(FinanceIncomeCollectionRequest $request): JsonResponse
     {
         $collection = $this->service->collect($request->validated());

@@ -626,7 +626,7 @@ async function handleReceive() {
 
     await Promise.all([
       saleEntryStore.fetchReceivableBills(true),
-      incomeCollectionStore.fetchCollections(true),
+      incomeCollectionStore.fetchCollections({ force: true, page: 1, perPage: 100 }),
     ])
 
     const remainingAfter = Math.max(

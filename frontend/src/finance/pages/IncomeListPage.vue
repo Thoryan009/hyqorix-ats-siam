@@ -65,7 +65,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
 import IncomeCollectionsPanel from './components/payment/IncomeCollectionsPanel.vue'
@@ -74,23 +74,10 @@ import { formatCurrency } from '@/finance/utils/billUtils'
 
 const collectionStore = useIncomeCollectionStore()
 
-const thisMonthCount = computed(() => {
-  const now = new Date()
-  const month = now.getMonth()
-  const year = now.getFullYear()
-
-  return collectionStore.collections.filter((row) => {
-    const raw = row.collection_date_raw || row.collection_date
-    if (!raw) return false
-    const date = new Date(raw)
-    return date.getMonth() === month && date.getFullYear() === year
-  }).length
-})
-
 const summaryCards = computed(() => [
   {
     title: 'Total Collections',
-    value: collectionStore.collections.length,
+    value: collectionStore.totalCollectionCount,
     subtitle: 'Recorded operating income entries',
     icon: 'fa fa-list-alt',
     iconBg: 'bg-blue-50',
@@ -98,7 +85,7 @@ const summaryCards = computed(() => [
   },
   {
     title: 'This Month',
-    value: thisMonthCount.value,
+    value: collectionStore.thisMonthCollectionCount,
     subtitle: 'Entries in current month',
     icon: 'fa fa-calendar',
     iconBg: 'bg-emerald-50',
@@ -113,8 +100,4 @@ const summaryCards = computed(() => [
     iconColor: 'text-violet-600',
   },
 ])
-
-onMounted(() => {
-  collectionStore.fetchCollections(true)
-})
 </script>

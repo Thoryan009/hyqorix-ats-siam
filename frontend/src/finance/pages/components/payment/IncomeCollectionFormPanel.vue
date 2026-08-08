@@ -827,7 +827,7 @@ async function loadCandidates() {
     await Promise.all([
       jobListStore.fetchJobList(true),
       jobListStore.fetchApplicationsForJob(form.job_id, true),
-      collectionStore.fetchCollections(true),
+      collectionStore.fetchCollections({ force: true, page: 1, perPage: 100 }),
     ])
 
     const job = jobListStore.getJob(form.job_id)
@@ -1131,7 +1131,7 @@ onMounted(async () => {
     partyAccountsStore.fetchAccounts('staff'),
     jobListStore.fetchJobList(),
     ensureSalePayerClientAccounts(),
-    collectionStore.fetchCollections(),
+    collectionStore.fetchCollections({ force: true, page: 1, perPage: 100 }),
   ])
   ensureDefaultReceiveAccount()
   ensureDefaultIncomeCategory()

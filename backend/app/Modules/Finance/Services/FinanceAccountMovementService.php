@@ -569,6 +569,279 @@ class FinanceAccountMovementService
     }
 
     /**
+     * Receipt-list rows: sale collections grouped into payment entries.
+     *
+     * @param  array{page?: int, per_page?: int}  $filters
+     * @return array{rows: list<array<string, mixed>>, meta: array<string, mixed>, summary: array<string, mixed>}
+     */
+    public function listSaleCollections(array $filters = []): array
+    {
+        $entries = $this->buildSaleCollectionEntries();
+
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        $perPage = max(1, min(100, (int) ($filters['per_page'] ?? 10)));
+        $total = count($entries);
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        if ($page > $lastPage) {
+            $page = $lastPage;
+        }
+
+        $offset = ($page - 1) * $perPage;
+        $rows = array_values(array_slice($entries, $offset, $perPage));
+
+        $now = now();
+        $thisMonthCount = 0;
+        $totalCollected = 0.0;
+
+        foreach ($entries as $entry) {
+            $totalCollected += (float) ($entry['total_amount'] ?? 0);
+            $entryDate = (string) ($entry['entry_date'] ?? '');
+            if ($entryDate !== '') {
+                try {
+                    $date = \Carbon\Carbon::parse($entryDate);
+                    if ((int) $date->month === (int) $now->month && (int) $date->year === (int) $now->year) {
+                        $thisMonthCount++;
+                    }
+                } catch (\Throwable) {
+                    // Ignore invalid dates in summary.
+                }
+            }
+        }
+
+        $from = $total === 0 ? 0 : $offset + 1;
+        $to = $total === 0 ? 0 : min($offset + count($rows), $total);
+
+        $links = [];
+        for ($i = 1; $i <= $lastPage; $i++) {
+            $links[] = [
+                'label' => (string) $i,
+                'active' => $i === $page,
+                'url' => $i === $page ? null : '#',
+            ];
+        }
+
+        return [
+            'rows' => $rows,
+            'meta' => [
+                'total' => $total,
+                'from' => $from,
+                'to' => $to,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'last_page' => $lastPage,
+                'links' => $links,
+            ],
+            'summary' => [
+                'total_count' => $total,
+                'this_month_count' => $thisMonthCount,
+                'total_collected' => round($totalCollected, 2),
+            ],
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function buildSaleCollectionEntries(): array
+    {
+        $rows = FinanceSaleCollection::query()
+            ->orderByDesc('id')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $typeTxnIds = $rows
+            ->pluck('finance_account_type_transaction_id')
+            ->filter()
+            ->map(static fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $typeTxns = $typeTxnIds === []
+            ? collect()
+            : FinanceAccountTypeTransaction::query()
+                ->whereIn('id', $typeTxnIds)
+                ->get()
+                ->keyBy('id');
+
+        $accountIds = $typeTxns
+            ->flatMap(static fn ($txn) => [
+                (int) ($txn->from_account_id ?? 0),
+                (int) ($txn->to_account_id ?? 0),
+                (int) ($txn->account_id ?? 0),
+            ])
+            ->filter(static fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $accounts = $accountIds === []
+            ? collect()
+            : FinanceAccount::query()
+                ->whereIn('id', $accountIds)
+                ->get()
+                ->keyBy('id');
+
+        $groups = [];
+
+        foreach ($rows as $row) {
+            $typeTxnId = (int) ($row->finance_account_type_transaction_id ?? 0);
+            $entryNo = trim((string) ($row->entry_no ?? ''));
+            $date = optional($row->collection_date)?->format('Y-m-d') ?: '';
+            $method = strtolower((string) ($row->payment_method ?? 'cash'));
+
+            if ($typeTxnId > 0) {
+                $groupKey = "txn:{$typeTxnId}";
+            } elseif ($entryNo !== '') {
+                $groupKey = "entry:{$entryNo}|{$date}|{$method}";
+            } else {
+                $groupKey = "row:{$row->id}";
+            }
+
+            if (!isset($groups[$groupKey])) {
+                $groups[$groupKey] = [];
+            }
+
+            $groups[$groupKey][] = $row;
+        }
+
+        $entries = [];
+
+        foreach ($groups as $groupRows) {
+            $methods = collect($groupRows)
+                ->map(static fn ($row) => strtolower((string) ($row->payment_method ?? 'cash')))
+                ->unique()
+                ->values();
+
+            $hasNonDue = $methods->contains(static fn ($method) => $method !== 'due');
+
+            // Partial-receive remainder rows share the cash/bank transaction — omit them
+            // from the receipt so the list shows the actual payment only.
+            $receiptRows = $hasNonDue
+                ? array_values(array_filter(
+                    $groupRows,
+                    static fn ($row) => strtolower((string) ($row->payment_method ?? 'cash')) !== 'due'
+                ))
+                : $groupRows;
+
+            if ($receiptRows === []) {
+                continue;
+            }
+
+            $first = $receiptRows[0];
+            $typeTxn = $first->finance_account_type_transaction_id
+                ? $typeTxns->get((int) $first->finance_account_type_transaction_id)
+                : null;
+
+            $payerType = strtolower((string) ($first->payer_type ?? 'agent'));
+            $paymentMethod = strtolower((string) ($first->payment_method ?? 'cash'));
+
+            $partyAccountId = (int) (
+                $typeTxn?->from_account_id
+                ?: ($payerType === 'candidate' ? 0 : ($typeTxn?->account_id ?? 0))
+            );
+            $partyAccount = $partyAccountId > 0 ? $accounts->get($partyAccountId) : null;
+
+            $mainAccountId = 0;
+            $mainAccountName = '';
+            if (in_array($paymentMethod, ['cash', 'bank'], true)) {
+                $mainAccountId = (int) (
+                    $typeTxn?->to_account_id
+                    ?: $typeTxn?->account_id
+                    ?: 0
+                );
+                $mainAccount = $mainAccountId > 0 ? $accounts->get($mainAccountId) : null;
+                $mainAccountName = $mainAccount
+                    ? $this->accountLabel($mainAccount)
+                    : (string) (
+                        $typeTxn?->to_account_label
+                        ?: $typeTxn?->account_label
+                        ?: ''
+                    );
+            }
+
+            $agentAccountId = null;
+            $agentCode = '';
+            $agentName = '';
+            $payerId = null;
+            $payerCode = '';
+            $payerName = '';
+
+            if ($partyAccount && $partyAccount->category === 'agent') {
+                $agentAccountId = (int) $partyAccount->id;
+                $agentCode = (string) ($partyAccount->code ?? '');
+                $agentName = (string) ($partyAccount->account_name ?? '');
+            }
+
+            if ($payerType === 'agent' && $partyAccount) {
+                $payerId = (int) $partyAccount->id;
+                $payerCode = (string) ($partyAccount->code ?? '');
+                $payerName = (string) ($partyAccount->account_name ?? '');
+            } elseif ($payerType === 'client' && $partyAccount) {
+                $payerId = (int) $partyAccount->id;
+                $payerCode = (string) ($partyAccount->code ?? '');
+                $payerName = (string) ($partyAccount->account_name ?? '');
+            } elseif ($payerType === 'candidate') {
+                $payerName = collect($receiptRows)
+                    ->map(static fn ($row) => trim((string) ($row->candidate_name ?? '')))
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->implode(', ');
+            }
+
+            $candidates = [];
+            $totalAmount = 0.0;
+
+            foreach ($receiptRows as $row) {
+                $amount = round((float) $row->amount, 2);
+                $totalAmount += $amount;
+                $candidates[] = [
+                    'candidate_id' => (int) $row->application_id,
+                    'passport_no' => (string) ($row->passport_no ?? ''),
+                    'candidate_name' => (string) ($row->candidate_name ?? ''),
+                    'amount' => $amount,
+                    'sale_price' => round((float) $row->sale_price, 2),
+                ];
+            }
+
+            $entries[] = [
+                'id' => (int) $first->id,
+                'entry_no' => (string) ($first->entry_no ?: $first->voucher_no ?: ''),
+                'entry_date' => optional($first->collection_date)?->format('Y-m-d'),
+                'payer_type' => $payerType !== '' ? $payerType : 'agent',
+                'payer_id' => $payerId,
+                'payer_code' => $payerCode,
+                'payer_name' => $payerName,
+                'agent_account_id' => $agentAccountId,
+                'agent_code' => $agentCode,
+                'agent_name' => $agentName,
+                'job_id' => $first->job_list_id ? (int) $first->job_list_id : null,
+                'job_code' => (string) ($first->job_code ?? ''),
+                'job_title' => (string) ($first->job_title ?? ''),
+                'payment_method' => $paymentMethod !== '' ? $paymentMethod : 'cash',
+                'main_account_id' => $mainAccountId > 0 ? $mainAccountId : null,
+                'main_account_name' => $mainAccountName,
+                'reference_no' => (string) ($typeTxn?->reference_no ?? $first->voucher_no ?? ''),
+                'particular' => (string) ($typeTxn?->particular ?? ''),
+                'remarks' => (string) ($first->remarks ?? ''),
+                'total_amount' => round($totalAmount, 2),
+                'candidates' => $candidates,
+                'created_at' => optional($first->created_at)?->format('d/m/Y H:i:s'),
+            ];
+        }
+
+        usort($entries, static function (array $a, array $b): int {
+            return ($b['id'] ?? 0) <=> ($a['id'] ?? 0);
+        });
+
+        return $entries;
+    }
+
+    /**
      * Outstanding due receivables for Bills Receivable (sale collections with due method).
      *
      * @return list<array<string, mixed>>

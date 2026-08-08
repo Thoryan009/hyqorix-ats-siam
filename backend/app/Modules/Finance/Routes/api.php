@@ -26,7 +26,9 @@ Route::get('finance-reports/balance-sheet', [FinanceBalanceSheetController::clas
     ->middleware('permission:balance_sheet.view');
 
 Route::get('finance-income-collections', [FinanceIncomeCollectionController::class, 'index'])
-    ->middleware('permission:receive_payment.create');
+    ->middleware('permission:receive_payment.create|income_list.view');
+Route::get('finance-income-collections/summary', [FinanceIncomeCollectionController::class, 'summary'])
+    ->middleware('permission:receive_payment.create|income_list.view');
 Route::post('finance-income-collections', [FinanceIncomeCollectionController::class, 'store'])
     ->middleware('permission:receive_payment.create');
 
@@ -70,7 +72,9 @@ Route::prefix('income-heads')->group(function () {
 });
 Route::prefix('finance-account-type-transactions')->group(function () {
     Route::get('/', [FinanceAccountTypeTransactionController::class, 'index'])
-        ->middleware('permission:receive_payment.create');
+        ->middleware('permission:receive_payment.create|transaction.view');
+    Route::get('/summary', [FinanceAccountTypeTransactionController::class, 'summary'])
+        ->middleware('permission:receive_payment.create|transaction.view');
     Route::post('/', [FinanceAccountTypeTransactionController::class, 'store'])
         ->middleware('permission:receive_payment.create');
 });
@@ -96,6 +100,8 @@ Route::post('finance-accounts/collect-payment', [FinanceAccountMovementControlle
     ->middleware('permission:finance_account.create');
 Route::get('finance-accounts/sale-collection-summary', [FinanceAccountMovementController::class, 'saleCollectionSummary'])
     ->middleware('permission:finance_account.view');
+Route::get('finance-accounts/sale-collections', [FinanceAccountMovementController::class, 'saleCollections'])
+    ->middleware('permission:receive_list.view|finance_account.view');
 Route::get('finance-accounts/bills-receivable', [FinanceAccountMovementController::class, 'billsReceivable'])
     ->middleware('permission:finance_account.view');
 Route::get('finance-accounts/bills-receivable/{applicationId}', [FinanceAccountMovementController::class, 'showBillReceivable'])

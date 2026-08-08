@@ -901,7 +901,13 @@ onMounted(async () => {
 
   await Promise.all([
     financeAccountStore.fetchAllCategories(),
-    paymentStore.fetchBillEntries(),
+    paymentStore.fetchBillSummary(),
+    paymentStore.fetchBillEntries({
+      force: true,
+      page: 1,
+      perPage: 10,
+      filters: { status: 'pending' },
+    }),
   ])
 })
 </script>

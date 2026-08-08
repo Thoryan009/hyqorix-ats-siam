@@ -1,14 +1,17 @@
 import { defineStore } from 'pinia'
-import { computed, ref, watch } from 'vue'
-import { initialSaleEntries } from '../data/saleEntryData'
-import { collectPayment, fetchBillsReceivable, fetchBillReceivable } from '../services/financeAccountService'
+import { computed, ref } from 'vue'
+import {
+  collectPayment,
+  fetchBillsReceivable,
+  fetchBillReceivable,
+  fetchSaleCollections,
+} from '../services/financeAccountService'
 import { useAgentAccountStore } from './agentAccountStore'
 import { useAccountStore } from './accountStore'
 import { useAccountLedgerStore } from './accountLedgerStore'
 import { usePartyAccountsStore } from './partyAccountsStore'
 import { useFinanceAccountStore } from './financeAccountStore'
 import { useAccountTransactionStore } from './accountTransactionStore'
-import { financeStorageKeys, loadFinanceJson, saveFinanceJson } from '../utils/financeStorage'
 
 function getYearSuffix(date = new Date()) {
   return String(new Date(date).getFullYear()).slice(-2)
@@ -53,19 +56,28 @@ function getApiErrorMessage(error, fallback = 'Request failed.') {
 }
 
 export const useSaleEntryStore = defineStore('saleEntry', () => {
-  const entries = ref(
-    loadFinanceJson(financeStorageKeys.saleEntries, initialSaleEntries).map(normalizeSaleEntry)
-  )
-
-  watch(
-    entries,
-    (value) => {
-      saveFinanceJson(financeStorageKeys.saleEntries, value)
-    },
-    { deep: true }
-  )
-
-  let nextId = Math.max(...entries.value.map((item) => Number(item.id) || 0), 0) + 1
+  const entries = ref([])
+  const entriesLoading = ref(false)
+  const entriesLoaded = ref(false)
+  const paginationMeta = ref({
+    total: 0,
+    from: 0,
+    to: 0,
+    current_page: 1,
+    per_page: 10,
+    last_page: 1,
+    links: [],
+  })
+  const summaryData = ref({
+    total_count: 0,
+    this_month_count: 0,
+    total_collected: 0,
+  })
+  const lastFetchParams = ref({
+    page: 1,
+    perPage: 10,
+    filters: {},
+  })
 
   const billsReceivable = ref([])
   const billsReceivableLoading = ref(false)
@@ -79,7 +91,77 @@ export const useSaleEntryStore = defineStore('saleEntry', () => {
     )
   )
 
-  async function fetchReceivableBills(force = false) {
+  function normalizeFetchOptions(options = true) {
+    if (typeof options === 'boolean') {
+      return {
+        force: options,
+        page: lastFetchParams.value.page,
+        perPage: lastFetchParams.value.perPage,
+        filters: { ...lastFetchParams.value.filters },
+      }
+    }
+
+    return {
+      force: options.force !== false,
+      page: Number(options.page) || lastFetchParams.value.page || 1,
+      perPage: Number(options.perPage) || lastFetchParams.value.perPage || 10,
+      filters: { ...(options.filters ?? lastFetchParams.value.filters ?? {}) },
+    }
+  }
+
+  async function fetchSaleEntries(options = true) {
+    const { force, page, perPage, filters } = normalizeFetchOptions(options)
+
+    if (entriesLoading.value) return entries.value
+    if (!force && entriesLoaded.value) return entries.value
+
+    entriesLoading.value = true
+    lastFetchParams.value = { page, perPage, filters }
+
+    try {
+      const payload = await fetchSaleCollections(page, perPage, filters)
+      entries.value = (payload.rows || []).map(normalizeSaleEntry)
+      paginationMeta.value = {
+        total: Number(payload.meta?.total) || 0,
+        from: Number(payload.meta?.from) || 0,
+        to: Number(payload.meta?.to) || 0,
+        current_page: Number(payload.meta?.current_page) || page,
+        per_page: Number(payload.meta?.per_page) || perPage,
+        last_page: Number(payload.meta?.last_page) || 1,
+        links: Array.isArray(payload.meta?.links) ? payload.meta.links : [],
+      }
+      summaryData.value = {
+        total_count: Number(payload.summary?.total_count) || 0,
+        this_month_count: Number(payload.summary?.this_month_count) || 0,
+        total_collected: Number(payload.summary?.total_collected) || 0,
+      }
+      entriesLoaded.value = true
+    } catch {
+      if (!entriesLoaded.value) {
+        entries.value = []
+        paginationMeta.value = {
+          total: 0,
+          from: 0,
+          to: 0,
+          current_page: page,
+          per_page: perPage,
+          last_page: 1,
+          links: [],
+        }
+        summaryData.value = {
+          total_count: 0,
+          this_month_count: 0,
+          total_collected: 0,
+        }
+      }
+    } finally {
+      entriesLoading.value = false
+    }
+
+    return entries.value
+  }
+
+  async function fetchReceivableBills(force = true) {
     if (billsReceivableLoading.value) return billsReceivable.value
     if (!force && billsReceivable.value.length) return billsReceivable.value
 
@@ -97,22 +179,11 @@ export const useSaleEntryStore = defineStore('saleEntry', () => {
     return fetchBillReceivable(applicationId)
   }
 
-  const totalEntryCount = computed(() => entries.value.length)
+  const totalEntryCount = computed(() => summaryData.value.total_count)
 
-  const thisMonthEntryCount = computed(() => {
-    const now = new Date()
-    const month = now.getMonth()
-    const year = now.getFullYear()
+  const thisMonthEntryCount = computed(() => summaryData.value.this_month_count)
 
-    return entries.value.filter((entry) => {
-      const date = new Date(entry.entry_date)
-      return date.getMonth() === month && date.getFullYear() === year
-    }).length
-  })
-
-  const totalCollectedAmount = computed(() =>
-    entries.value.reduce((sum, entry) => sum + Number(entry.total_amount || 0), 0)
-  )
+  const totalCollectedAmount = computed(() => summaryData.value.total_collected)
 
   function getEntry(entryId) {
     return entries.value.find((item) => item.id === Number(entryId)) ?? null
@@ -308,44 +379,45 @@ export const useSaleEntryStore = defineStore('saleEntry', () => {
 
       await refreshAffectedAccounts({ ...payload, paymentMethod }, partyAccountId)
       await useAccountTransactionStore().fetchTransactions(true)
+      await fetchSaleEntries({
+        force: true,
+        page: lastFetchParams.value.page,
+        perPage: lastFetchParams.value.perPage,
+        filters: lastFetchParams.value.filters,
+      })
 
       const movedToReceivable = Number(
         collectResult?.data?.moved_to_receivable ?? collectResult?.moved_to_receivable ?? 0
       )
 
-      const entry = normalizeSaleEntry({
-        id: nextId++,
-        entry_no: entryNo,
-        entry_date: payload.entryDate,
-        payer_type: payerType,
-        payer_id: payerId,
-        payer_code: payerCode,
-        payer_name: payerName,
-        agent_account_id: agent?.id ?? null,
-        agent_code: agent?.agent_code ?? '',
-        agent_name: agent?.agent_name ?? '',
-        bill_agent_id: agent?.bill_agent_id ?? null,
-        job_id: payload.jobId,
-        job_code: payload.jobCode,
-        job_title: payload.jobTitle,
-        client: payload.clientName,
-        demand_letter: payload.demandLetter,
-        payment_method: paymentMethod,
-        main_account_id: ['cash', 'bank'].includes(paymentMethod)
-          ? Number(payload.mainAccountId)
-          : null,
-        main_account_name: ['cash', 'bank'].includes(paymentMethod)
-          ? resolveMainAccountLabel(payload.mainAccountId)
-          : '',
-        reference_no: payload.referenceNo ?? '',
-        particular,
-        remarks: payload.remarks ?? '',
-        total_amount: totalAmount,
-        candidates: candidateRows,
-        created_at: new Date().toLocaleString('en-GB'),
-      })
-
-      entries.value.unshift(entry)
+      const entry =
+        entries.value.find((item) => item.entry_no === entryNo) ??
+        normalizeSaleEntry({
+          entry_no: entryNo,
+          entry_date: payload.entryDate,
+          payer_type: payerType,
+          payer_id: payerId,
+          payer_code: payerCode,
+          payer_name: payerName,
+          agent_account_id: agent?.id ?? null,
+          agent_code: agent?.agent_code ?? '',
+          agent_name: agent?.agent_name ?? '',
+          job_id: payload.jobId,
+          job_code: payload.jobCode,
+          job_title: payload.jobTitle,
+          payment_method: paymentMethod,
+          main_account_id: ['cash', 'bank'].includes(paymentMethod)
+            ? Number(payload.mainAccountId)
+            : null,
+          main_account_name: ['cash', 'bank'].includes(paymentMethod)
+            ? resolveMainAccountLabel(payload.mainAccountId)
+            : '',
+          reference_no: payload.referenceNo ?? '',
+          particular,
+          remarks: payload.remarks ?? '',
+          total_amount: totalAmount,
+          candidates: candidateRows,
+        })
 
       return { ok: true, entry, movedToReceivable }
     } catch (error) {
@@ -411,6 +483,11 @@ export const useSaleEntryStore = defineStore('saleEntry', () => {
 
   return {
     entries,
+    entriesLoading,
+    entriesLoaded,
+    paginationMeta,
+    summaryData,
+    lastFetchParams,
     billsReceivable,
     billsReceivableLoading,
     receivableBillCount,
@@ -426,6 +503,7 @@ export const useSaleEntryStore = defineStore('saleEntry', () => {
     getLatestSalePriceForCandidate,
     getRemainingAmountForCandidate,
     isCandidateFullyPaid,
+    fetchSaleEntries,
     fetchReceivableBills,
     getReceivableBill,
   }

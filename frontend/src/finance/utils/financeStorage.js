@@ -64,5 +64,4 @@ export const financeStorageKeys = {
   vendorLedger: 'finance-vendor-ledger-entries',
   partyLedger: 'finance-party-ledger-entries',
   accountTypeTransactions: 'finance-account-type-transactions',
-  saleEntries: 'finance-sale-entries',
 }

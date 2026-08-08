@@ -41,6 +41,16 @@ class FinanceAccountMovementController extends Controller
         );
     }
 
+    public function saleCollections(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $filters = [
+            'page' => (int) $request->get('page', 1),
+            'per_page' => (int) $request->get('per_page', 10),
+        ];
+
+        return apiSuccess($this->service->listSaleCollections($filters), 'fetched');
+    }
+
     public function billsReceivable(): JsonResponse
     {
         return apiSuccess($this->service->listBillsReceivable(), 'fetched');

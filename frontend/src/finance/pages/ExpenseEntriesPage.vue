@@ -108,7 +108,7 @@ const summaryCards = computed(() => [
   },
   {
     title: 'Total Bills',
-    value: paymentStore.payments.length,
+    value: paymentStore.totalBillCount,
     subtitle: 'All recorded expense bills',
     icon: 'fa fa-list-alt',
     iconBg: 'bg-blue-50',
@@ -131,6 +131,6 @@ watch(
 )
 
 onMounted(async () => {
-  await paymentStore.fetchBillEntries()
+  await paymentStore.fetchBillSummary()
 })
 </script>

@@ -24,59 +24,65 @@
       </BaseButton>
     </div>
 
-    <BaseTable
-      :columns="columns"
-      :rows="paginatedRows"
-      :current-page="page"
-      :per-page="perPage"
-      scrollable
-    >
-      <template #cell-date="{ row }">
-        {{ formatDisplayDate(row.date) }}
-      </template>
+    <div v-if="transactionStore.isLoading" class="py-8 text-center text-gray-500">
+      Loading transactions...
+    </div>
 
-      <template #cell-transaction_type="{ row }">
-        <span
-          class="rounded-full px-2.5 py-1 text-xs font-semibold"
-          :class="typeBadgeClass(row.transaction_type)"
-        >
-          {{ getTransactionTypeLabel(row.transaction_type) }}
-        </span>
-      </template>
+    <template v-else>
+      <BaseTable
+        :columns="columns"
+        :rows="tableRows"
+        :current-page="page"
+        :per-page="perPage"
+        scrollable
+      >
+        <template #cell-date="{ row }">
+          {{ formatDisplayDate(row.date) }}
+        </template>
 
-      <template #cell-from_account="{ row }">
-        <div v-if="row.from_account_label" class="text-sm text-gray-800">
-          <p class="font-medium">{{ row.from_account_label }}</p>
-          <p class="text-xs text-gray-500">{{ getAccountCategoryLabel(row.from_account_category) }}</p>
-        </div>
-        <span v-else class="text-gray-400">—</span>
-      </template>
+        <template #cell-transaction_type="{ row }">
+          <span
+            class="rounded-full px-2.5 py-1 text-xs font-semibold"
+            :class="typeBadgeClass(row.transaction_type)"
+          >
+            {{ getTransactionTypeLabel(row.transaction_type) }}
+          </span>
+        </template>
 
-      <template #cell-to_account="{ row }">
-        <div v-if="row.to_account_label" class="text-sm text-gray-800">
-          <p class="font-medium">{{ row.to_account_label }}</p>
-          <p class="text-xs text-gray-500">{{ getAccountCategoryLabel(row.to_account_category) }}</p>
-        </div>
-        <div v-else-if="row.account_label" class="text-sm text-gray-800">
-          <p class="font-medium">{{ row.account_label }}</p>
-          <p class="text-xs text-gray-500">{{ getAccountCategoryLabel(row.account_category) }}</p>
-        </div>
-        <span v-else class="text-gray-400">—</span>
-      </template>
+        <template #cell-from_account="{ row }">
+          <div v-if="row.from_account_label" class="text-sm text-gray-800">
+            <p class="font-medium">{{ row.from_account_label }}</p>
+            <p class="text-xs text-gray-500">{{ getAccountCategoryLabel(row.from_account_category) }}</p>
+          </div>
+          <span v-else class="text-gray-400">—</span>
+        </template>
 
-      <template #cell-amount="{ row }">
-        <span class="font-semibold text-gray-900">{{ formatCurrency(row.amount) }}</span>
-      </template>
-    </BaseTable>
+        <template #cell-to_account="{ row }">
+          <div v-if="row.to_account_label" class="text-sm text-gray-800">
+            <p class="font-medium">{{ row.to_account_label }}</p>
+            <p class="text-xs text-gray-500">{{ getAccountCategoryLabel(row.to_account_category) }}</p>
+          </div>
+          <div v-else-if="row.account_label" class="text-sm text-gray-800">
+            <p class="font-medium">{{ row.account_label }}</p>
+            <p class="text-xs text-gray-500">{{ getAccountCategoryLabel(row.account_category) }}</p>
+          </div>
+          <span v-else class="text-gray-400">—</span>
+        </template>
 
-    <BasePagination
-      :total="filteredRows.length"
-      :showing="showing"
-      :links="links"
-      :per-page="perPage"
-      @update:page="setPage"
-      @update:perPage="setPerPage"
-    />
+        <template #cell-amount="{ row }">
+          <span class="font-semibold text-gray-900">{{ formatCurrency(row.amount) }}</span>
+        </template>
+      </BaseTable>
+
+      <BasePagination
+        :total="paginationTotal"
+        :showing="showing"
+        :links="links"
+        :per-page="perPage"
+        @update:page="setPage"
+        @update:perPage="setPerPage"
+      />
+    </template>
   </div>
 </template>
 
@@ -107,67 +113,45 @@ const columns = [
   { key: 'amount', label: 'Amount' },
 ]
 
-const transactionTypeFilterOptions = computed(() => {
-  const known = accountTransactionDisplayTypes.map((type) => ({
+const transactionTypeFilterOptions = computed(() =>
+  accountTransactionDisplayTypes.map((type) => ({
     id: type.id,
     name: type.label,
   }))
-
-  const knownIds = new Set(known.map((item) => item.id))
-  const dynamic = []
-
-  for (const row of transactionStore.transactions) {
-    const type = String(row.transaction_type || '').trim()
-    if (!type || knownIds.has(type)) continue
-    knownIds.add(type)
-    dynamic.push({ id: type, name: type })
-  }
-
-  dynamic.sort((a, b) => a.name.localeCompare(b.name))
-  return [...known, ...dynamic]
-})
+)
 
 const page = ref(1)
 const perPage = ref(10)
 const showing = ref(0)
 const links = ref([])
 
-const filteredRows = computed(() => {
-  const search = filters.search.trim().toLowerCase()
+const paginationTotal = computed(() => transactionStore.paginationMeta.total ?? 0)
 
-  return transactionStore.transactions.filter((row) => {
-    if (filters.transactionType && row.transaction_type !== filters.transactionType) {
-      return false
-    }
-
-    if (!search) return true
-
-    const haystack = [
-      row.particular,
-      row.reference_no,
-      row.remarks,
-      row.from_account_label,
-      row.to_account_label,
-      row.account_label,
-      getTransactionTypeLabel(row.transaction_type),
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase()
-
-    return haystack.includes(search)
-  })
-})
-
-const paginatedRows = computed(() => {
-  const start = (page.value - 1) * perPage.value
-  return filteredRows.value.slice(start, start + perPage.value).map((row, index) => ({
+const tableRows = computed(() => {
+  const start = ((Number(transactionStore.paginationMeta.current_page) || page.value) - 1) * perPage.value
+  return transactionStore.transactions.map((row, index) => ({
     ...row,
     sl: start + index + 1,
   }))
 })
 
 const hasActiveFilters = computed(() => Boolean(filters.search.trim() || filters.transactionType))
+
+function buildListFilters() {
+  const apiFilters = {}
+  if (filters.search.trim()) apiFilters.search = filters.search.trim()
+  if (filters.transactionType) apiFilters.transaction_type = filters.transactionType
+  return apiFilters
+}
+
+async function loadEntries() {
+  await transactionStore.fetchTransactions({
+    force: true,
+    page: page.value,
+    perPage: perPage.value,
+    filters: buildListFilters(),
+  })
+}
 
 function resetFilters() {
   filters.search = ''
@@ -185,26 +169,53 @@ function setPerPage(value) {
 }
 
 function updatePagination() {
-  const count = filteredRows.value.length
-  const lastPage = Math.max(1, Math.ceil(count / perPage.value))
-  const to = Math.min(page.value * perPage.value, count)
+  const meta = transactionStore.paginationMeta
+  showing.value = Number(meta.to) || 0
+  links.value = Array.isArray(meta.links) ? meta.links : []
 
+  const lastPage = Math.max(1, Number(meta.last_page) || 1)
   if (page.value > lastPage) {
     page.value = lastPage
   }
-
-  showing.value = count ? to : 0
-  links.value = Array.from({ length: lastPage }, (_, index) => ({
-    label: String(index + 1),
-    active: page.value === index + 1,
-    url: page.value === index + 1 ? null : '#',
-  }))
 }
 
-watch([filteredRows, page, perPage], updatePagination, { immediate: true })
+let reloadTimer = null
+function scheduleReload(resetPage = false) {
+  if (resetPage && page.value !== 1) {
+    page.value = 1
+    return
+  }
+
+  clearTimeout(reloadTimer)
+  reloadTimer = setTimeout(() => {
+    loadEntries()
+  }, 250)
+}
+
+watch(
+  () => [
+    transactionStore.paginationMeta.total,
+    transactionStore.paginationMeta.to,
+    transactionStore.paginationMeta.last_page,
+    transactionStore.paginationMeta.links,
+  ],
+  updatePagination,
+  { immediate: true, deep: true }
+)
+
+watch(
+  () => [filters.search, filters.transactionType],
+  () => {
+    scheduleReload(true)
+  }
+)
+
+watch([page, perPage], () => {
+  scheduleReload(false)
+})
 
 onMounted(async () => {
-  await transactionStore.fetchTransactions(true)
+  await loadEntries()
 })
 
 function typeBadgeClass(type) {

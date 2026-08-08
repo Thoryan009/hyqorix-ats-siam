@@ -16,7 +16,7 @@ function resolveRequestBody(payload) {
   return payload
 }
 
-export async function fetchAll(page = 1, perPage = 500, filters = {}) {
+export async function fetchAll(page = 1, perPage = 10, filters = {}) {
   const api = useApi()
   const url = buildUrl(BASE_URL, {
     page,
@@ -25,6 +25,12 @@ export async function fetchAll(page = 1, perPage = 500, filters = {}) {
   })
 
   await api.sendRequest(url)
+  return response(api)
+}
+
+export async function fetchOne(id) {
+  const api = useApi()
+  await api.sendRequest(`${BASE_URL}/${Number(id)}`)
   return response(api)
 }
 

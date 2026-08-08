@@ -1072,8 +1072,12 @@ class FinanceBillEntryService extends BaseCachedService
         return [
             'total_count' => $this->repository->countByStatus(),
             'submitted_count' => $this->repository->countByStatus('submitted'),
+            'submitted_expense_count' => $this->repository->countByStatusAndEntryType('submitted', 'expense_bill'),
+            'submitted_purchase_count' => $this->repository->countByStatusAndEntryType('submitted', 'asset_purchase'),
             'pending_count' => $this->repository->countByStatus('pending'),
             'approved_count' => $this->repository->countByStatus('approved'),
+            'paid_count' => $this->repository->countPaid(),
+            'payable_count' => $this->repository->countPayable(),
             'rejected_count' => $this->repository->countByStatus('rejected'),
         ];
     }

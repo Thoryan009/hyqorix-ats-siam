@@ -420,7 +420,7 @@ function goToPaymentCollections() {
 }
 
 function onIncomeCollected() {
-  incomeCollectionStore.fetchCollections(true)
+  incomeCollectionStore.fetchCollections({ force: true, page: 1, perPage: 10 })
 }
 
 function formatSaleAmount(amount) {
@@ -510,9 +510,10 @@ watch(() => route.query, applyRouteTab, { immediate: true, deep: true })
 
 onMounted(async () => {
   await Promise.all([
-    paymentStore.fetchBillEntries(),
-    incomeCollectionStore.fetchCollections(),
+    paymentStore.fetchBillSummary(),
+    incomeCollectionStore.fetchCollections({ force: true, page: 1, perPage: 10 }),
     saleEntryStore.fetchReceivableBills(true),
+    saleEntryStore.fetchSaleEntries({ force: true, page: 1, perPage: 10 }),
   ])
 })
 </script>

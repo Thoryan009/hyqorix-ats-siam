@@ -1536,9 +1536,15 @@ function createAnotherBill() {
 
 onMounted(async () => {
   await Promise.all([
-    categoryStore.fetchCategories(),
-    headStore.fetchHeads(),
-    paymentStore.fetchBillEntries(),
+    categoryStore.fetchCategories(true),
+    headStore.fetchHeads(true),
+    paymentStore.fetchBillSummary(),
+    paymentStore.fetchBillEntries({
+      force: true,
+      page: 1,
+      perPage: 100,
+      filters: {},
+    }),
     financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.ASSET, true),
     expenseCostAccountsStore.fetchAccounts('direct_cost'),
     expenseCostAccountsStore.fetchAccounts('client_recruitment_cost'),

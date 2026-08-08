@@ -449,7 +449,7 @@ import {
   getLinkedBillAccountTypeLabel,
   hasLinkedBillAccount,
 } from '@/finance/utils/linkedAccountOptions'
-import { isPayableBill, isProcessedBill, getPayableRemainingAmount } from '@/finance/utils/payableBillUtils'
+import { getPayableRemainingAmount } from '@/finance/utils/payableBillUtils'
 import BillManagerApproveModal from './BillManagerApproveModal.vue'
 import BillGenerationPreview from './BillGenerationPreview.vue'
 
@@ -582,66 +582,15 @@ const showStatusFilter = computed(
     props.statusScope !== 'rejected'
 )
 
-const scopedPayments = computed(() => {
-  let rows = paymentStore.payments
-
-  if (props.statusScope === 'submitted') {
-    rows = rows.filter((entry) => entry.status === 'submitted')
-  } else if (props.statusScope === 'pending') {
-    rows = rows.filter((entry) => entry.status === 'pending')
-  } else if (props.statusScope === 'processed') {
-    rows = rows.filter((entry) => isProcessedBill(entry))
-  } else if (props.statusScope === 'rejected') {
-    rows = rows.filter((entry) => entry.status === 'rejected')
-  } else if (props.statusScope === 'payable') {
-    rows = rows.filter((entry) => isPayableBill(entry))
-  }
-
-  if (props.entryType === 'asset_purchase') {
-    return rows.filter((entry) => entry.entry_type === 'asset_purchase')
-  }
-
-  if (props.entryType === 'expense_bill') {
-    return rows.filter((entry) => (entry.entry_type || 'expense_bill') !== 'asset_purchase')
-  }
-
-  return rows
-})
+const scopedPayments = computed(() => paymentStore.payments)
 
 const filteredRows = computed(() => {
-  const query = filters.search.trim().toLowerCase()
-
-  return scopedPayments.value.filter((entry) => {
-    const matchesSearch =
-      !query ||
-      String(entry.category_name || '').toLowerCase().includes(query) ||
-      String(entry.asset_account_name || '').toLowerCase().includes(query) ||
-      entry.candidate_name?.toLowerCase().includes(query) ||
-      entry.passport_no?.toLowerCase().includes(query) ||
-      entry.job_name?.toLowerCase().includes(query) ||
-      entry.demand_letter?.toLowerCase().includes(query) ||
-      entry.client_name?.toLowerCase().includes(query) ||
-      String(entry.head_name || '').toLowerCase().includes(query) ||
-      getLinkedBillAccountTypeLabel(entry).toLowerCase().includes(query) ||
-      getLinkedBillAccountName(entry).toLowerCase().includes(query) ||
-      entry.particular.toLowerCase().includes(query) ||
-      String(entry.voucher_no || '').toLowerCase().includes(query) ||
-      String(entry.batch_ref || '').toLowerCase().includes(query) ||
-      String(entry.request_no || '').toLowerCase().includes(query)
-
-    const matchesCategory =
-      !filters.categoryId || Number(entry.category_id) === Number(filters.categoryId)
-
-    const matchesStatus = !filters.status || entry.status === filters.status
-
-    return matchesSearch && matchesCategory && matchesStatus
-  })
+  // Server already applies scope/search/category/status; keep a light local pass-through
+  // so UI stays consistent if extra client-only checks are needed later.
+  return scopedPayments.value
 })
 
-const paginatedRows = computed(() => {
-  const start = (page.value - 1) * perPage.value
-  return filteredRows.value.slice(start, start + perPage.value)
-})
+const paginatedRows = computed(() => filteredRows.value)
 
 const groupedBatches = computed(() => {
   const groups = new Map()
@@ -671,14 +620,9 @@ const groupedBatches = computed(() => {
   })
 })
 
-const paginatedBatches = computed(() => {
-  const start = (page.value - 1) * perPage.value
-  return groupedBatches.value.slice(start, start + perPage.value)
-})
+const paginatedBatches = computed(() => groupedBatches.value)
 
-const paginationTotal = computed(() =>
-  isBatchGroupedScope.value ? groupedBatches.value.length : filteredRows.value.length
-)
+const paginationTotal = computed(() => paymentStore.paginationMeta.total ?? 0)
 
 const hasTableRows = computed(() =>
   isBatchGroupedScope.value ? paginatedBatches.value.length > 0 : paginatedRows.value.length > 0
@@ -862,14 +806,16 @@ const closeReview = () => {
   selectedReviewEntries.value = []
 }
 
-const handleApproved = () => {
+const handleApproved = async () => {
   clearSelection()
   closeReview()
+  await loadEntries()
 }
 
-const handleRejected = () => {
+const handleRejected = async () => {
   clearSelection()
   closeReview()
+  await loadEntries()
 }
 
 function ensureBatchExpanded(batchKey) {
@@ -1051,7 +997,7 @@ async function printEntry(entry) {
   const batchRef = String(entry.batch_ref || '').trim()
   const voucherNo = String(entry.voucher_no || '').trim()
 
-  const siblingEntries = paymentStore.payments.filter((item) => {
+  let siblingEntries = paymentStore.payments.filter((item) => {
     if (item.status !== entry.status) return false
     if (requestNo) {
       return String(item.request_no || '').trim() === requestNo
@@ -1063,10 +1009,87 @@ async function printEntry(entry) {
     return String(item.voucher_no || '').trim() === voucherNo
   })
 
+  const siblingSearch = requestNo || batchRef || voucherNo
+  if (siblingSearch) {
+    try {
+      await paymentStore.fetchBillEntries({
+        force: true,
+        page: 1,
+        perPage: 100,
+        filters: {
+          ...buildListFilters(),
+          search: siblingSearch,
+        },
+      })
+      siblingEntries = paymentStore.payments.filter((item) => {
+        if (item.status !== entry.status) return false
+        if (requestNo) {
+          return String(item.request_no || '').trim() === requestNo
+        }
+        if (batchRef) {
+          return String(item.batch_ref || '').trim() === batchRef
+        }
+        if (!voucherNo) return Number(item.id) === Number(entry.id)
+        return String(item.voucher_no || '').trim() === voucherNo
+      })
+      await loadEntries()
+    } catch {
+      // Fall back to current page siblings.
+    }
+  }
+
   const entriesToPrint = siblingEntries.length ? siblingEntries : [entry]
   printEntryData.value = mapEntriesToPrintData(entriesToPrint)
   await nextTick()
   printPreviewRef.value?.printBill?.()
+}
+
+function buildListFilters() {
+  const apiFilters = {}
+
+  if (filters.search.trim()) {
+    apiFilters.search = filters.search.trim()
+  }
+
+  if (filters.categoryId) {
+    apiFilters.category_id = filters.categoryId
+  }
+
+  if (props.entryType === 'asset_purchase' || props.entryType === 'expense_bill') {
+    apiFilters.entry_type = props.entryType
+  }
+
+  if (props.statusScope === 'processed') {
+    if (filters.status) {
+      apiFilters.status = filters.status
+    } else {
+      apiFilters.scope = 'processed'
+    }
+  } else if (props.statusScope === 'payable') {
+    apiFilters.scope = 'payable'
+  } else if (props.statusScope === 'submitted') {
+    apiFilters.status = filters.status || 'submitted'
+  } else if (props.statusScope === 'pending') {
+    apiFilters.status = 'pending'
+  } else if (props.statusScope === 'rejected') {
+    apiFilters.status = 'rejected'
+  } else if (filters.status) {
+    apiFilters.status = filters.status
+  }
+
+  return apiFilters
+}
+
+async function loadEntries() {
+  await Promise.all([
+    paymentStore.fetchBillEntries({
+      force: true,
+      page: page.value,
+      perPage: perPage.value,
+      filters: buildListFilters(),
+    }),
+    paymentStore.fetchBillSummary(),
+  ])
 }
 
 const resetFilters = () => {
@@ -1078,25 +1101,26 @@ const resetFilters = () => {
 }
 
 const updatePagination = () => {
-  const count = paginationTotal.value
-  const lastPage = Math.max(1, Math.ceil(count / perPage.value))
-  const to = Math.min(page.value * perPage.value, count)
+  const meta = paymentStore.paginationMeta
+  showing.value = Number(meta.to) || 0
+  links.value = Array.isArray(meta.links) ? meta.links : []
 
-  showing.value = to
-  links.value = Array.from({ length: lastPage }, (_, index) => ({
-    label: String(index + 1),
-    active: page.value === index + 1,
-    url: page.value === index + 1 ? null : '#',
-  }))
-
+  const lastPage = Math.max(1, Number(meta.last_page) || 1)
   if (page.value > lastPage) {
     page.value = lastPage
   }
 }
 
-watch([filteredRows, page, perPage, () => paymentStore.payments.length], updatePagination, {
-  immediate: true,
-})
+watch(
+  () => [
+    paymentStore.paginationMeta.total,
+    paymentStore.paginationMeta.to,
+    paymentStore.paginationMeta.last_page,
+    paymentStore.paginationMeta.links,
+  ],
+  updatePagination,
+  { immediate: true, deep: true }
+)
 
 watch(
   groupedBatches,
@@ -1123,18 +1147,54 @@ watch(
   }
 )
 
+watch(
+  () => props.entryType,
+  () => {
+    page.value = 1
+    clearSelection()
+  }
+)
+
+let reloadTimer = null
+function scheduleReload(resetPage = false) {
+  if (resetPage && page.value !== 1) {
+    page.value = 1
+    return
+  }
+
+  clearTimeout(reloadTimer)
+  reloadTimer = setTimeout(() => {
+    loadEntries()
+  }, 250)
+}
+
+watch(
+  () => [filters.search, filters.categoryId, filters.status],
+  () => {
+    clearSelection()
+    scheduleReload(true)
+  }
+)
+
+watch([page, perPage, () => props.statusScope, () => props.entryType], () => {
+  scheduleReload(false)
+})
+
 const setPage = (value) => {
   if (value && value !== page.value) {
     page.value = value
+    clearSelection()
   }
 }
 
 const setPerPage = (value) => {
   perPage.value = Number(value)
   page.value = 1
+  clearSelection()
 }
 
 onMounted(async () => {
-  await Promise.all([categoryStore.fetchCategories(), paymentStore.fetchBillEntries()])
+  await categoryStore.fetchCategories(true)
+  await loadEntries()
 })
 </script>

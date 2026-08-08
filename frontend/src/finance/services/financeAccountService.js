@@ -162,6 +162,56 @@ export async function fetchSaleCollectionSummary(applicationIds = []) {
   return Array.isArray(payload) ? payload : []
 }
 
+export async function fetchSaleCollections(page = 1, perPage = 10, filters = {}) {
+  const api = useApi()
+  const url = buildUrl(`${BASE_URL}/sale-collections`, {
+    page,
+    per_page: perPage,
+    ...filters,
+  })
+  await api.sendRequest(url)
+  if (api.error.value) throw api.error.value
+
+  const payload = api.data.value?.data
+  if (Array.isArray(payload)) {
+    return {
+      rows: payload,
+      meta: {
+        total: payload.length,
+        from: payload.length ? 1 : 0,
+        to: payload.length,
+        current_page: 1,
+        per_page: perPage,
+        last_page: 1,
+        links: [],
+      },
+      summary: {
+        total_count: payload.length,
+        this_month_count: 0,
+        total_collected: payload.reduce((sum, row) => sum + (Number(row.total_amount) || 0), 0),
+      },
+    }
+  }
+
+  return {
+    rows: Array.isArray(payload?.rows) ? payload.rows : [],
+    meta: payload?.meta ?? {
+      total: 0,
+      from: 0,
+      to: 0,
+      current_page: page,
+      per_page: perPage,
+      last_page: 1,
+      links: [],
+    },
+    summary: payload?.summary ?? {
+      total_count: 0,
+      this_month_count: 0,
+      total_collected: 0,
+    },
+  }
+}
+
 export async function fetchBillsReceivable() {
   const api = useApi()
   await api.sendRequest(`${BASE_URL}/bills-receivable`)

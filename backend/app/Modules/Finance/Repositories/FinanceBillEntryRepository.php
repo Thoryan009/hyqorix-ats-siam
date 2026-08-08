@@ -25,7 +25,36 @@ class FinanceBillEntryRepository extends BaseRepository
             $query->where('expense_head_id', (int) $filters['head_id']);
         }
 
-        if (!empty($filters['status'])) {
+        if (!empty($filters['entry_type'])) {
+            $query->where('entry_type', strtolower((string) $filters['entry_type']));
+        }
+
+        $scope = strtolower(trim((string) ($filters['scope'] ?? '')));
+
+        if ($scope === 'processed') {
+            $query->where(function (Builder $q) {
+                $q->where('status', 'rejected')
+                    ->orWhere(function (Builder $inner) {
+                        $inner->where('status', 'approved')
+                            ->whereRaw('LOWER(COALESCE(payment_method, "")) != ?', ['due']);
+                    });
+            });
+        } elseif ($scope === 'payable') {
+            $query->where('status', 'approved')
+                ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
+                ->whereRaw('(COALESCE(amount, 0) - COALESCE(paid_amount, 0)) > 0');
+        } elseif (!empty($filters['statuses']) && is_array($filters['statuses'])) {
+            $statuses = collect($filters['statuses'])
+                ->map(static fn ($status) => strtolower(trim((string) $status)))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($statuses !== []) {
+                $query->whereIn('status', $statuses);
+            }
+        } elseif (!empty($filters['status'])) {
             $query->where('status', strtolower((string) $filters['status']));
         }
     }
@@ -60,6 +89,40 @@ class FinanceBillEntryRepository extends BaseRepository
         }
 
         return (int) $query->count();
+    }
+
+    public function countByStatusAndEntryType(string $status, string $entryType): int
+    {
+        $query = $this->baseQuery()->where('status', $status);
+
+        if ($entryType === 'expense_bill') {
+            $query->where(function (Builder $q) {
+                $q->whereNull('entry_type')
+                    ->orWhere('entry_type', '')
+                    ->orWhere('entry_type', 'expense_bill');
+            });
+        } else {
+            $query->where('entry_type', $entryType);
+        }
+
+        return (int) $query->count();
+    }
+
+    public function countPaid(): int
+    {
+        return (int) $this->baseQuery()
+            ->where('status', 'approved')
+            ->whereRaw('LOWER(COALESCE(payment_method, "")) != ?', ['due'])
+            ->count();
+    }
+
+    public function countPayable(): int
+    {
+        return (int) $this->baseQuery()
+            ->where('status', 'approved')
+            ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
+            ->whereRaw('(COALESCE(amount, 0) - COALESCE(paid_amount, 0)) > 0')
+            ->count();
     }
 
     protected function applySearch(Builder $query, ?string $search): void

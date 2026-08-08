@@ -63,17 +63,12 @@
       </div>
 
       <div class="p-4">
-        <ExpenseHeadOverviewPanel
-          v-if="activeTab === 'overview'"
-          @view-heads="openHeadsTab"
+        <ExpenseHeadListPanel
+          v-if="activeTab === 'heads'"
+          :initial-category-id="selectedCategoryId"
         />
 
         <ExpenseCategoryPanel v-else-if="activeTab === 'categories'" embedded />
-
-        <ExpenseHeadListPanel
-          v-else-if="activeTab === 'heads'"
-          :initial-category-id="selectedCategoryId"
-        />
       </div>
     </div>
   </SectionHeader>
@@ -85,7 +80,6 @@ import { useRoute, useRouter } from 'vue-router'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
 import ExpenseCategoryPanel from './components/expense/ExpenseCategoryPanel.vue'
-import ExpenseHeadOverviewPanel from './components/expense/ExpenseHeadOverviewPanel.vue'
 import ExpenseHeadListPanel from './components/expense/ExpenseHeadListPanel.vue'
 import { useExpenseCategoryStore } from '@/finance/store/expenseCategoryStore'
 import { useExpenseHeadStore } from '@/finance/store/expenseHeadStore'
@@ -96,34 +90,28 @@ const headStore = useExpenseHeadStore()
 const route = useRoute()
 const router = useRouter()
 
-const activeTab = ref('overview')
+const activeTab = ref('heads')
 const selectedCategoryId = ref('')
 
 const pageTabs = [
-  { id: 'overview', label: 'Overview', icon: 'fa fa-th-large' },
-  { id: 'categories', label: 'Expense Categories', icon: 'fa fa-tags' },
   { id: 'heads', label: 'Expense Heads', icon: 'fa fa-list-alt' },
+  { id: 'categories', label: 'Expense Categories', icon: 'fa fa-tags' },
 ]
 
 const tabMeta = {
-  overview: {
-    title: 'Expense Overview',
-    description: 'Quick view of expense heads grouped by category with base prices',
-    subtitle: 'Review expense structure across all categories',
+  heads: {
+    title: 'Expense Heads',
+    description: 'Manage expense heads and base prices under each category',
+    subtitle: 'Manage expense heads with category-wise base prices',
   },
   categories: {
     title: 'Expense Categories',
     description: 'Create and manage expense categories used for expense tracking',
     subtitle: 'Manage expense categories and their status',
   },
-  heads: {
-    title: 'Expense Heads',
-    description: 'Manage expense heads and base prices under each category',
-    subtitle: 'Manage expense heads with category-wise base prices',
-  },
 }
 
-const activeTabMeta = computed(() => tabMeta[activeTab.value] ?? tabMeta.overview)
+const activeTabMeta = computed(() => tabMeta[activeTab.value] ?? tabMeta.heads)
 const pageSubtitle = computed(() => activeTabMeta.value.subtitle)
 
 const totalBasePrice = computed(() =>
@@ -194,10 +182,6 @@ const setActiveTab = (tabId, categoryId = '') => {
   router.replace({ query })
 }
 
-const openHeadsTab = (categoryId) => {
-  setActiveTab('heads', categoryId)
-}
-
 const applyRouteTab = () => {
   const tab = route.query.tab
   const categoryId = route.query.category_id
@@ -205,7 +189,7 @@ const applyRouteTab = () => {
   if (pageTabs.some((item) => item.id === tab)) {
     activeTab.value = tab
   } else {
-    activeTab.value = 'overview'
+    activeTab.value = 'heads'
   }
 
   selectedCategoryId.value = categoryId ? String(categoryId) : ''

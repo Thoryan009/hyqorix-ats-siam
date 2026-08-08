@@ -63,12 +63,7 @@
       </div>
 
       <div class="p-4">
-        <IncomeHeadOverviewPanel
-          v-if="activeTab === 'overview'"
-          @view-heads="openHeadsTab"
-        />
-
-        <IncomeCategoryPanel v-else-if="activeTab === 'categories'" embedded />
+        <IncomeCategoryPanel v-if="activeTab === 'categories'" embedded />
 
         <IncomeHeadListPanel
           v-else-if="activeTab === 'heads'"
@@ -85,7 +80,6 @@ import { useRoute, useRouter } from 'vue-router'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
 import IncomeCategoryPanel from './components/income/IncomeCategoryPanel.vue'
-import IncomeHeadOverviewPanel from './components/income/IncomeHeadOverviewPanel.vue'
 import IncomeHeadListPanel from './components/income/IncomeHeadListPanel.vue'
 import { useIncomeCategoryStore } from '@/finance/store/incomeCategoryStore'
 import { useIncomeHeadStore } from '@/finance/store/incomeHeadStore'
@@ -96,21 +90,15 @@ const headStore = useIncomeHeadStore()
 const route = useRoute()
 const router = useRouter()
 
-const activeTab = ref('overview')
+const activeTab = ref('categories')
 const selectedCategoryId = ref('')
 
 const pageTabs = [
-  { id: 'overview', label: 'Overview', icon: 'fa fa-th-large' },
   { id: 'categories', label: 'Income Categories', icon: 'fa fa-tags' },
   { id: 'heads', label: 'Income Heads', icon: 'fa fa-list-alt' },
 ]
 
 const tabMeta = {
-  overview: {
-    title: 'Income Overview',
-    description: 'Quick view of income heads grouped by category with base prices',
-    subtitle: 'Review income structure across all categories',
-  },
   categories: {
     title: 'Income Categories',
     description: 'View and manage income categories used for income tracking',
@@ -123,7 +111,7 @@ const tabMeta = {
   },
 }
 
-const activeTabMeta = computed(() => tabMeta[activeTab.value] ?? tabMeta.overview)
+const activeTabMeta = computed(() => tabMeta[activeTab.value] ?? tabMeta.categories)
 const pageSubtitle = computed(() => activeTabMeta.value.subtitle)
 
 const totalBasePrice = computed(() =>
@@ -194,10 +182,6 @@ const setActiveTab = (tabId, categoryId = '') => {
   router.replace({ query })
 }
 
-const openHeadsTab = (categoryId) => {
-  setActiveTab('heads', categoryId)
-}
-
 const applyRouteTab = () => {
   const tab = route.query.tab
   const categoryId = route.query.category_id
@@ -205,7 +189,7 @@ const applyRouteTab = () => {
   if (pageTabs.some((item) => item.id === tab)) {
     activeTab.value = tab
   } else {
-    activeTab.value = 'overview'
+    activeTab.value = 'categories'
   }
 
   selectedCategoryId.value = categoryId ? String(categoryId) : ''

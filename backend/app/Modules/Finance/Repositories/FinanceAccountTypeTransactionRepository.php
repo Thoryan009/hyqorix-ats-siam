@@ -41,7 +41,27 @@ class FinanceAccountTypeTransactionRepository extends BaseRepository
                 ->orWhere('remarks', 'like', "%{$search}%")
                 ->orWhere('from_account_label', 'like', "%{$search}%")
                 ->orWhere('to_account_label', 'like', "%{$search}%")
-                ->orWhere('account_label', 'like', "%{$search}%");
+                ->orWhere('account_label', 'like', "%{$search}%")
+                ->orWhere('transaction_type', 'like', "%{$search}%")
+                ->orWhere('voucher_no', 'like', "%{$search}%");
         });
+    }
+
+    public function getSummary(array $filters = []): array
+    {
+        $query = $this->baseQuery();
+        $this->applyFilters($query, $filters);
+
+        $totalCount = (int) (clone $query)->count();
+
+        $thisMonthQuery = clone $query;
+        $thisMonthQuery
+            ->whereMonth('transaction_date', now()->month)
+            ->whereYear('transaction_date', now()->year);
+
+        return [
+            'total_count' => $totalCount,
+            'this_month_count' => (int) $thisMonthQuery->count(),
+        ];
     }
 }

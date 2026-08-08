@@ -185,9 +185,9 @@ const categoryMap = computed(() =>
 const { onEdit } = useCrudTable(headStore, [])
 
 const columns = [
-  { key: 'category_name', label: 'Expense Category' },
   { key: 'name', label: 'Expense Head' },
   { key: 'base_price', label: 'Base Price' },
+  { key: 'category_name', label: 'Expense Category' },
   { key: 'linked_accounts', label: 'Linked Accounts' },
   { key: 'status', label: 'Status' },
 ]

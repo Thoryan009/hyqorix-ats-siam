@@ -8,13 +8,20 @@ const response = (api) => ({
   error: api.error.value,
 })
 
-export async function fetchIncomeCollections(page = 1, perPage = 100, filters = {}) {
+export async function fetchIncomeCollections(page = 1, perPage = 10, filters = {}) {
   const api = useApi()
   const url = buildUrl(BASE_URL, {
     page,
     per_page: perPage,
     ...filters,
   })
+  await api.sendRequest(url)
+  return response(api)
+}
+
+export async function fetchIncomeCollectionSummary(filters = {}) {
+  const api = useApi()
+  const url = buildUrl(`${BASE_URL}/summary`, filters)
   await api.sendRequest(url)
   return response(api)
 }

@@ -4,6 +4,8 @@ import { buildRequestedByFields } from '../data/expensePaymentData'
 import {
   approveEntry,
   fetchAll,
+  fetchOne,
+  fetchSummary,
   managerApproveEntry,
   managerApproveEntryBatch,
   payPayableEntry,
@@ -61,6 +63,31 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
   const payments = ref([])
   const isLoading = ref(false)
   const isLoaded = ref(false)
+  const paginationMeta = ref({
+    total: 0,
+    from: 0,
+    to: 0,
+    current_page: 1,
+    per_page: 10,
+    last_page: 1,
+    links: [],
+  })
+  const summaryData = ref({
+    total_count: 0,
+    submitted_count: 0,
+    submitted_expense_count: 0,
+    submitted_purchase_count: 0,
+    pending_count: 0,
+    approved_count: 0,
+    paid_count: 0,
+    payable_count: 0,
+    rejected_count: 0,
+  })
+  const lastFetchParams = ref({
+    page: 1,
+    perPage: 10,
+    filters: {},
+  })
 
   function getApiErrorMessage(error, fallback = 'Request failed.') {
     return (
@@ -70,23 +97,104 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
     )
   }
 
-  async function fetchBillEntries(force = false) {
+  function normalizeFetchOptions(options = true) {
+    if (typeof options === 'boolean') {
+      return {
+        force: options,
+        page: lastFetchParams.value.page,
+        perPage: lastFetchParams.value.perPage,
+        filters: { ...lastFetchParams.value.filters },
+      }
+    }
+
+    return {
+      force: options.force !== false,
+      page: Number(options.page) || lastFetchParams.value.page || 1,
+      perPage: Number(options.perPage) || lastFetchParams.value.perPage || 10,
+      filters: { ...(options.filters ?? lastFetchParams.value.filters ?? {}) },
+    }
+  }
+
+  function extractPaginationMeta(payload, page, perPage, rowCount) {
+    const meta = payload?.meta ?? {}
+    const total = Number(meta.total ?? rowCount) || 0
+    const currentPage = Number(meta.current_page ?? page) || 1
+    const perPageValue = Number(meta.per_page ?? perPage) || perPage
+    const lastPage = Math.max(1, Number(meta.last_page) || Math.ceil(total / perPageValue) || 1)
+    const from = Number(meta.from ?? (total === 0 ? 0 : (currentPage - 1) * perPageValue + 1))
+    const to = Number(meta.to ?? (total === 0 ? 0 : Math.min(currentPage * perPageValue, total)))
+
+    const links =
+      Array.isArray(meta.links) && meta.links.length
+        ? meta.links
+        : Array.from({ length: lastPage }, (_, index) => ({
+            label: String(index + 1),
+            active: currentPage === index + 1,
+            url: currentPage === index + 1 ? null : '#',
+          }))
+
+    return {
+      total,
+      from,
+      to,
+      current_page: currentPage,
+      per_page: perPageValue,
+      last_page: lastPage,
+      links,
+    }
+  }
+
+  async function fetchBillSummary() {
+    try {
+      const { data, error } = await fetchSummary()
+      if (error) throw error
+      const payload = data?.data ?? {}
+      summaryData.value = {
+        total_count: Number(payload.total_count) || 0,
+        submitted_count: Number(payload.submitted_count) || 0,
+        submitted_expense_count: Number(payload.submitted_expense_count) || 0,
+        submitted_purchase_count: Number(payload.submitted_purchase_count) || 0,
+        pending_count: Number(payload.pending_count) || 0,
+        approved_count: Number(payload.approved_count) || 0,
+        paid_count: Number(payload.paid_count) || 0,
+        payable_count: Number(payload.payable_count) || 0,
+        rejected_count: Number(payload.rejected_count) || 0,
+      }
+    } catch {
+      // Keep prior summary on failure.
+    }
+  }
+
+  async function fetchBillEntries(options = true) {
+    const { force, page, perPage, filters } = normalizeFetchOptions(options)
+
     if (isLoading.value) return
     if (isLoaded.value && !force) return
 
     isLoading.value = true
+    lastFetchParams.value = { page, perPage, filters }
 
     try {
-      const { data, error } = await fetchAll(1, 500, {})
+      const { data, error } = await fetchAll(page, perPage, filters)
       if (error) throw error
 
-      payments.value = mapBillEntriesFromApi(extractPaginatedRows(data))
+      const rows = mapBillEntriesFromApi(extractPaginatedRows(data))
+      payments.value = rows
+      paginationMeta.value = extractPaginationMeta(data, page, perPage, rows.length)
       isLoaded.value = true
     } catch {
       payments.value = []
+      paginationMeta.value = extractPaginationMeta(null, page, perPage, 0)
     } finally {
       isLoading.value = false
     }
+  }
+
+  async function fetchBillEntryById(id) {
+    const { data, error } = await fetchOne(id)
+    if (error) throw error
+    const row = extractBillEntryRow(data)
+    return row ? mapBillEntryFromApi(row) : null
   }
 
   function upsertPayment(entry) {
@@ -120,38 +228,19 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
       .reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
   })
 
-  const submittedBillCount = computed(
-    () => payments.value.filter((payment) => payment.status === 'submitted').length,
-  )
+  const submittedBillCount = computed(() => summaryData.value.submitted_count)
 
-  const submittedExpenseBillCount = computed(
-    () =>
-      payments.value.filter(
-        (payment) =>
-          payment.status === 'submitted' &&
-          (payment.entry_type || 'expense_bill') !== 'asset_purchase',
-      ).length,
-  )
+  const submittedExpenseBillCount = computed(() => summaryData.value.submitted_expense_count)
 
-  const submittedPurchaseCount = computed(
-    () =>
-      payments.value.filter(
-        (payment) =>
-          payment.status === 'submitted' && payment.entry_type === 'asset_purchase',
-      ).length,
-  )
+  const submittedPurchaseCount = computed(() => summaryData.value.submitted_purchase_count)
 
-  const pendingBillCount = computed(
-    () => payments.value.filter((payment) => payment.status === 'pending').length,
-  )
+  const pendingBillCount = computed(() => summaryData.value.pending_count)
 
-  const approvedBillCount = computed(
-    () => payments.value.filter((payment) => isPaidBill(payment)).length,
-  )
+  const approvedBillCount = computed(() => summaryData.value.paid_count)
 
-  const payableBillCount = computed(
-    () => payments.value.filter((payment) => isPayableBill(payment)).length,
-  )
+  const payableBillCount = computed(() => summaryData.value.payable_count)
+
+  const totalBillCount = computed(() => summaryData.value.total_count)
 
   function getBillEntry(id) {
     return payments.value.find((payment) => payment.id === Number(id)) ?? null
@@ -1389,8 +1478,12 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
     payments,
     isLoading,
     isLoaded,
+    paginationMeta,
+    summaryData,
+    lastFetchParams,
     totalPaidAmount,
     thisMonthPaidAmount,
+    totalBillCount,
     pendingBillCount,
     submittedBillCount,
     submittedExpenseBillCount,
@@ -1398,6 +1491,8 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
     approvedBillCount,
     payableBillCount,
     fetchBillEntries,
+    fetchBillSummary,
+    fetchBillEntryById,
     getBillEntry,
     getPaymentsByHead,
     getTotalPaidByHead,

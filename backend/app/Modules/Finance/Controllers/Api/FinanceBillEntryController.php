@@ -28,8 +28,11 @@ class FinanceBillEntryController extends Controller
     {
         $filters = $request->filters();
         $filters['status'] = $request->get('status');
+        $filters['statuses'] = $request->get('statuses');
         $filters['category_id'] = $request->get('category_id');
         $filters['head_id'] = $request->get('head_id');
+        $filters['entry_type'] = $request->get('entry_type');
+        $filters['scope'] = $request->get('scope');
 
         return FinanceBillEntryResource::collection(
             $this->service->getPaginatedDataWithCache($filters)

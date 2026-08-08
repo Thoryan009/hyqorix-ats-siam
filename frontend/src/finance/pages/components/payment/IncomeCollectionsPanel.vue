@@ -44,12 +44,12 @@
             <th class="border-b border-gray-200 px-3 py-2 text-center">Actions</th>
           </tr>
         </thead>
-        <tbody v-if="!paginatedRows.length">
+        <tbody v-if="!rows.length">
           <tr>
             <td colspan="11" class="px-3 py-6 text-center text-gray-500">No income found.</td>
           </tr>
         </tbody>
-        <tbody v-for="row in paginatedRows" :key="row.id">
+        <tbody v-for="row in rows" :key="row.id">
           <tr class="border-b border-gray-100 hover:bg-gray-50">
             <td class="px-3 py-2 whitespace-nowrap">{{ row.collection_date || '—' }}</td>
             <td class="px-3 py-2">
@@ -153,10 +153,10 @@
             </td>
           </tr>
         </tbody>
-        <tfoot v-if="filteredRows.length" class="bg-gray-50 font-semibold">
+        <tfoot v-if="rows.length" class="bg-gray-50 font-semibold">
           <tr>
             <td colspan="9" class="px-3 py-2 text-right text-gray-700">
-              Total ({{ filteredRows.length }})
+              Total ({{ paginationTotal }})
             </td>
             <td class="px-3 py-2 text-right text-emerald-700">
               {{ formatCurrency(filteredTotal) }}
@@ -169,7 +169,7 @@
 
     <BasePagination
       class="mt-4"
-      :total="filteredRows.length"
+      :total="paginationTotal"
       :showing="showing"
       :links="links"
       :per-page="perPage"
@@ -199,53 +199,30 @@ const filters = reactive({
 })
 
 const loading = computed(() => collectionStore.isLoading)
+const rows = computed(() => collectionStore.collections)
+const paginationTotal = computed(() => collectionStore.paginationMeta.total ?? 0)
+const filteredTotal = computed(() => collectionStore.totalCollectedAmount)
 
 const hasActiveFilters = computed(
   () => Boolean(filters.search || filters.from_date || filters.to_date)
 )
 
-const filteredRows = computed(() => {
-  const query = filters.search.trim().toLowerCase()
+function buildListFilters() {
+  const apiFilters = {}
+  if (filters.search.trim()) apiFilters.search = filters.search.trim()
+  if (filters.from_date) apiFilters.from_date = filters.from_date
+  if (filters.to_date) apiFilters.to_date = filters.to_date
+  return apiFilters
+}
 
-  return collectionStore.collections.filter((row) => {
-    const dateRaw = row.collection_date_raw || row.collection_date
-    if (filters.from_date && dateRaw && dateRaw < filters.from_date) return false
-    if (filters.to_date && dateRaw && dateRaw > filters.to_date) return false
-
-    if (!query) return true
-
-    const candidateText = (row.candidates || [])
-      .flatMap((candidate) => [candidate.candidate_name, candidate.passport_no])
-      .filter(Boolean)
-      .join(' ')
-
-    return [
-      row.category_name,
-      row.head_name,
-      row.particular,
-      row.voucher_no,
-      row.reference_no,
-      row.receive_account_name,
-      row.linked_account_name,
-      row.collected_by_name,
-      row.job_code,
-      row.job_title,
-      row.client_name,
-      candidateText,
-    ]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase().includes(query))
+async function loadEntries() {
+  await collectionStore.fetchCollections({
+    force: true,
+    page: page.value,
+    perPage: perPage.value,
+    filters: buildListFilters(),
   })
-})
-
-const filteredTotal = computed(() =>
-  filteredRows.value.reduce((sum, row) => sum + Number(row.amount || 0), 0)
-)
-
-const paginatedRows = computed(() => {
-  const start = (page.value - 1) * perPage.value
-  return filteredRows.value.slice(start, start + perPage.value)
-})
+}
 
 function hasCandidateDetails(row) {
   if (!Array.isArray(row?.candidates) || !row.candidates.length) return false
@@ -272,17 +249,11 @@ function resetFilters() {
 }
 
 function updatePagination() {
-  const count = filteredRows.value.length
-  const lastPage = Math.max(1, Math.ceil(count / perPage.value))
-  const to = Math.min(page.value * perPage.value, count)
+  const meta = collectionStore.paginationMeta
+  showing.value = Number(meta.to) || 0
+  links.value = Array.isArray(meta.links) ? meta.links : []
 
-  showing.value = to
-  links.value = Array.from({ length: lastPage }, (_, index) => ({
-    label: String(index + 1),
-    active: page.value === index + 1,
-    url: page.value === index + 1 ? null : '#',
-  }))
-
+  const lastPage = Math.max(1, Number(meta.last_page) || 1)
   if (page.value > lastPage) {
     page.value = lastPage
   }
@@ -301,19 +272,43 @@ function setPerPage(value) {
   expandedId.value = null
 }
 
-watch([filteredRows, page, perPage, () => collectionStore.collections.length], updatePagination, {
-  immediate: true,
-})
+watch(
+  () => [
+    collectionStore.paginationMeta.total,
+    collectionStore.paginationMeta.to,
+    collectionStore.paginationMeta.last_page,
+    collectionStore.paginationMeta.links,
+  ],
+  updatePagination,
+  { immediate: true, deep: true }
+)
+
+let reloadTimer = null
+function scheduleReload(resetPage = false) {
+  if (resetPage && page.value !== 1) {
+    page.value = 1
+    return
+  }
+
+  clearTimeout(reloadTimer)
+  reloadTimer = setTimeout(() => {
+    loadEntries()
+  }, 250)
+}
 
 watch(
   () => [filters.search, filters.from_date, filters.to_date],
   () => {
-    page.value = 1
     expandedId.value = null
+    scheduleReload(true)
   }
 )
 
-onMounted(() => {
-  collectionStore.fetchCollections(true)
+watch([page, perPage], () => {
+  scheduleReload(false)
+})
+
+onMounted(async () => {
+  await loadEntries()
 })
 </script>

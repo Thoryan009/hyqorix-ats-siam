@@ -32,6 +32,14 @@ class FinanceIncomeCollectionService extends BaseCachedService
         );
     }
 
+    public function getSummary(array $filters = []): array
+    {
+        return $this->remember(
+            $this->filtersCacheKey([...$filters, '_summary' => true]),
+            fn () => $this->repository->getSummary($filters)
+        );
+    }
+
     public function collect(array $data): FinanceIncomeCollection
     {
         return $this->mutate(function () use ($data) {

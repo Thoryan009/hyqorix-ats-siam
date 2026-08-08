@@ -1007,6 +1007,7 @@ onMounted(async () => {
     accountStore.fetchActiveAccounts(true),
     partyAccountsStore.fetchAccounts('client'),
     partyAccountsStore.fetchAccounts('applicant'),
+    saleEntryStore.fetchSaleEntries({ force: true, page: 1, perPage: 100 }),
   ])
 })
 

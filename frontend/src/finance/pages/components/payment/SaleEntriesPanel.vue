@@ -16,84 +16,91 @@
             <th class="border-b border-gray-200 px-3 py-2 text-center">Actions</th>
           </tr>
         </thead>
-        <tbody v-if="!paginatedEntries.length">
+        <tbody v-if="saleEntryStore.entriesLoading">
+          <tr>
+            <td colspan="10" class="px-3 py-6 text-center text-gray-500">Loading payment collections...</td>
+          </tr>
+        </tbody>
+        <tbody v-else-if="!entries.length">
           <tr>
             <td colspan="10" class="px-3 py-6 text-center text-gray-500">No payment collections yet.</td>
           </tr>
         </tbody>
-        <tbody v-for="entry in paginatedEntries" :key="entry.id">
-          <tr class="border-b border-gray-100 hover:bg-gray-50">
-            <td class="px-3 py-2 font-medium">{{ entry.entry_no }}</td>
-            <td class="px-3 py-2 whitespace-nowrap">{{ formatDisplayDate(entry.entry_date) }}</td>
+        <template v-else>
+          <tbody v-for="entry in entries" :key="entry.id">
+            <tr class="border-b border-gray-100 hover:bg-gray-50">
+              <td class="px-3 py-2 font-medium">{{ entry.entry_no }}</td>
+              <td class="px-3 py-2 whitespace-nowrap">{{ formatDisplayDate(entry.entry_date) }}</td>
               <td class="px-3 py-2">
                 <div>{{ entry.agent_name || '-' }}</div>
                 <div v-if="entry.agent_code" class="text-xs text-gray-500">{{ entry.agent_code }}</div>
               </td>
-            <td class="px-3 py-2">
-              <div>{{ entry.job_title }}</div>
-              <div class="text-xs text-gray-500">{{ entry.job_code }}</div>
-            </td>
-            <td class="px-3 py-2 text-center">{{ entry.candidates.length }}</td>
-            <td class="px-3 py-2">{{ formatPayer(entry) }}</td>
-            <td class="px-3 py-2">
-              <span class="rounded-full px-2 py-1 text-xs font-semibold" :class="methodClass(entry.payment_method)">
-                {{ methodLabel(entry.payment_method) }}
-              </span>
-            </td>
-            <td class="px-3 py-2">{{ entry.main_account_name || '-' }}</td>
-            <td class="px-3 py-2 text-right font-semibold text-green-700">
-              {{ formatCurrency(entry.total_amount) }}
-            </td>
-            <td class="px-3 py-2 text-center">
-              <button
-                type="button"
-                class="mr-2 text-primary hover:underline"
-                @click="toggleExpanded(entry.id)"
-              >
-                {{ expandedId === entry.id ? 'Hide' : 'Details' }}
-              </button>
-            </td>
-          </tr>
-          <tr v-if="expandedId === entry.id" class="bg-gray-50">
-            <td colspan="10" class="px-4 py-3">
-              <div class="overflow-x-auto rounded border border-gray-200 bg-white">
-                <table class="w-full border-collapse text-sm">
-                  <thead class="bg-gray-50">
-                    <tr>
-                      <th class="border-b border-gray-200 px-3 py-2 text-left">Passport</th>
-                      <th class="border-b border-gray-200 px-3 py-2 text-left">Candidate</th>
-                      <th class="border-b border-gray-200 px-3 py-2 text-right">Sale Price</th>
-                      <th class="border-b border-gray-200 px-3 py-2 text-right">Paid Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="candidate in entry.candidates"
-                      :key="candidate.candidate_id"
-                      class="border-b border-gray-100"
-                    >
-                      <td class="px-3 py-2">{{ candidate.passport_no }}</td>
-                      <td class="px-3 py-2">{{ candidate.candidate_name }}</td>
-                      <td class="px-3 py-2 text-right">{{ formatCurrency(candidate.sale_price) }}</td>
-                      <td class="px-3 py-2 text-right font-semibold">
-                        {{ formatCurrency(candidate.amount) }}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p v-if="entry.remarks" class="mt-2 text-xs text-gray-500">
-                Remarks: {{ entry.remarks }}
-              </p>
-            </td>
-          </tr>
-        </tbody>
+              <td class="px-3 py-2">
+                <div>{{ entry.job_title }}</div>
+                <div class="text-xs text-gray-500">{{ entry.job_code }}</div>
+              </td>
+              <td class="px-3 py-2 text-center">{{ entry.candidates.length }}</td>
+              <td class="px-3 py-2">{{ formatPayer(entry) }}</td>
+              <td class="px-3 py-2">
+                <span class="rounded-full px-2 py-1 text-xs font-semibold" :class="methodClass(entry.payment_method)">
+                  {{ methodLabel(entry.payment_method) }}
+                </span>
+              </td>
+              <td class="px-3 py-2">{{ entry.main_account_name || '-' }}</td>
+              <td class="px-3 py-2 text-right font-semibold text-green-700">
+                {{ formatCurrency(entry.total_amount) }}
+              </td>
+              <td class="px-3 py-2 text-center">
+                <button
+                  type="button"
+                  class="mr-2 text-primary hover:underline"
+                  @click="toggleExpanded(entry.id)"
+                >
+                  {{ expandedId === entry.id ? 'Hide' : 'Details' }}
+                </button>
+              </td>
+            </tr>
+            <tr v-if="expandedId === entry.id" class="bg-gray-50">
+              <td colspan="10" class="px-4 py-3">
+                <div class="overflow-x-auto rounded border border-gray-200 bg-white">
+                  <table class="w-full border-collapse text-sm">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th class="border-b border-gray-200 px-3 py-2 text-left">Passport</th>
+                        <th class="border-b border-gray-200 px-3 py-2 text-left">Candidate</th>
+                        <th class="border-b border-gray-200 px-3 py-2 text-right">Sale Price</th>
+                        <th class="border-b border-gray-200 px-3 py-2 text-right">Paid Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="candidate in entry.candidates"
+                        :key="candidate.candidate_id"
+                        class="border-b border-gray-100"
+                      >
+                        <td class="px-3 py-2">{{ candidate.passport_no }}</td>
+                        <td class="px-3 py-2">{{ candidate.candidate_name }}</td>
+                        <td class="px-3 py-2 text-right">{{ formatCurrency(candidate.sale_price) }}</td>
+                        <td class="px-3 py-2 text-right font-semibold">
+                          {{ formatCurrency(candidate.amount) }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p v-if="entry.remarks" class="mt-2 text-xs text-gray-500">
+                  Remarks: {{ entry.remarks }}
+                </p>
+              </td>
+            </tr>
+          </tbody>
+        </template>
       </table>
     </div>
 
     <BasePagination
       class="mt-4"
-      :total="entries.length"
+      :total="paginationTotal"
       :showing="showing"
       :links="links"
       :per-page="perPage"
@@ -104,7 +111,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useSaleEntryStore } from '@/finance/store/saleEntryStore'
 import { formatCurrency, formatDisplayDate } from '@/finance/utils/billUtils'
 
@@ -116,11 +123,7 @@ const showing = ref(0)
 const links = ref([])
 
 const entries = computed(() => saleEntryStore.entries)
-
-const paginatedEntries = computed(() => {
-  const start = (page.value - 1) * perPage.value
-  return entries.value.slice(start, start + perPage.value)
-})
+const paginationTotal = computed(() => saleEntryStore.paginationMeta.total ?? 0)
 
 function formatPayer(entry) {
   const typeLabel = {
@@ -162,18 +165,20 @@ function toggleExpanded(entryId) {
   expandedId.value = expandedId.value === entryId ? null : entryId
 }
 
+async function loadEntries() {
+  await saleEntryStore.fetchSaleEntries({
+    force: true,
+    page: page.value,
+    perPage: perPage.value,
+  })
+}
+
 function updatePagination() {
-  const count = entries.value.length
-  const lastPage = Math.max(1, Math.ceil(count / perPage.value))
-  const to = Math.min(page.value * perPage.value, count)
+  const meta = saleEntryStore.paginationMeta
+  showing.value = Number(meta.to) || 0
+  links.value = Array.isArray(meta.links) ? meta.links : []
 
-  showing.value = to
-  links.value = Array.from({ length: lastPage }, (_, index) => ({
-    label: String(index + 1),
-    active: page.value === index + 1,
-    url: page.value === index + 1 ? null : '#',
-  }))
-
+  const lastPage = Math.max(1, Number(meta.last_page) || 1)
   if (page.value > lastPage) {
     page.value = lastPage
   }
@@ -192,5 +197,22 @@ function setPerPage(value) {
   expandedId.value = null
 }
 
-watch([entries, page, perPage], updatePagination, { immediate: true })
+watch(
+  () => [
+    saleEntryStore.paginationMeta.total,
+    saleEntryStore.paginationMeta.to,
+    saleEntryStore.paginationMeta.last_page,
+    saleEntryStore.paginationMeta.links,
+  ],
+  updatePagination,
+  { immediate: true, deep: true }
+)
+
+watch([page, perPage], () => {
+  loadEntries()
+})
+
+onMounted(async () => {
+  await loadEntries()
+})
 </script>

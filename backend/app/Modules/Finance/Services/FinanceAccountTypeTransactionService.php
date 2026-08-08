@@ -30,6 +30,14 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
         );
     }
 
+    public function getSummary(array $filters = []): array
+    {
+        return $this->remember(
+            $this->filtersCacheKey([...$filters, '_summary' => true]),
+            fn () => $this->repository->getSummary($filters)
+        );
+    }
+
     public function submitTransaction(array $data): FinanceAccountTypeTransaction
     {
         return $this->mutate(function () use ($data) {

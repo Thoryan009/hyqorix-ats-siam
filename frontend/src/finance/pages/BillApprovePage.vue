@@ -1527,7 +1527,7 @@ async function loadPage() {
   errorMessage.value = ''
 
   await Promise.all([
-    paymentStore.fetchBillEntries(),
+    paymentStore.fetchBillSummary(),
     financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.MAIN, true),
     financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.STAFF, true),
     incomeHeadStore.fetchHeads(true),
@@ -1535,7 +1535,12 @@ async function loadPage() {
   ])
 
   const billId = Number(route.params.id)
-  const bill = paymentStore.payments.find((item) => Number(item.id) === billId) || null
+  let bill = null
+  try {
+    bill = await paymentStore.fetchBillEntryById(billId)
+  } catch {
+    bill = null
+  }
 
   if (route.name === 'Bill Payable Payment' && bill && !isPayableBill(bill)) {
     entry.value = null
@@ -1551,9 +1556,17 @@ async function loadPage() {
 
   let siblings = []
   if (route.name === 'Bill Payment Review' && bill && queryIds.length > 1) {
-    siblings = queryIds
-      .map((id) => paymentStore.payments.find((item) => Number(item.id) === id))
-      .filter(Boolean)
+    const siblingRows = await Promise.all(
+      queryIds.map(async (id) => {
+        try {
+          return await paymentStore.fetchBillEntryById(id)
+        } catch {
+          return null
+        }
+      })
+    )
+
+    siblings = siblingRows.filter(Boolean)
 
     const batchKey = getBillBatchKey(bill)
     siblings = siblings.filter(

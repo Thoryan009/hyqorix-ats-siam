@@ -26,6 +26,14 @@ class FinanceAccountTypeTransactionController extends Controller
         );
     }
 
+    public function summary(ApiIndexRequest $request): JsonResponse
+    {
+        $filters = $request->filters();
+        $filters['transaction_type'] = $request->get('transaction_type');
+
+        return apiSuccess($this->service->getSummary($filters), 'fetched');
+    }
+
     public function store(FinanceAccountTypeTransactionRequest $request): JsonResponse
     {
         $transaction = $this->service->submitTransaction($request->validated());
