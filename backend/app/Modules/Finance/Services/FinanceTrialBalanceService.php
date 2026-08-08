@@ -19,7 +19,6 @@ class FinanceTrialBalanceService
         'owners_equity' => "Owner's Equity Accounts",
         'asset' => 'Asset Accounts',
         'liabilities' => 'Liabilities Accounts',
-        'agent_advanced' => 'Agent Advanced',
         'sale' => 'Sale',
         'bills_receivable' => 'Sale Receivable',
         'income_receivable' => 'Income Receivable',
@@ -48,7 +47,6 @@ class FinanceTrialBalanceService
         'bills_receivable',
         'income_receivable',
         'expense_payable',
-        'agent_advanced',
         'staff',
         'vendor',
         'principal',
@@ -99,9 +97,6 @@ class FinanceTrialBalanceService
         // Ensure expense-head accounts + missing DR rows before building the statement.
         $this->billEntryService->backfillApprovedBillExpenseLedgers($toDate);
 
-        // Ensure Agent Advanced consolidating ledger exists and includes prior agent advances.
-        $this->accountService->ensureAgentAdvancedAccount(true);
-
         // Ensure Sale income ledger exists and includes prior recognized sale collections.
         $this->accountService->ensureSaleAccount(true);
 
@@ -145,11 +140,11 @@ class FinanceTrialBalanceService
             $category = (string) ($account->category ?? 'main');
 
             // Party AR/AP is consolidated / represented elsewhere:
-            // - agents → Agent Advanced
             // - applicants → Bills Receivable
             // - clients → Income Receivable (e.g. Client Commission Receivable)
             // - vendor / staff / principal → Asset & Liabilities accounts (Other Transaction)
-            if (in_array($category, ['agent', 'applicant', 'client', 'vendor', 'staff', 'principal', 'banks', 'owners'], true)) {
+            // - agent_advanced → retired system ledger (excluded)
+            if (in_array($category, ['agent', 'agent_advanced', 'applicant', 'client', 'vendor', 'staff', 'principal', 'banks', 'owners'], true)) {
                 continue;
             }
 
@@ -301,10 +296,6 @@ class FinanceTrialBalanceService
             return "Owner's Capital";
         }
 
-        if ($category === 'agent_advanced') {
-            return 'Agent Advanced';
-        }
-
         if ($category === 'sale') {
             return 'Sale';
         }
@@ -327,7 +318,7 @@ class FinanceTrialBalanceService
         }
 
         $code = trim((string) ($account->code ?? ''));
-        if ($code !== '' && !in_array($category, ['main', 'capital', 'agent_advanced', 'sale', 'bills_receivable', 'income_receivable', 'expense_payable'], true)) {
+        if ($code !== '' && !in_array($category, ['main', 'capital', 'sale', 'bills_receivable', 'income_receivable', 'expense_payable'], true)) {
             return "{$name} ({$code})";
         }
 

@@ -4,7 +4,6 @@ export const ACCOUNT_CATEGORIES = {
   OWNERS_EQUITY: 'owners_equity',
   ASSET: 'asset',
   LIABILITIES: 'liabilities',
-  AGENT_ADVANCED: 'agent_advanced',
   SALE: 'sale',
   BILLS_RECEIVABLE: 'bills_receivable',
   INCOME_RECEIVABLE: 'income_receivable',

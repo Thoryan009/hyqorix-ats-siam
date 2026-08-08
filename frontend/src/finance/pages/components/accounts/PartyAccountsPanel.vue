@@ -220,14 +220,12 @@ import { usePartyAccountsStore } from '@/finance/store/partyAccountsStore'
 import { useFinanceAccountStore } from '@/finance/store/financeAccountStore'
 import { getAccountCategoryFromPartyType } from '@/finance/data/accountCategoryCodes'
 import { getPartyConfig, isPartyAccountsType } from '@/finance/config/partyAccountConfigs'
-import { fetchAgentAdvancedAccount } from '@/finance/services/financeAccountService'
 import { formatCurrency } from '@/finance/utils/billUtils'
 import {
   formatApplicantLedgerAmount,
   isApplicantLedgerAmountDebit,
 } from '@/finance/utils/partyLedgerCsvUtils'
 import { partyAccountStatusFilterOptions } from '@/finance/data/partyAccountConstants'
-import { toast } from '@/shared/config/toastConfig'
 import CreateAgentAccountModal from './CreateAgentAccountModal.vue'
 import EditAgentAccountModal from './EditAgentAccountModal.vue'
 import CreatePartyAccountModal from './CreatePartyAccountModal.vue'
@@ -395,11 +393,6 @@ const quickActions = computed(() => {
         onClick: handleCreate,
       },
       {
-        label: 'Agent Advanced Ledger',
-        icon: 'fa fa-credit-card',
-        onClick: openAgentAdvancedLedger,
-      },
-      {
         label: 'Company Accounts',
         icon: 'fa fa-bank',
         onClick: () => router.replace({ path: '/finance/accounts' }),
@@ -419,20 +412,6 @@ const quickActions = computed(() => {
     })),
   ]
 })
-
-async function openAgentAdvancedLedger() {
-  try {
-    const account = await fetchAgentAdvancedAccount()
-    const accountId = Number(account?.id)
-    if (!accountId) {
-      toast.error('Agent Advanced Ledger is not available.')
-      return
-    }
-    router.push(`/finance/accounts/${accountId}/ledger`)
-  } catch (error) {
-    toast.error(error?.message || 'Failed to open Agent Advanced Ledger.')
-  }
-}
 
 const page = ref(1)
 const perPage = ref(10)

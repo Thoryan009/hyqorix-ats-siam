@@ -86,7 +86,6 @@ export const useFinanceAccountStore = defineStore('financeAccount', () => {
     const categories = Object.values(ACCOUNT_CATEGORIES).filter(
       (category) =>
         category !== ACCOUNT_CATEGORIES.CAPITAL &&
-        category !== ACCOUNT_CATEGORIES.AGENT_ADVANCED &&
         category !== ACCOUNT_CATEGORIES.SALE &&
         category !== ACCOUNT_CATEGORIES.BILLS_RECEIVABLE &&
         category !== ACCOUNT_CATEGORIES.INCOME_RECEIVABLE

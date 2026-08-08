@@ -12,7 +12,6 @@ class FinanceBalanceSheetService
         'asset',
         'bills_receivable',
         'income_receivable',
-        'agent_advanced',
     ];
 
     /** Balance sheet — Liabilities (credit-normal). */
@@ -52,6 +51,7 @@ class FinanceBalanceSheetService
         'client_income',
         'other_income',
         'agent',
+        'agent_advanced',
         'vendor',
         'staff',
         'principal',
@@ -101,7 +101,6 @@ class FinanceBalanceSheetService
                 if ($net > 0.005) {
                     $assets[] = $this->lineItem($label, $net, $category, $accountId);
                 } elseif ($net < -0.005) {
-                    // e.g. Agent Advanced (CR balance) is a liability, not an asset.
                     $liabilities[] = $this->lineItem($label, abs($net), $category, $accountId);
                 }
 

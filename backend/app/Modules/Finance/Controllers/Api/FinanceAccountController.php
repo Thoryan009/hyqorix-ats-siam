@@ -57,19 +57,6 @@ class FinanceAccountController extends Controller
         );
     }
 
-    public function agentAdvanced(Request $request): JsonResponse
-    {
-        $account = $this->service->ensureAgentAdvancedAccount(true);
-        $this->service->flushCache();
-
-        return apiSuccess(
-            new FinanceAccountResource($account),
-            'fetched',
-            200,
-            'Agent Advanced account'
-        );
-    }
-
     public function sale(Request $request): JsonResponse
     {
         $account = $this->service->ensureSaleAccount(true);

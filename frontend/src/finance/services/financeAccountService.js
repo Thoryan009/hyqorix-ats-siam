@@ -35,13 +35,6 @@ export async function fetchCapitalAccount() {
   return api.data.value?.data ?? null
 }
 
-export async function fetchAgentAdvancedAccount() {
-  const api = useApi()
-  await api.sendRequest(`${BASE_URL}/agent-advanced`)
-  if (api.error.value) throw api.error.value
-  return api.data.value?.data ?? null
-}
-
 export async function fetchSaleAccount() {
   const api = useApi()
   await api.sendRequest(`${BASE_URL}/sale`)

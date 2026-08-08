@@ -24,8 +24,6 @@ class FinanceAccountService extends BaseCachedService
     public const APPLICANT_CATEGORY = 'applicant';
     public const CAPITAL_CATEGORY = 'capital';
     public const CAPITAL_ACCOUNT_CODE = 'CAPITAL';
-    public const AGENT_ADVANCED_CATEGORY = 'agent_advanced';
-    public const AGENT_ADVANCED_ACCOUNT_CODE = 'AGENT_ADVANCED';
     public const SALE_CATEGORY = 'sale';
     public const SALE_ACCOUNT_CODE = 'SALE';
     public const BILLS_RECEIVABLE_CATEGORY = 'bills_receivable';
@@ -79,12 +77,6 @@ class FinanceAccountService extends BaseCachedService
             if (($data['category'] ?? null) === self::CAPITAL_CATEGORY) {
                 throw ValidationException::withMessages([
                     'category' => ['Capital Ledger is system-managed and cannot be created manually.'],
-                ]);
-            }
-
-            if (($data['category'] ?? null) === self::AGENT_ADVANCED_CATEGORY) {
-                throw ValidationException::withMessages([
-                    'category' => ['Agent Advanced Ledger is system-managed and cannot be created manually.'],
                 ]);
             }
 
@@ -166,35 +158,6 @@ class FinanceAccountService extends BaseCachedService
 
         if ($backfillMissingOffsets) {
             $this->backfillMissingCapitalOpeningOffsets();
-            $account = $account->fresh();
-        }
-
-        return $account;
-    }
-
-    /**
-     * System Agent Advanced account — consolidating ledger for agent advanced receipts.
-     */
-    public function ensureAgentAdvancedAccount(bool $backfillMissingEntries = false): FinanceAccount
-    {
-        $account = $this->model->firstOrNew([
-            'category' => self::AGENT_ADVANCED_CATEGORY,
-            'code' => self::AGENT_ADVANCED_ACCOUNT_CODE,
-        ]);
-
-        $account->account_name = 'Agent Advanced Ledger';
-        $account->account_type = null;
-        $account->status = 'active';
-
-        if (!$account->exists) {
-            $account->balance = 0;
-            $account->opening_balance = 0;
-        }
-
-        $account->save();
-
-        if ($backfillMissingEntries) {
-            $this->backfillMissingAgentAdvancedEntries();
             $account = $account->fresh();
         }
 
@@ -1208,45 +1171,6 @@ class FinanceAccountService extends BaseCachedService
     }
 
     /**
-     * Ensure existing agent Advanced ledger rows also appear on Agent Advanced Ledger.
-     */
-    private function backfillMissingAgentAdvancedEntries(): void
-    {
-        $agentAccounts = $this->model
-            ->where('category', 'agent')
-            ->where(function ($query) {
-                $query
-                    ->where('opening_balance', '>', 0)
-                    ->orWhere('balance', '>', 0);
-            })
-            ->get();
-
-        foreach ($agentAccounts as $agentAccount) {
-            $advancedEntry = FinanceAccountLedgerEntry::query()
-                ->where('finance_account_id', $agentAccount->id)
-                ->where('particular', 'Advanced')
-                ->first();
-
-            if (!$advancedEntry) {
-                continue;
-            }
-
-            $amount = (float) $advancedEntry->cr_amount;
-            if ($amount <= 0) {
-                continue;
-            }
-
-            $typeTransaction = null;
-            if ((int) $advancedEntry->finance_account_type_transaction_id) {
-                $typeTransaction = FinanceAccountTypeTransaction::query()
-                    ->find((int) $advancedEntry->finance_account_type_transaction_id);
-            }
-
-            $this->recordAgentAdvancedLedgerEntry($agentAccount, $amount, $typeTransaction);
-        }
-    }
-
-    /**
      * Ensure existing main-account openings also have Capital Ledger DR offsets.
      */
     private function backfillMissingCapitalOpeningOffsets(): void
@@ -1300,13 +1224,11 @@ class FinanceAccountService extends BaseCachedService
         }
 
         $entryDate = optional($account->created_at)->toDateString() ?? now()->toDateString();
-        $isAgentAdvanced = ($account->category ?? '') === 'agent';
-        $voucherPrefix = $isAgentAdvanced ? 'ADV' : 'OB';
-        $voucherNo = sprintf('%s-%03d/%s', $voucherPrefix, $account->id, now()->format('y'));
+        $voucherNo = sprintf('OB-%03d/%s', $account->id, now()->format('y'));
         $accountLabel = $this->accountLabel($account);
-        $particular = $isAgentAdvanced ? 'Advanced' : 'Opening Balance';
-        $remarks = $isAgentAdvanced ? 'Agent advanced received' : 'Opening balance forwarded';
-        $transactionType = $isAgentAdvanced ? 'advanced' : 'opening_balance';
+        $particular = 'Opening Balance';
+        $remarks = 'Opening balance forwarded';
+        $transactionType = 'opening_balance';
 
         $existingTypeTxn = FinanceAccountTypeTransaction::query()
             ->where('transaction_type', $transactionType)
@@ -1363,168 +1285,6 @@ class FinanceAccountService extends BaseCachedService
         }
 
         return $typeTransaction;
-    }
-
-    /**
-     * Agent advanced is cash received into a company main account.
-     * Agent ledger keeps CR (liability / wallet); main ledger gets CR (money in).
-     */
-    private function recordAgentOpeningMainReceipt(
-        FinanceAccount $agentAccount,
-        int $mainAccountId,
-        float $openingAmount,
-        ?FinanceAccountTypeTransaction $typeTransaction,
-    ): void {
-        if ($openingAmount <= 0) {
-            return;
-        }
-
-        $mainAccount = $this->model->newQuery()->find($mainAccountId);
-
-        if (!$mainAccount || $mainAccount->category !== 'main') {
-            throw ValidationException::withMessages([
-                'main_account_id' => ['Please select a valid main (Cash/Bank) account.'],
-            ]);
-        }
-
-        if ($mainAccount->status !== 'active') {
-            throw ValidationException::withMessages([
-                'main_account_id' => ['Selected main account is not active.'],
-            ]);
-        }
-
-        $agentLabel = $this->accountLabel($agentAccount);
-        $mainLabel = $this->accountLabel($mainAccount);
-        $entryDate = optional($agentAccount->created_at)->toDateString() ?? now()->toDateString();
-        $voucherNo = $typeTransaction?->voucher_no
-            ?: sprintf('ADV-%03d/%s', $agentAccount->id, now()->format('y'));
-        $particular = "Advanced — {$agentLabel}";
-        $remarks = "Advanced received from agent into {$mainLabel}";
-        $paymentMethod = ucfirst((string) ($mainAccount->account_type ?? 'Cash'));
-
-        if ($typeTransaction) {
-            $typeTransaction->update([
-                'transaction_type' => 'advanced',
-                'particular' => $particular,
-                'remarks' => $remarks,
-                'from_account_category' => 'agent',
-                'from_main_account_type' => '',
-                'from_account_id' => $agentAccount->id,
-                'from_account_label' => $agentLabel,
-                'to_account_category' => 'main',
-                'to_main_account_type' => (string) ($mainAccount->account_type ?? ''),
-                'to_account_id' => $mainAccount->id,
-                'to_account_label' => $mainLabel,
-                'account_category' => null,
-                'main_account_type' => null,
-                'account_id' => null,
-                'account_label' => null,
-            ]);
-        }
-
-        $existingMainEntry = FinanceAccountLedgerEntry::query()
-            ->where('finance_account_id', $mainAccount->id)
-            ->where(function ($query) use ($typeTransaction, $voucherNo) {
-                if ($typeTransaction) {
-                    $query->where('finance_account_type_transaction_id', $typeTransaction->id);
-                }
-                $query->orWhere(function ($inner) use ($voucherNo) {
-                    $inner
-                        ->where('voucher_no', $voucherNo)
-                        ->where('particular', 'like', 'Advanced%');
-                });
-            })
-            ->first();
-
-        if ($existingMainEntry) {
-            if ($typeTransaction && !(int) $existingMainEntry->finance_account_type_transaction_id) {
-                $existingMainEntry->update([
-                    'finance_account_type_transaction_id' => $typeTransaction->id,
-                ]);
-            }
-
-            return;
-        }
-
-        FinanceAccountLedgerEntry::create([
-            'finance_account_id' => $mainAccount->id,
-            'finance_account_type_transaction_id' => $typeTransaction?->id,
-            'entry_date' => $entryDate,
-            'particular' => $particular,
-            'voucher_no' => $voucherNo,
-            'client_name' => $agentLabel,
-            'dr_amount' => 0,
-            'discount' => 0,
-            'cr_amount' => $openingAmount,
-            'payment_method' => $paymentMethod,
-            'remarks' => $remarks,
-        ]);
-
-        $mainAccount->update([
-            'balance' => round((float) $mainAccount->balance + $openingAmount, 2),
-        ]);
-    }
-
-    /**
-     * Consolidating CR on Agent Advanced Ledger for each agent advanced receipt.
-     */
-    private function recordAgentAdvancedLedgerEntry(
-        FinanceAccount $agentAccount,
-        float $openingAmount,
-        ?FinanceAccountTypeTransaction $typeTransaction,
-    ): void {
-        if ($openingAmount <= 0) {
-            return;
-        }
-
-        $advancedLedger = $this->ensureAgentAdvancedAccount();
-        $agentLabel = $this->accountLabel($agentAccount);
-        $entryDate = optional($agentAccount->created_at)->toDateString() ?? now()->toDateString();
-        $voucherNo = $typeTransaction?->voucher_no
-            ?: sprintf('ADV-%03d/%s', $agentAccount->id, now()->format('y'));
-        $particular = "Advanced — {$agentLabel}";
-        $remarks = "Agent advanced received ({$agentLabel})";
-
-        $existingEntry = FinanceAccountLedgerEntry::query()
-            ->where('finance_account_id', $advancedLedger->id)
-            ->where(function ($query) use ($typeTransaction, $voucherNo) {
-                if ($typeTransaction) {
-                    $query->where('finance_account_type_transaction_id', $typeTransaction->id);
-                }
-                $query->orWhere(function ($inner) use ($voucherNo) {
-                    $inner
-                        ->where('voucher_no', $voucherNo)
-                        ->where('particular', 'like', 'Advanced%');
-                });
-            })
-            ->first();
-
-        if ($existingEntry) {
-            if ($typeTransaction && !(int) $existingEntry->finance_account_type_transaction_id) {
-                $existingEntry->update([
-                    'finance_account_type_transaction_id' => $typeTransaction->id,
-                ]);
-            }
-
-            return;
-        }
-
-        FinanceAccountLedgerEntry::create([
-            'finance_account_id' => $advancedLedger->id,
-            'finance_account_type_transaction_id' => $typeTransaction?->id,
-            'entry_date' => $entryDate,
-            'particular' => $particular,
-            'voucher_no' => $voucherNo,
-            'client_name' => $agentLabel,
-            'dr_amount' => 0,
-            'discount' => 0,
-            'cr_amount' => $openingAmount,
-            'payment_method' => '',
-            'remarks' => $remarks,
-        ]);
-
-        $advancedLedger->balance = round((float) $advancedLedger->balance + $openingAmount, 2);
-        $advancedLedger->save();
     }
 
     /**
@@ -1741,12 +1501,6 @@ class FinanceAccountService extends BaseCachedService
         if ($financeAccount->category === self::CAPITAL_CATEGORY) {
             throw ValidationException::withMessages([
                 'category' => ['Capital Ledger cannot be deleted.'],
-            ]);
-        }
-
-        if ($financeAccount->category === self::AGENT_ADVANCED_CATEGORY) {
-            throw ValidationException::withMessages([
-                'category' => ['Agent Advanced Ledger cannot be deleted.'],
             ]);
         }
 

@@ -7,7 +7,6 @@ return [
         'owners_equity',
         'asset',
         'liabilities',
-        'agent_advanced',
         'sale',
         'bills_receivable',
         'income_receivable',

@@ -113,7 +113,6 @@ const isCapitalLedger = computed(() => {
   const category = String(account.value?.category || '').toLowerCase()
   return (
     category === ACCOUNT_CATEGORIES.CAPITAL ||
-    category === ACCOUNT_CATEGORIES.AGENT_ADVANCED ||
     category === ACCOUNT_CATEGORIES.SALE ||
     category === ACCOUNT_CATEGORIES.BILLS_RECEIVABLE ||
     category === ACCOUNT_CATEGORIES.INCOME_RECEIVABLE

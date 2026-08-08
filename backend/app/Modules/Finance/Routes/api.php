@@ -81,8 +81,6 @@ Route::get('finance-accounts/summary', [FinanceAccountController::class, 'summar
     ->middleware('permission:finance_account.view|bill_generation.create');
 Route::get('finance-accounts/capital', [FinanceAccountController::class, 'capital'])
     ->middleware('permission:finance_account.view');
-Route::get('finance-accounts/agent-advanced', [FinanceAccountController::class, 'agentAdvanced'])
-    ->middleware('permission:finance_account.view');
 Route::get('finance-accounts/sale', [FinanceAccountController::class, 'sale'])
     ->middleware('permission:finance_account.view');
 Route::get('finance-accounts/bills-receivable-ledger', [FinanceAccountController::class, 'billsReceivableLedger'])

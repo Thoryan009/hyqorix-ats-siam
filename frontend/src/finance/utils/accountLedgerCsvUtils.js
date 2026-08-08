@@ -5,7 +5,6 @@ function getLedgerHeaders(category) {
   const normalized = String(category || '').toLowerCase()
   const isSystemLedger =
     normalized === ACCOUNT_CATEGORIES.CAPITAL ||
-    normalized === ACCOUNT_CATEGORIES.AGENT_ADVANCED ||
     normalized === ACCOUNT_CATEGORIES.SALE ||
     normalized === ACCOUNT_CATEGORIES.BILLS_RECEIVABLE ||
     normalized === ACCOUNT_CATEGORIES.INCOME_RECEIVABLE
