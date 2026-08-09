@@ -120,7 +120,8 @@ class FinanceGrossProfitReportService
 
         $avgCreByWorkOrder = $this->buildAvgClientRecruitmentExpenseByWorkOrder(
             $workOrderIds,
-            $clientRecruitmentCategory?->id
+            $clientRecruitmentCategory?->id,
+            $category?->id
         );
 
         $allRows = [];
@@ -404,15 +405,18 @@ class FinanceGrossProfitReportService
     /**
      * Avg C.R.E. per demand letter =
      * (sum of approved Client Recruitment Expense bills) /
-     * (unique candidates in Receipt List / payment-collection for that DL,
+     * (candidates on that DL with at least one approved Direct Expense,
      *  excluding declined/rejected current process).
      *
      * @param  list<int>  $workOrderIds
      * @return array<int, float>
      */
-    private function buildAvgClientRecruitmentExpenseByWorkOrder(array $workOrderIds, ?int $creCategoryId): array
-    {
-        if ($workOrderIds === [] || !$creCategoryId) {
+    private function buildAvgClientRecruitmentExpenseByWorkOrder(
+        array $workOrderIds,
+        ?int $creCategoryId,
+        ?int $directCostCategoryId
+    ): array {
+        if ($workOrderIds === [] || !$creCategoryId || !$directCostCategoryId) {
             return [];
         }
 
@@ -439,8 +443,11 @@ class FinanceGrossProfitReportService
             return array_fill_keys($workOrderIds, 0.0);
         }
 
-        // Receipt List candidates (payment-collection) for jobs under these DLs.
-        $receiptApplicationIds = FinanceSaleCollection::query()
+        // Candidates with at least one approved Direct Expense under these DLs.
+        $directExpenseApplicationIds = FinanceBillEntry::query()
+            ->where('expense_category_id', $directCostCategoryId)
+            ->where('status', 'approved')
+            ->whereNotNull('application_id')
             ->where(function ($query) use ($jobListIds) {
                 $query
                     ->whereIn('job_list_id', $jobListIds)
@@ -457,13 +464,13 @@ class FinanceGrossProfitReportService
             ->values()
             ->all();
 
-        if ($receiptApplicationIds === []) {
+        if ($directExpenseApplicationIds === []) {
             return array_fill_keys($workOrderIds, 0.0);
         }
 
         $applications = Application::query()
             ->with(['currentProcess.process', 'jobList'])
-            ->whereIn('id', $receiptApplicationIds)
+            ->whereIn('id', $directExpenseApplicationIds)
             ->get(['id', 'job_list_id']);
 
         $counts = [];
