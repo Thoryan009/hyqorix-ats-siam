@@ -3,6 +3,7 @@
     <CommonForm
       v-model:formData="formData"
       :userRoles="userRoles"
+      :vendorTypes="vendorTypes"
       :onSubmit="handleSubmit"
       :onCancel="store.handleToggleModal"
       :loading="updateLoading"
@@ -27,7 +28,6 @@ const props = defineProps({
   },
 })
 
-const userRoles = computed(() => props.vendorData?.data?.data?.roles ?? [])
 const store = useVendorStore()
 
 const formData = ref({
@@ -45,6 +45,23 @@ const formData = ref({
   role_id: '',
   status: '1',
   password: '',
+})
+
+const userRoles = computed(() => props.vendorData?.data?.data?.roles ?? [])
+const vendorTypes = computed(() => {
+  const types = props.vendorData?.data?.data?.vendor_types ?? []
+  const current = formData.value.vendor_type
+  if (!current || types.some((type) => type.id === current)) {
+    return types
+  }
+
+  return [
+    ...types,
+    {
+      id: current,
+      name: store.item?.vendor_type_formatted || current,
+    },
+  ]
 })
 
 watch(

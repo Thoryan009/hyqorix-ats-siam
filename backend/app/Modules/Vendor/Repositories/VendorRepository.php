@@ -16,7 +16,7 @@ class VendorRepository extends BaseRepository
 
     protected function baseQuery(): Builder
     {
-        return parent::baseQuery()->with(['user.roles', 'createdBy', 'updatedBy']);
+        return parent::baseQuery()->with(['user.roles', 'vendorType', 'createdBy', 'updatedBy']);
     }
 
     protected function applyFilters(Builder $query, array $filters): void

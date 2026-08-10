@@ -285,7 +285,7 @@ export const navGroups = [
         section: 'Reports',
       },
       {
-        name: 'Final Trial Balance',
+        name: 'Trial Balance',
         path: '/finance/reports/trial-balance',
         icon: 'fa fa-list-alt',
         permission: 'trial_balance.view',

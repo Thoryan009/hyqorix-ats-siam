@@ -188,7 +188,7 @@
 
 <script setup>
 import { usePasswordGenerator } from '@/shared/composables/usePasswordGenerator'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import appConfig from '@/shared/config/appConfig'
 import { useFileHandler } from '@/shared/composables/useFileHandler'
@@ -202,19 +202,17 @@ const statusOptions = [
   { id: '0', name: 'Inactive' },
 ]
 
-const vendorTypeOptions = [
-  { id: 'ticket', name: 'Ticket' },
-  { id: 'legal', name: 'Legal' },
-]
-
 const props = defineProps({
   formData: { type: Object, required: true },
   userRoles: { type: Array, default: () => [] },
+  vendorTypes: { type: Array, default: () => [] },
   onSubmit: { type: Function, required: true },
   onCancel: { type: Function, required: true },
   loading: { type: Boolean, required: true },
   store: { type: Object, required: true },
 })
+
+const vendorTypeOptions = computed(() => props.vendorTypes || [])
 
 const handleCopyCredentials = async () => {
   const toast = useToast()

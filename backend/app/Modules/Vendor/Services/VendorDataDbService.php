@@ -4,6 +4,7 @@ namespace App\Modules\Vendor\Services;
 
 use App\Modules\Auth\Models\Role;
 use App\Modules\Vendor\Contracts\VendorDataServiceInterface;
+use App\Modules\Vendor\Models\VendorType;
 use Illuminate\Support\Facades\Cache;
 
 class VendorDataDbService implements VendorDataServiceInterface
@@ -21,8 +22,20 @@ class VendorDataDbService implements VendorDataServiceInterface
                 ])
                 ->toArray();
 
+            $vendorTypes = VendorType::query()
+                ->where('status', 'active')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['name', 'code'])
+                ->map(fn (VendorType $type) => [
+                    'id' => $type->code,
+                    'name' => $type->name,
+                ])
+                ->toArray();
+
             return [
                 'roles' => $roles,
+                'vendor_types' => $vendorTypes,
             ];
         });
     }

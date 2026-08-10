@@ -3,6 +3,7 @@
     <CommonForm
       v-model:formData="formData"
       :userRoles="userRoles"
+      :vendorTypes="vendorTypes"
       :onSubmit="handleSubmit"
       :onCancel="store.handleToggleModal"
       :loading="submitLoading"
@@ -12,7 +13,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useVendorStore } from '@/modules/vendor/store/vendorStore'
 import { useVendorMutations } from '@/modules/vendor/queries/useVendorMutations'
 import app from '@/shared/config/appConfig'
@@ -30,6 +31,7 @@ const props = defineProps({
 })
 
 const userRoles = computed(() => props.vendorData?.data?.data?.roles ?? [])
+const vendorTypes = computed(() => props.vendorData?.data?.data?.vendor_types ?? [])
 
 const defaultFormData = {
   organization_name: 'Test Organization',
@@ -55,6 +57,16 @@ const formData = ref(
           .filter((key) => key !== 'status')
           .map((key) => [key, ' '])
       )
+)
+
+watch(
+  vendorTypes,
+  (types) => {
+    if (!formData.value.vendor_type?.trim() && types.length) {
+      formData.value.vendor_type = types[0].id
+    }
+  },
+  { immediate: true }
 )
 
 const { submit, submitLoading } = useVendorMutations(store.moduleName, {

@@ -6,6 +6,7 @@ use App\Modules\Auth\Models\User;
 use App\Traits\LogsActivity;
 use App\Traits\TracksUser;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Vendor extends Model
 {
@@ -19,6 +20,11 @@ class Vendor extends Model
     public function getVendorImageUrlAttribute(): ?string
     {
         return $this->vendor_image_path ? asset('storage/' . $this->vendor_image_path) : null;
+    }
+
+    public function vendorType(): BelongsTo
+    {
+        return $this->belongsTo(VendorType::class, 'vendor_type', 'code');
     }
 
     public function user()

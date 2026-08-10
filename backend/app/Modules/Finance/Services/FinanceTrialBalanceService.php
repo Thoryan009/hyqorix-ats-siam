@@ -227,7 +227,7 @@ class FinanceTrialBalanceService
         $isBalanced = abs($difference) < 0.005;
 
         return [
-            'title' => 'Final Trial Balance',
+            'title' => 'Trial Balance',
             'from_date' => $fromDate,
             'to_date' => $toDate,
             'groups' => $groupList,

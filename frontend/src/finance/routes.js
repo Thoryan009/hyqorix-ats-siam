@@ -393,7 +393,7 @@ export default [
     children: [
       {
         path: '',
-        name: 'Final Trial Balance',
+        name: 'Trial Balance',
         component: TrialBalancePage,
         meta: {
           permissions: ['trial_balance.view'],

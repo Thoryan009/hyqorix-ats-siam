@@ -1031,6 +1031,32 @@ function resolveMainAccountTypeFromPaymentMethod(method) {
   return ''
 }
 
+/** Bills To Pay: keep main account list filtered to Cash/Bank from payment method. */
+function syncBillsToPayMainAccountTypeFromMethod() {
+  if (isPayableSettlementMode.value || isBatchPayMode.value) return
+  const methodType = resolveMainAccountTypeFromPaymentMethod(form.payment_method)
+  if (methodType) {
+    form.main_account_type = methodType
+  }
+}
+
+/** Drop a preselected main account that does not match Cash/Bank payment method. */
+function clearMismatchedPaymentAccountForMethod() {
+  if (isPayableSettlementMode.value || isBatchPayMode.value) return
+  if (form.payment_account_category !== 'main' || !form.payment_account_id) return
+
+  const expected = resolveMainAccountTypeFromPaymentMethod(form.payment_method)
+  if (!expected) return
+
+  const account = getFinanceAccount(form.payment_account_id)
+  const accountType = String(account?.account_type || form.payment_account_type || '').toLowerCase()
+  if (accountType && accountType !== expected.toLowerCase()) {
+    form.payment_account_id = ''
+    form.payment_account_name = ''
+    form.payment_account_type = expected
+  }
+}
+
 const isDuePayment = computed(() => {
   if (isPayableSettlementMode.value) return false
   if (!isBatchPayMode.value) {
@@ -1210,10 +1236,11 @@ function populateForm(bill) {
     !isDuePaymentMethod(submittedMethod)
   ) {
     form.payment_account_category = 'main'
-    if (!form.main_account_type) {
-      form.main_account_type = submittedMainType
-    }
   }
+
+  // Always align Cash/Bank filter with payment method (category watcher must not leave type empty).
+  syncBillsToPayMainAccountTypeFromMethod()
+  clearMismatchedPaymentAccountForMethod()
 
   if (route.name === 'Bill Payable Payment' && bill.payment_method === 'due') {
     form.payment_method = 'cash'
@@ -1392,6 +1419,12 @@ watch(
     const methodKey = String(method || '').toLowerCase()
     if (methodKey === 'cash' || methodKey === 'bank') {
       form.main_account_type = methodKey === 'bank' ? 'Bank' : 'Cash'
+      form.payment_account_type = form.main_account_type
+      // Reset account so auto-select picks one matching Cash/Bank.
+      if (!isHydratingApprovalForm.value) {
+        form.payment_account_id = ''
+        form.payment_account_name = ''
+      }
       if (billsToPayNowAmount.value <= 0) {
         form.pay_now_amount = form.amount || ''
       }
@@ -1454,10 +1487,31 @@ watch(
   (category, previousCategory) => {
     if (category === previousCategory) return
 
-    form.main_account_type = ''
-    form.payment_account_type = category === 'staff' ? 'Staff' : ''
     form.payment_account_id = ''
     form.payment_account_name = ''
+
+    if (category === 'staff') {
+      form.main_account_type = ''
+      form.payment_account_type = 'Staff'
+      return
+    }
+
+    if (category === 'main') {
+      // Bills To Pay: filter Payment Account by Cash/Bank from payment method.
+      // Bills Payable / batch: leave type empty so all main accounts are listed.
+      if (!isPayableSettlementMode.value && !isBatchPayMode.value) {
+        const methodType = resolveMainAccountTypeFromPaymentMethod(form.payment_method)
+        form.main_account_type = methodType
+        form.payment_account_type = methodType
+      } else {
+        form.main_account_type = ''
+        form.payment_account_type = ''
+      }
+      return
+    }
+
+    form.main_account_type = ''
+    form.payment_account_type = ''
   }
 )
 
@@ -1472,16 +1526,26 @@ watch(
     if (form.payment_account_category === 'main') {
       const account = getFinanceAccount(accountId)
       form.payment_account_type = account?.account_type ?? form.main_account_type
-      form.main_account_type = account?.account_type ?? ''
       form.payment_account_name = account
         ? `${account.account_name} — ${account.account_label}`
         : ''
 
-      // Keep payment method aligned when the user changes account (not during initial load).
+      // Keep payment method / Cash-Bank filter aligned when the user changes account
+      // (not during initial load — that is driven by payment method).
       if (!isHydratingApprovalForm.value && !isIncomeLinkMethod.value && !isDuePayment.value) {
         const accountType = String(account?.account_type || '').toLowerCase()
-        if (accountType === 'bank') form.payment_method = 'bank'
-        else if (accountType === 'cash') form.payment_method = 'cash'
+        if (accountType === 'bank') {
+          form.payment_method = 'bank'
+          form.main_account_type = 'Bank'
+        } else if (accountType === 'cash') {
+          form.payment_method = 'cash'
+          form.main_account_type = 'Cash'
+        } else {
+          form.main_account_type = account?.account_type ?? ''
+        }
+      } else if (!form.main_account_type && !isPayableSettlementMode.value && !isBatchPayMode.value) {
+        form.main_account_type =
+          account?.account_type || resolveMainAccountTypeFromPaymentMethod(form.payment_method)
       }
       return
     }
@@ -1591,6 +1655,9 @@ async function loadPage() {
 
   pageLoading.value = false
 
+  await nextTick()
+  syncBillsToPayMainAccountTypeFromMethod()
+  clearMismatchedPaymentAccountForMethod()
   await nextTick()
   await autoSelectFirstPaymentAccount()
   isHydratingApprovalForm.value = false

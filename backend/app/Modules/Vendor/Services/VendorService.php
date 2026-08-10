@@ -27,7 +27,7 @@ class VendorService extends BaseCachedService
 
     public function getById(int $id)
     {
-        return $this->model->with(['user.roles', 'createdBy', 'updatedBy'])->findOrFail($id);
+        return $this->model->with(['user.roles', 'vendorType', 'createdBy', 'updatedBy'])->findOrFail($id);
     }
 
     public function create(array $data)
@@ -40,7 +40,7 @@ class VendorService extends BaseCachedService
             $this->financeAccountService->ensureVendorAccount($vendor->load('user'));
             $this->flushCache();
 
-            return $vendor->load(['user.roles', 'createdBy', 'updatedBy']);
+            return $vendor->load(['user.roles', 'vendorType', 'createdBy', 'updatedBy']);
         });
     }
 
@@ -54,7 +54,7 @@ class VendorService extends BaseCachedService
             $this->financeAccountService->ensureVendorAccount($vendor->load('user'));
             $this->flushCache();
 
-            return $vendor->load(['user.roles', 'createdBy', 'updatedBy']);
+            return $vendor->load(['user.roles', 'vendorType', 'createdBy', 'updatedBy']);
         });
     }
 

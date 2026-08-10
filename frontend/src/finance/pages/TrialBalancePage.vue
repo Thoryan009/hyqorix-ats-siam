@@ -2,7 +2,7 @@
   <SectionHeader>
     <PageHeader>
       <div>
-        <PageTitle>Final Trial Balance</PageTitle>
+        <PageTitle>Trial Balance</PageTitle>
         <p class="mt-1 text-sm text-gray-500">
           Closing account balances as of the selected assessment year end
         </p>
@@ -33,7 +33,7 @@
 
     <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
       <div class="border-b border-gray-200 bg-emerald-50 px-4 py-3 text-center">
-        <h3 class="text-lg font-bold text-gray-900">Final Trial Balance</h3>
+        <h3 class="text-lg font-bold text-gray-900">Trial Balance</h3>
         <p class="mt-0.5 text-sm text-gray-600">As of {{ formatDisplayDate(yearDateRange.to_date) }}</p>
       </div>
 

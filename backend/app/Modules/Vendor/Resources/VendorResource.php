@@ -15,9 +15,10 @@ class VendorResource extends JsonResource
             'organization_name' => $this->organization_name,
             'name' => $this->organization_name,
             'vendor_type' => $this->vendor_type,
-            'vendor_type_formatted' => $this->vendor_type
-                ? ucfirst(str_replace('_', ' ', (string) $this->vendor_type))
-                : null,
+            'vendor_type_formatted' => $this->vendorType?->name
+                ?? ($this->vendor_type
+                    ? ucfirst(str_replace('_', ' ', (string) $this->vendor_type))
+                    : null),
             'contact_person' => $this->contact_person,
             'address' => $this->address,
             'email' => $this->user->email,

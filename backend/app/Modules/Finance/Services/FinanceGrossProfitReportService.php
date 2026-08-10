@@ -121,7 +121,7 @@ class FinanceGrossProfitReportService
         $avgCreByWorkOrder = $this->buildAvgClientRecruitmentExpenseByWorkOrder(
             $workOrderIds,
             $clientRecruitmentCategory?->id,
-            $category?->id
+            $applications
         );
 
         $allRows = [];
@@ -405,18 +405,19 @@ class FinanceGrossProfitReportService
     /**
      * Avg C.R.E. per demand letter =
      * (sum of approved Client Recruitment Expense bills) /
-     * (candidates on that DL with at least one approved Direct Expense,
-     *  excluding declined/rejected current process).
+     * (candidates already on the Gross Profit Report for that DL,
+     *  excluding declined/rejected current process/status).
      *
      * @param  list<int>  $workOrderIds
+     * @param  Collection<int, Application>  $reportApplications
      * @return array<int, float>
      */
     private function buildAvgClientRecruitmentExpenseByWorkOrder(
         array $workOrderIds,
         ?int $creCategoryId,
-        ?int $directCostCategoryId
+        Collection $reportApplications
     ): array {
-        if ($workOrderIds === [] || !$creCategoryId || !$directCostCategoryId) {
+        if ($workOrderIds === [] || !$creCategoryId) {
             return [];
         }
 
@@ -431,53 +432,12 @@ class FinanceGrossProfitReportService
             ->groupBy('work_order_id')
             ->pluck('total_amount', 'work_order_id');
 
-        $jobListIds = DB::table('job_lists')
-            ->whereIn('work_order_id', $workOrderIds)
-            ->pluck('id')
-            ->map(fn($id) => (int) $id)
-            ->filter()
-            ->values()
-            ->all();
-
-        if ($jobListIds === []) {
-            return array_fill_keys($workOrderIds, 0.0);
-        }
-
-        // Candidates with at least one approved Direct Expense under these DLs.
-        $directExpenseApplicationIds = FinanceBillEntry::query()
-            ->where('expense_category_id', $directCostCategoryId)
-            ->where('status', 'approved')
-            ->whereNotNull('application_id')
-            ->where(function ($query) use ($jobListIds) {
-                $query
-                    ->whereIn('job_list_id', $jobListIds)
-                    ->orWhereIn('application_id', function ($sub) use ($jobListIds) {
-                        $sub->select('id')
-                            ->from('applications')
-                            ->whereIn('job_list_id', $jobListIds);
-                    });
-            })
-            ->distinct()
-            ->pluck('application_id')
-            ->map(fn($id) => (int) $id)
-            ->filter()
-            ->values()
-            ->all();
-
-        if ($directExpenseApplicationIds === []) {
-            return array_fill_keys($workOrderIds, 0.0);
-        }
-
-        $applications = Application::query()
-            ->with(['currentProcess.process', 'jobList'])
-            ->whereIn('id', $directExpenseApplicationIds)
-            ->get(['id', 'job_list_id']);
-
         $counts = [];
-        foreach ($applications as $application) {
+        foreach ($reportApplications as $application) {
             $processStatus = strtolower((string) ($application->currentProcess?->status ?? ''));
             $processName = strtolower((string) (
                 $application->resolved_current_process
+                ?? $application->current_process_name
                 ?? $application->currentProcess?->process?->name
                 ?? ''
             ));

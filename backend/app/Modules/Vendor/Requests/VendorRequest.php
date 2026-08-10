@@ -21,7 +21,12 @@ class VendorRequest extends FormRequest
 
         return [
             'organization_name' => ['required', 'string', 'max:255'],
-            'vendor_type' => ['required', 'string', Rule::in(['ticket', 'legal'])],
+            'vendor_type' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::exists('vendor_types', 'code'),
+            ],
             'contact_person' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:500'],
             'email' => [

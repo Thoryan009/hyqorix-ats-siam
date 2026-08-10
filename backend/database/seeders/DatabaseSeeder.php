@@ -15,6 +15,7 @@ use App\Modules\Application\Seeders\TransactionSeeder;
 use App\Modules\Auth\Seeders\AuthSeeder;
 use App\Modules\Client\Seeders\ClientSeeder;
 use App\Modules\Vendor\Seeders\VendorSeeder;
+use App\Modules\Vendor\Seeders\VendorTypeSeeder;
 use App\Modules\Country\Seeders\CountrySeeder;
 use App\Modules\Employee\Requests\DepartmentRequest;
 use App\Modules\Employee\Seeders\DepartmentSeeder;
@@ -51,6 +52,7 @@ class DatabaseSeeder extends Seeder
             EmployeeSeeder::class,
             CountrySeeder::class,
             ClientSeeder::class,
+            VendorTypeSeeder::class,
             VendorSeeder::class,
             WorkOrderSeeder::class,
             JobListSeeder::class,

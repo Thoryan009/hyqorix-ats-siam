@@ -1215,9 +1215,12 @@ const handleApplicationSelection = () => {
   applyParticular()
 }
 
-const applyBasePrice = () => {
-  if (!selectedHead.value) return
-  if (!form.amount || Number(form.amount) === 0) {
+const applyBasePrice = (force = false) => {
+  if (!selectedHead.value) {
+    if (force) form.amount = ''
+    return
+  }
+  if (force || !form.amount || Number(form.amount) === 0) {
     form.amount = Number(selectedHead.value.base_price) || ''
   }
 }
@@ -1229,6 +1232,7 @@ watch(
       const stillValid = headOptions.value.some((head) => Number(head.id) === Number(form.head_id))
       if (!stillValid) {
         form.head_id = ''
+        form.amount = ''
       }
 
       form.operating_lines = []
@@ -1253,10 +1257,15 @@ watch(
     form.job_id = ''
     if (headId) {
       await ensureHeadBillContext(headId)
+      await autoSelectLinkedAccount()
+      applyParticular()
+      applyBasePrice(true)
+      return
     }
+
+    form.amount = ''
     await autoSelectLinkedAccount()
     applyParticular()
-    applyBasePrice()
   }
 )
 
@@ -1285,7 +1294,7 @@ watch(
       form.head_id = String(headId)
     }
     applyParticular()
-    applyBasePrice()
+    applyBasePrice(Boolean(headId))
   },
   { immediate: true }
 )
@@ -1293,6 +1302,9 @@ watch(
 const resetForm = () => {
   clearReceiptFiles()
   Object.assign(form, createDefaultForm())
+  showOptionalDetails.value = false
+  applyParticular()
+  applyBasePrice(Boolean(form.head_id))
 }
 
 function handleManualSubmit() {
@@ -1536,6 +1548,8 @@ async function handleSubmit(statusOrEvent = 'submitted') {
     snapshot: submittedBill.value,
   })
 
+  resetForm()
+
   await nextTick()
   scrollBillPageToTop()
 }
@@ -1560,39 +1574,23 @@ function printSubmittedBill() {
 }
 
 async function createAnotherBill() {
-  const keepEntryType = form.entry_type
-  const keepCategoryId = form.category_id
-  const keepHeadId = form.head_id
-  const keepAssetAccountId = form.asset_account_id
   submittedBill.value = null
   resetForm()
-  showOptionalDetails.value = false
-  form.entry_type = keepEntryType
-  if (keepEntryType === 'asset_purchase') {
-    form.asset_account_id = keepAssetAccountId
+
+  if (form.entry_type === 'asset_purchase') {
     await ensureAssetPurchaseAccounts()
-    return
-  }
-  form.category_id = keepCategoryId
-  if (!isCategoryCode(
-    categoryStore.categories.find((category) => Number(category.id) === Number(keepCategoryId)),
-    OPERATING_COST_CATEGORY_CODE
-  )) {
-    form.head_id = keepHeadId
-  }
-  form.application_ids = []
-  form.job_id = ''
-  form.demand_letter_id = ''
-  form.operating_lines = []
-  if (form.category_id) {
+  } else if (form.category_id) {
     await expenseCostAccountsStore.ensureAccountsForCategoryId(form.category_id)
+    if (form.head_id) {
+      await ensureHeadBillContext(form.head_id)
+    }
+    await autoSelectLinkedAccount()
+    applyParticular()
+    applyBasePrice(Boolean(form.head_id))
   }
-  if (form.head_id) {
-    await ensureHeadBillContext(form.head_id)
-  }
-  await autoSelectLinkedAccount()
-  applyParticular()
-  form.amount = selectedHead.value?.base_price ? Number(selectedHead.value.base_price) : ''
+
+  await nextTick()
+  scrollBillPageToTop()
 }
 
 onMounted(async () => {
