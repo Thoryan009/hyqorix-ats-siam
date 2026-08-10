@@ -111,18 +111,24 @@ class FinanceGrossProfitReportService
             ->get()
             ->keyBy('id');
 
-        $workOrderIds = $applications
-            ->map(fn(Application $app) => (int) ($app->jobList?->work_order_id ?? 0))
+        // Resolve work_order_id from job_list when application relation is missing.
+        $jobListIdsForWo = $expenseRows
+            ->pluck('job_list_id')
+            ->merge($saleRows->pluck('job_list_id'))
+            ->merge($applications->pluck('job_list_id'))
+            ->map(fn($id) => (int) $id)
             ->filter()
             ->unique()
             ->values()
             ->all();
 
-        $avgCreByWorkOrder = $this->buildAvgClientRecruitmentExpenseByWorkOrder(
-            $workOrderIds,
-            $clientRecruitmentCategory?->id,
-            $applications
-        );
+        $workOrderIdByJobList = $jobListIdsForWo === []
+            ? []
+            : DB::table('job_lists')
+                ->whereIn('id', $jobListIdsForWo)
+                ->pluck('work_order_id', 'id')
+                ->map(fn($id) => (int) $id)
+                ->all();
 
         $allRows = [];
 
@@ -168,8 +174,13 @@ class FinanceGrossProfitReportService
                 $jobName = $jobName ?: (string) ($application->jobList?->name ?? '');
             }
 
+            $jobListId = $jobListId ? (int) $jobListId : null;
             $workOrder = $application?->jobList?->workOrder;
-            $workOrderId = (int) ($workOrder?->id ?? $application?->jobList?->work_order_id ?? 0);
+            $workOrderId = (int) (
+                $workOrder?->id
+                ?? $application?->jobList?->work_order_id
+                ?? ($jobListId ? ($workOrderIdByJobList[$jobListId] ?? $workOrderIdByJobList[(string) $jobListId] ?? 0) : 0)
+            );
             $demandLetter = (string) ($workOrder?->work_order_id ?? '');
             $clientId = $workOrder?->client_id ? (int) $workOrder->client_id : null;
             $clientName = (string) ($workOrder?->client?->user?->name ?? '');
@@ -184,17 +195,11 @@ class FinanceGrossProfitReportService
             $isExcludedProcess = in_array(strtolower((string) $currentProcess), ['declined', 'rejected'], true)
                 || in_array(strtolower((string) ($application?->currentProcess?->status ?? '')), ['declined', 'rejected'], true);
 
-            $avgCre = $isExcludedProcess
-                ? 0.0
-                : round((float) ($avgCreByWorkOrder[$workOrderId] ?? 0), 2);
-            $totalExpense = round($rowExpenseTotal + $avgCre, 2);
-            $profitLoss = round($salePrice - $totalExpense, 2);
-
             $allRows[] = [
                 'application_id' => (int) $applicationId,
                 'candidate_name' => $candidateName ?: ('Candidate #' . $applicationId),
                 'passport_no' => $passportNo,
-                'job_list_id' => $jobListId ? (int) $jobListId : null,
+                'job_list_id' => $jobListId,
                 'job_code' => $jobCode,
                 'job_name' => $jobName,
                 'client_id' => $clientId,
@@ -204,14 +209,18 @@ class FinanceGrossProfitReportService
                 'current_process' => $currentProcess,
                 'expenses' => $expenses,
                 'direct_expense' => $rowExpenseTotal,
-                'total_expense' => $totalExpense,
-                'avg_cre' => $avgCre,
+                'total_expense' => $rowExpenseTotal,
+                'avg_cre' => 0.0,
                 'sale_price' => $salePrice,
                 'collected_amount' => $collectedAmount,
-                'profit_loss' => $profitLoss,
+                'profit_loss' => round($salePrice - $rowExpenseTotal, 2),
                 'is_rejected_declined' => $isExcludedProcess,
             ];
         }
+
+        // Allocate DL CRE across the exact non-rejected rows that will receive it,
+        // so sum(avg_cre) for a DL equals that DL's approved CRE total.
+        $this->allocateAvgClientRecruitmentExpense($allRows, $clientRecruitmentCategory?->id);
 
         $filterOptions = $this->buildFilterOptions($allRows);
 
@@ -403,28 +412,41 @@ class FinanceGrossProfitReportService
     }
 
     /**
-     * Avg C.R.E. per demand letter =
-     * (sum of approved Client Recruitment Expense bills) /
-     * (candidates already on the Gross Profit Report for that DL,
-     *  excluding declined/rejected current process/status).
+     * Split each DL's approved Client Recruitment Expense across the exact
+     * non-rejected Gross Profit rows for that DL. Last row gets the remainder
+     * so sum(avg_cre) equals the DL CRE total (no overshoot from rounding or
+     * count/recipient mismatch).
      *
-     * @param  list<int>  $workOrderIds
-     * @param  Collection<int, Application>  $reportApplications
-     * @return array<int, float>
+     * @param  list<array<string, mixed>>  $rows
      */
-    private function buildAvgClientRecruitmentExpenseByWorkOrder(
-        array $workOrderIds,
-        ?int $creCategoryId,
-        Collection $reportApplications
-    ): array {
-        if ($workOrderIds === [] || !$creCategoryId) {
-            return [];
+    private function allocateAvgClientRecruitmentExpense(array &$rows, ?int $creCategoryId): void
+    {
+        if ($creCategoryId === null || $rows === []) {
+            return;
+        }
+
+        $indexesByWorkOrder = [];
+        foreach ($rows as $index => $row) {
+            if (!empty($row['is_rejected_declined'])) {
+                continue;
+            }
+
+            $workOrderId = (int) ($row['work_order_id'] ?? 0);
+            if ($workOrderId <= 0) {
+                continue;
+            }
+
+            $indexesByWorkOrder[$workOrderId][] = $index;
+        }
+
+        if ($indexesByWorkOrder === []) {
+            return;
         }
 
         $creTotals = FinanceBillEntry::query()
             ->where('expense_category_id', $creCategoryId)
             ->where('status', 'approved')
-            ->whereIn('work_order_id', $workOrderIds)
+            ->whereIn('work_order_id', array_keys($indexesByWorkOrder))
             ->select([
                 'work_order_id',
                 DB::raw('SUM(amount) as total_amount'),
@@ -432,38 +454,36 @@ class FinanceGrossProfitReportService
             ->groupBy('work_order_id')
             ->pluck('total_amount', 'work_order_id');
 
-        $counts = [];
-        foreach ($reportApplications as $application) {
-            $processStatus = strtolower((string) ($application->currentProcess?->status ?? ''));
-            $processName = strtolower((string) (
-                $application->resolved_current_process
-                ?? $application->current_process_name
-                ?? $application->currentProcess?->process?->name
-                ?? ''
-            ));
+        foreach ($indexesByWorkOrder as $workOrderId => $indexes) {
+            $total = round((float) (
+                $creTotals[$workOrderId]
+                ?? $creTotals[(string) $workOrderId]
+                ?? 0
+            ), 2);
+            $count = count($indexes);
 
-            if (
-                in_array($processStatus, ['declined', 'rejected'], true)
-                || in_array($processName, ['declined', 'rejected'], true)
-            ) {
+            if ($count <= 0 || $total <= 0) {
                 continue;
             }
 
-            $workOrderId = (int) ($application->jobList?->work_order_id ?? 0);
-            if ($workOrderId <= 0 || !in_array($workOrderId, $workOrderIds, true)) {
-                continue;
+            $baseAvg = round($total / $count, 2);
+            $allocated = 0.0;
+
+            foreach ($indexes as $i => $rowIndex) {
+                if ($i === $count - 1) {
+                    $avgCre = round($total - $allocated, 2);
+                } else {
+                    $avgCre = $baseAvg;
+                    $allocated = round($allocated + $baseAvg, 2);
+                }
+
+                $direct = (float) ($rows[$rowIndex]['direct_expense'] ?? 0);
+                $salePrice = (float) ($rows[$rowIndex]['sale_price'] ?? 0);
+
+                $rows[$rowIndex]['avg_cre'] = $avgCre;
+                $rows[$rowIndex]['total_expense'] = round($direct + $avgCre, 2);
+                $rows[$rowIndex]['profit_loss'] = round($salePrice - $rows[$rowIndex]['total_expense'], 2);
             }
-
-            $counts[$workOrderId] = ($counts[$workOrderId] ?? 0) + 1;
         }
-
-        $averages = [];
-        foreach ($workOrderIds as $workOrderId) {
-            $count = (int) ($counts[$workOrderId] ?? 0);
-            $total = (float) ($creTotals[$workOrderId] ?? 0);
-            $averages[$workOrderId] = $count > 0 ? round($total / $count, 2) : 0.0;
-        }
-
-        return $averages;
     }
 }
