@@ -149,7 +149,9 @@ import { useJobListStore } from '@/finance/store/jobListStore'
 import { useExpensePaymentStore } from '@/finance/store/expensePaymentStore'
 import {
   formatApplicationStatusLabel,
+  formatJobSelectOption,
   sortApplicationsAlphabetically,
+  sortJobsAlphabetically,
 } from '@/finance/utils/jobListMapper'
 
 const props = defineProps({
@@ -184,11 +186,53 @@ const billedApplicationIds = computed(() => {
   return paymentStore.getBilledApplicationIdsByHead(props.expenseHeadId)
 })
 
+const billedCountByJob = computed(() => {
+  payments.value
+  return paymentStore.getBilledApplicationCountByJobForHead(props.expenseHeadId)
+})
+
 onMounted(() => {
   jobListStore.fetchJobList()
 })
 
-const jobOptions = computed(() => jobListStore.getJobSelectOptions())
+function remainingApplicantsForJob(job) {
+  const jobId = Number(job.id)
+  const loaded = applicationsByJob.value[jobId]
+
+  // Prefer exact remaining count once applications for this job are loaded.
+  if (Array.isArray(loaded)) {
+    if (!props.expenseHeadId) return loaded.length
+    return loaded.filter(
+      (application) => !billedApplicationIds.value.has(Number(application.id))
+    ).length
+  }
+
+  const total = Number(job.ats_applications_count) || 0
+  if (!props.expenseHeadId) return total
+
+  const billed = Number(billedCountByJob.value[jobId]) || 0
+  return Math.max(0, total - billed)
+}
+
+const jobOptions = computed(() => {
+  const openJobs = sortJobsAlphabetically(
+    jobListStore.jobs.filter((job) => job.status === 'open')
+  )
+
+  return openJobs
+    .map((job) => {
+      const remaining = remainingApplicantsForJob(job)
+      return {
+        remaining,
+        option: formatJobSelectOption({
+          ...job,
+          ats_applications_count: remaining,
+        }),
+      }
+    })
+    .filter((item) => item.remaining > 0)
+    .map((item) => item.option)
+})
 
 const selectedJob = computed(() => (props.jobId ? jobListStore.getJob(props.jobId) : null))
 
@@ -284,6 +328,18 @@ watch(
     jobListStore.fetchApplicationsForJob(jobId)
   },
   { immediate: true }
+)
+
+watch(
+  jobOptions,
+  (options) => {
+    if (!props.jobId || jobListStore.isLoadingJobs) return
+
+    const stillAvailable = options.some((option) => Number(option.id) === Number(props.jobId))
+    if (!stillAvailable) {
+      updateJob('')
+    }
+  }
 )
 
 watch(

@@ -269,6 +269,31 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
     return new Set(ids)
   }
 
+  /** Unique billed application counts keyed by job_id for a given expense head. */
+  function getBilledApplicationCountByJobForHead(headId) {
+    if (!headId) return {}
+
+    const seen = new Set()
+    const counts = {}
+
+    for (const payment of payments.value) {
+      if (Number(payment.head_id) !== Number(headId)) continue
+      if (!['submitted', 'pending', 'approved'].includes(payment.status)) continue
+
+      const applicationId = Number(payment.application_id)
+      const jobId = Number(payment.job_id)
+      if (!applicationId || !jobId) continue
+
+      const key = `${jobId}:${applicationId}`
+      if (seen.has(key)) continue
+      seen.add(key)
+
+      counts[jobId] = (counts[jobId] || 0) + 1
+    }
+
+    return counts
+  }
+
   function hasApplicationBillForHead(applicationId, headId) {
     return getBilledApplicationIdsByHead(headId).has(Number(applicationId))
   }
@@ -1497,6 +1522,7 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
     getPaymentsByHead,
     getTotalPaidByHead,
     getBilledApplicationIdsByHead,
+    getBilledApplicationCountByJobForHead,
     hasApplicationBillForHead,
     payExpense,
     payAssetPurchase,
