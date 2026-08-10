@@ -430,7 +430,7 @@ import BaseSearchSelect from '@/shared/components/base/BaseSearchSelect.vue'
 import JobInfoCard from '../agentBillParts/JobInfoCard.vue'
 import SaleCandidatePaymentTable from './SaleCandidatePaymentTable.vue'
 import { useJobListStore } from '@/finance/store/jobListStore'
-import { formatSaleJobSelectOption } from '@/finance/utils/jobListMapper'
+import { formatSaleJobSelectOption, isRejectedOrDeclinedApplication } from '@/finance/utils/jobListMapper'
 import { hasJobPayer } from '@/modules/job/utils/jobPayerUtils'
 import { useAgentAccountStore } from '@/finance/store/agentAccountStore'
 import { useAccountStore } from '@/finance/store/accountStore'
@@ -914,6 +914,13 @@ async function loadCandidates() {
         (application) =>
           hasJobPayer(application.payment_responsibility, 'client') &&
           (!masterClientId || Number(application.client_id) === masterClientId)
+      )
+    }
+
+    // Sale entry (agent / candidate): hide rejected or declined current process.
+    if (form.value.payer_type === 'agent' || form.value.payer_type === 'candidate') {
+      applications = applications.filter(
+        (application) => !isRejectedOrDeclinedApplication(application)
       )
     }
 

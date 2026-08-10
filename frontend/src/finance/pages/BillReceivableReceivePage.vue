@@ -133,7 +133,7 @@
               </div>
               <div>
                 <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  Remaining
+                  Current Remaining
                 </p>
                 <p class="mt-0.5 text-sm font-bold tabular-nums text-amber-700">
                   {{ formatCurrency(remainingAmount) }}
@@ -141,29 +141,7 @@
               </div>
             </div>
 
-            <div class="mb-3 rounded-xl border-2 border-emerald-200 bg-emerald-50/70 p-3">
-              <BaseLabel
-                for="receive_amount"
-                :className="'mb-1 block text-xs font-bold uppercase tracking-wide text-emerald-800'"
-              >
-                Receive Amount (৳)
-              </BaseLabel>
-              <BaseInput
-                id="receive_amount"
-                v-model="form.receive_amount"
-                type="number"
-                min="0"
-                :max="remainingAmount"
-                step="0.01"
-                :required="true"
-                :className="'w-full rounded-lg border-2 border-emerald-300 bg-white px-3 py-2.5 text-2xl font-bold tabular-nums text-emerald-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30'"
-              />
-              <p v-if="amountExceedsRemaining" class="mt-2 text-xs text-red-600">
-                Receive amount cannot exceed remaining of {{ formatCurrency(remainingAmount) }}.
-              </p>
-            </div>
-
-            <div class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+            <div class="mb-3 grid grid-cols-1 gap-2.5 md:grid-cols-2">
               <div class="space-y-1">
                 <BaseLabel for="receive_method">Receive Method</BaseLabel>
                 <BaseSelect
@@ -192,8 +170,57 @@
                   </p>
                 </div>
               </div>
+            </div>
 
-              <div v-else class="space-y-1 md:col-span-2">
+            <!-- Same technique as Bills Payable / Due: Receive Now + Due Remaining -->
+            <div class="mb-3 grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
+              <div>
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  {{ isExpenseLinkMethod ? 'Settle Now' : 'Receive Now (Cash / Bank)' }}
+                </p>
+                <BaseInput
+                  id="receive_amount"
+                  v-model="form.receive_amount"
+                  type="number"
+                  min="0.01"
+                  :max="remainingAmount"
+                  step="0.01"
+                  :required="true"
+                  :className="'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-lg font-bold tabular-nums text-slate-900'"
+                />
+              </div>
+              <div>
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  Due Remaining
+                </p>
+                <p
+                  class="mt-1 rounded-lg border px-3 py-2 text-lg font-bold tabular-nums"
+                  :class="
+                    dueRemainingAfterReceive > 0
+                      ? 'border-amber-200 bg-amber-50 text-amber-800'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  "
+                >
+                  {{ formatCurrency(dueRemainingAfterReceive) }}
+                </p>
+                <p class="mt-1 text-[11px] text-slate-500">
+                  Unpaid remainder stays Due in Bills Receivable.
+                </p>
+              </div>
+            </div>
+            <p v-if="amountExceedsRemaining" class="mb-3 text-xs text-red-600">
+              Receive amount cannot exceed remaining of {{ formatCurrency(remainingAmount) }}.
+            </p>
+            <p
+              v-else-if="isPartialReceive"
+              class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+            >
+              Partial receive: {{ formatCurrency(receiveAmountNumber) }} will hit the selected account;
+              {{ formatCurrency(dueRemainingAfterReceive) }} remains Due in Bills Receivable.
+            </p>
+
+            <div class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+              <div v-if="!isExpenseLinkMethod" class="space-y-1 md:col-span-2">
                 <BaseLabel for="receive_main_account">Receive In Main Account</BaseLabel>
                 <BaseSelect
                   id="receive_main_account"
@@ -246,8 +273,12 @@
                   submitLoading
                     ? 'Receiving...'
                     : isExpenseLinkMethod
-                      ? 'Settle via Expense Link'
-                      : 'Receive Payment'
+                      ? isPartialReceive
+                        ? 'Settle Partial via Expense Link'
+                        : 'Settle via Expense Link'
+                      : isPartialReceive
+                        ? 'Receive Partial'
+                        : 'Confirm Full Receive'
                 }}
               </BaseButton>
               <BaseButton
@@ -281,6 +312,7 @@ import BaseSelect from '@/shared/components/base/BaseSelect.vue'
 import { useSaleEntryStore } from '@/finance/store/saleEntryStore'
 import { useIncomeCollectionStore } from '@/finance/store/incomeCollectionStore'
 import { useAccountStore } from '@/finance/store/accountStore'
+import { useAgentAccountStore } from '@/finance/store/agentAccountStore'
 import { usePartyAccountsStore } from '@/finance/store/partyAccountsStore'
 import { useExpenseHeadStore } from '@/finance/store/expenseHeadStore'
 import { formatCurrency } from '@/finance/utils/billUtils'
@@ -295,6 +327,7 @@ const router = useRouter()
 const saleEntryStore = useSaleEntryStore()
 const incomeCollectionStore = useIncomeCollectionStore()
 const accountStore = useAccountStore()
+const agentAccountStore = useAgentAccountStore()
 const partyAccountsStore = usePartyAccountsStore()
 const expenseHeadStore = useExpenseHeadStore()
 
@@ -342,6 +375,14 @@ const remainingAmount = computed(() => getReceivableRemainingAmount(entry.value 
 const isSimplePlIncome = computed(() => isSimplePlIncomeReceivable(entry.value || {}))
 
 const receiveAmountNumber = computed(() => Math.max(0, Number(form.receive_amount) || 0))
+
+const dueRemainingAfterReceive = computed(() =>
+  Math.max(Math.round((remainingAmount.value - receiveAmountNumber.value) * 100) / 100, 0)
+)
+
+const isPartialReceive = computed(
+  () => receiveAmountNumber.value > 0 && dueRemainingAfterReceive.value >= 0.005
+)
 
 const amountExceedsRemaining = computed(
   () => receiveAmountNumber.value > remainingAmount.value + 0.0001
@@ -498,14 +539,37 @@ async function handleReceive() {
   const payerType = String(entry.value.payer_type || 'candidate').toLowerCase()
   let partyAccountId = Number(entry.value.party_account_id) || null
 
-  if (!isSimplePlIncome.value && payerType === 'agent' && !partyAccountId) {
-    await Swal.fire({
-      icon: 'error',
-      title: 'Agent Account Required',
-      text: 'Party account is missing for this receivable. Please recreate the due bill.',
-      confirmButtonColor: '#22C55E',
-    })
-    return
+  if (!isSimplePlIncome.value && payerType === 'agent') {
+    await agentAccountStore.fetchAccounts(true)
+    let agentAccount = partyAccountId ? agentAccountStore.getAccount(partyAccountId) : null
+
+    // Fallback: resolve by label / first matching active agent if type-txn link is missing.
+    if (!agentAccount && entry.value.party_account_label) {
+      const label = String(entry.value.party_account_label).toLowerCase()
+      agentAccount =
+        agentAccountStore.accounts.find((account) => {
+          const code = String(account.agent_code || '').toLowerCase()
+          const name = String(account.agent_name || '').toLowerCase()
+          return (
+            label.includes(code) ||
+            label.includes(name) ||
+            `${code} - ${name}` === label ||
+            `${code} — ${name}` === label
+          )
+        }) ?? null
+    }
+
+    if (!agentAccount) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Agent Account Required',
+        text: 'Party account is missing for this receivable. Please recreate the due bill or link the agent account.',
+        confirmButtonColor: '#22C55E',
+      })
+      return
+    }
+
+    partyAccountId = agentAccount.id
   }
 
   if (!isSimplePlIncome.value && payerType === 'candidate') {
@@ -527,6 +591,25 @@ async function handleReceive() {
     }
 
     partyAccountId = applicantAccount.id
+  }
+
+  if (!isSimplePlIncome.value && payerType === 'client') {
+    await partyAccountsStore.fetchAccounts('client', true)
+    const clientAccount = partyAccountId
+      ? partyAccountsStore.getAccount('client', partyAccountId)
+      : null
+
+    if (!clientAccount) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Client Account Required',
+        text: 'Party account is missing for this receivable. Please recreate the due bill or link the client account.',
+        confirmButtonColor: '#22C55E',
+      })
+      return
+    }
+
+    partyAccountId = clientAccount.id
   }
 
   submitLoading.value = true
@@ -636,11 +719,11 @@ async function handleReceive() {
 
     await Swal.fire({
       icon: 'success',
-      title: remainingAfter <= 0 ? 'Receivable Settled' : 'Payment Received',
+      title: remainingAfter <= 0 ? 'Receivable Settled' : 'Partial Payment Received',
       text:
         remainingAfter <= 0
           ? 'This bill receivable has been fully settled.'
-          : `Partial payment recorded. Remaining: ${formatCurrency(remainingAfter)}.`,
+          : `Partial receive recorded. Remaining Due: ${formatCurrency(remainingAfter)}.`,
       confirmButtonColor: '#22C55E',
     })
 
@@ -657,6 +740,7 @@ async function handleReceive() {
 onMounted(async () => {
   await Promise.all([
     accountStore.fetchActiveAccounts(true),
+    agentAccountStore.fetchAccounts(true),
     partyAccountsStore.fetchAccounts('applicant'),
     partyAccountsStore.fetchAccounts('client'),
     expenseHeadStore.fetchHeads({ force: true, page: 1, perPage: 300 }),

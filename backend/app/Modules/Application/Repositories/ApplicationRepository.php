@@ -42,6 +42,7 @@ class ApplicationRepository extends BaseRepository
         $this->applyPaymentResponsibilityFilter($query, $filters['payment_responsibility'] ?? null);
         $this->applyProcessFilter($query, $filters['process_id'] ?? null);
         $this->applyApplicationStatusFilter($query, $filters['application_status'] ?? null);
+        $this->applyExcludeRejectedDeclinedFilter($query, $filters['exclude_rejected_declined'] ?? null);
         $this->applyAgentApplicationsFilter($query, $filters['application_ids'] ?? null);
         $this->applyDateFilter($query, $filters);
     }
@@ -145,6 +146,40 @@ class ApplicationRepository extends BaseRepository
         if (empty($statuses)) return;
 
         $query->whereIn(DB::raw('LOWER(application_status)'), $statuses);
+    }
+
+    /**
+     * Exclude applications whose current process status is rejected or declined.
+     * Opt-in via exclude_rejected_declined=1 (used by Finance sale / client income).
+     */
+    protected function applyExcludeRejectedDeclinedFilter(Builder $query, mixed $flag): void
+    {
+        if (!$this->isTruthyFilterFlag($flag)) {
+            return;
+        }
+
+        $query->where(function (Builder $builder) {
+            $builder
+                ->whereDoesntHave('currentProcess')
+                ->orWhereHas('currentProcess', function ($processQuery) {
+                    $processQuery->whereNotIn('status', ['rejected', 'declined']);
+                });
+        });
+    }
+
+    protected function isTruthyFilterFlag(mixed $flag): bool
+    {
+        if (is_bool($flag)) {
+            return $flag;
+        }
+
+        if (is_int($flag) || is_float($flag)) {
+            return (int) $flag === 1;
+        }
+
+        $normalized = strtolower(trim((string) $flag));
+
+        return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
     }
 
     protected function applyCurrentProcess(Builder $query, int $processId): void

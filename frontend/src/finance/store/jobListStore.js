@@ -123,6 +123,7 @@ export const useJobListStore = defineStore('financeJobList', () => {
       const { data, error } = await fetchApplications(1, 500, {
         job_list_id: id,
         application_status: FINANCE_ATS_APPLICATION_STATUS,
+        exclude_rejected_declined: 1,
       })
       if (error) throw error
 
@@ -163,6 +164,7 @@ export const useJobListStore = defineStore('financeJobList', () => {
         agent_id: id,
         application_status: FINANCE_ATS_APPLICATION_STATUS,
         payment_responsibility: 'agent',
+        exclude_rejected_declined: 1,
       })
       if (error) throw error
 
@@ -209,6 +211,7 @@ export const useJobListStore = defineStore('financeJobList', () => {
       const { data, error } = await fetchApplications(1, 500, {
         application_status: FINANCE_ATS_APPLICATION_STATUS,
         payment_responsibility: type,
+        exclude_rejected_declined: 1,
       })
       if (error) throw error
 

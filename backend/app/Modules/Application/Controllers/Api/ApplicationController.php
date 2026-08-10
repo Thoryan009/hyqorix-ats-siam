@@ -38,6 +38,7 @@ class ApplicationController extends Controller
         $filters['application_status'] = $request->get('application_status', null);
         $filters['agent_id'] = (int) $request->get('agent_id', null);
         $filters['payment_responsibility'] = $request->get('payment_responsibility', null);
+        $filters['exclude_rejected_declined'] = $request->get('exclude_rejected_declined', null);
 
         $user = auth()->user();
         if ($user && $user->type === 'agent') {

@@ -318,7 +318,7 @@ import {
   isCategoryCode,
 } from '@/finance/data/incomeCategoryCodes'
 import { paymentMethods } from '@/finance/data/paymentData'
-import { formatSaleJobSelectOption } from '@/finance/utils/jobListMapper'
+import { formatSaleJobSelectOption, isRejectedOrDeclinedApplication } from '@/finance/utils/jobListMapper'
 import { hasJobPayer } from '@/modules/job/utils/jobPayerUtils'
 import {
   getAccountCategoryLabel,
@@ -840,7 +840,8 @@ async function loadCandidates() {
     const applications = [...(applicationsByJob.value[Number(form.job_id)] ?? [])].filter(
       (application) =>
         hasJobPayer(application.payment_responsibility, 'client') &&
-        (!masterClientId || Number(application.client_id) === masterClientId)
+        (!masterClientId || Number(application.client_id) === masterClientId) &&
+        !isRejectedOrDeclinedApplication(application)
     )
 
     const jobCommission = Number(job.client_commission_per_candidate) || 0

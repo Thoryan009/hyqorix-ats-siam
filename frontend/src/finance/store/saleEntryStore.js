@@ -258,6 +258,10 @@ export const useSaleEntryStore = defineStore('saleEntry', () => {
       return { ok: false, message: 'Please select a valid payer type.' }
     }
 
+    if (payerType === 'agent' && payload.agentAccountId) {
+      await agentStore.fetchAccounts()
+    }
+
     const agent = payload.agentAccountId ? agentStore.getAccount(payload.agentAccountId) : null
 
     if (payerType === 'agent' && !agent) {

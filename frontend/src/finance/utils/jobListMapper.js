@@ -42,15 +42,26 @@ export function sortJobsAlphabetically(jobs = []) {
 }
 
 export function mapApplicationFromApi(row) {
+  const computedApplicationStatus = String(row.application_status ?? '').trim()
+  const rawApplicationStatus = String(row.raw_application_status ?? '').trim()
+  const processName = String(row.status ?? '').trim()
+  const normalizedComputed = computedApplicationStatus.toLowerCase()
+  const isRejectedOrDeclined =
+    normalizedComputed === 'rejected' || normalizedComputed === 'declined'
+
+  // Prefer computed application_status (can be rejected/declined) over raw ATS bucket.
+  const applicationStatus = computedApplicationStatus || rawApplicationStatus || ''
+  const processStatus = isRejectedOrDeclined ? computedApplicationStatus : processName
+
   return {
     id: row.id,
     job_id: row.job_list_id,
     name: row.full_name,
     candidate_name: row.full_name,
     passport_no: row.passport_no ?? '',
-    status: row.status ?? '',
-    application_status: row.raw_application_status || row.application_status || '',
-    process_status: row.status ?? '',
+    status: processStatus || processName,
+    application_status: applicationStatus,
+    process_status: processStatus || processName,
     agent_id: row.agent_id,
     client_id: row.client_id ?? null,
     payment_responsibility: Array.isArray(row.payment_responsibility)
@@ -62,6 +73,19 @@ export function mapApplicationFromApi(row) {
     sale_price: Number(row.application_price) || 0,
     charge: Number(row.application_price) || 0,
   }
+}
+
+export function isRejectedOrDeclinedApplication(application) {
+  const values = [
+    application?.process_status,
+    application?.status,
+    application?.application_status,
+  ]
+
+  return values.some((value) => {
+    const key = String(value || '').trim().toLowerCase()
+    return key === 'rejected' || key === 'declined'
+  })
 }
 
 export function sortApplicationsAlphabetically(applications = []) {

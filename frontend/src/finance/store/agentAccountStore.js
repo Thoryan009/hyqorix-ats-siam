@@ -165,7 +165,7 @@ export const useAgentAccountStore = defineStore('agentAccount', () => {
   ]
 
   function getAccount(agentId) {
-    return accounts.value.find((account) => account.id === Number(agentId)) ?? null
+    return accounts.value.find((account) => Number(account.id) === Number(agentId)) ?? null
   }
 
   function getAccountIdByBillAgentId(billAgentId) {

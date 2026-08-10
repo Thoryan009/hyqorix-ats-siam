@@ -323,7 +323,7 @@
                 </div>
                 <div>
                   <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    Remaining
+                    Current Remaining
                   </p>
                   <p class="mt-0.5 text-sm font-bold tabular-nums text-amber-700">
                     {{ formatCurrency(payableRemainingAmount) }}
@@ -331,56 +331,72 @@
                 </div>
               </div>
 
-              <div class="mb-3 rounded-xl border-2 border-emerald-200 bg-emerald-50/70 p-3">
-                <BaseLabel
-                  for="pay_settle_amount"
-                  :className="'mb-1 block text-xs font-bold uppercase tracking-wide text-emerald-800'"
-                >
-                  Pay Amount (৳)
-                </BaseLabel>
-                <BaseInput
-                  id="pay_settle_amount"
-                  v-model="form.pay_amount"
-                  type="number"
-                  min="0"
-                  :max="payableRemainingAmount"
-                  step="0.01"
+              <div class="mb-3 space-y-1">
+                <BaseLabel for="settle_payment_method">Payment Method</BaseLabel>
+                <BaseSelect
+                  id="settle_payment_method"
+                  v-model="form.payment_method"
+                  :options="settlementPaymentMethodOptions"
+                  placeholder="Select payment method"
                   :required="true"
-                  :className="'w-full rounded-lg border-2 border-emerald-300 bg-white px-3 py-2.5 text-2xl font-bold tabular-nums text-emerald-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30'"
                 />
-                <p v-if="payAmountExceedsRemaining" class="mt-2 text-xs text-red-600">
-                  Payment cannot exceed remaining balance of {{ formatCurrency(payableRemainingAmount) }}.
-                </p>
               </div>
 
-              <div class="mb-3 grid grid-cols-1 gap-2.5 md:grid-cols-2">
-                <div class="space-y-1 md:col-span-2">
-                  <BaseLabel for="settle_payment_method">Payment Method</BaseLabel>
-                  <BaseSelect
-                    id="settle_payment_method"
-                    v-model="form.payment_method"
-                    :options="settlementPaymentMethodOptions"
-                    placeholder="Select payment method"
+              <div
+                v-if="isIncomeLinkMethod"
+                class="mb-3 space-y-1"
+              >
+                <BaseLabel>Linked Income Head</BaseLabel>
+                <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+                  <p class="font-semibold">
+                    {{ linkedIncomeHead?.name || 'No linked income head' }}
+                  </p>
+                  <p class="mt-0.5 text-xs text-amber-700">
+                    Settles without cash/bank: CR on this income head ledger, CR on the expense
+                    bill ledger.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Same technique as Bills To Pay due: Pay Now + Due Remaining -->
+              <div class="mb-3 grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
+                <div>
+                  <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    {{ isIncomeLinkMethod ? 'Settle Now' : 'Pay Now (Cash / Bank)' }}
+                  </p>
+                  <BaseInput
+                    id="pay_settle_amount"
+                    v-model="form.pay_amount"
+                    type="number"
+                    min="0.01"
+                    :max="payableRemainingAmount"
+                    step="0.01"
                     :required="true"
+                    :className="'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-lg font-bold tabular-nums text-slate-900'"
                   />
                 </div>
-
-                <div
-                  v-if="isIncomeLinkMethod"
-                  class="space-y-1 md:col-span-2"
-                >
-                  <BaseLabel>Linked Income Head</BaseLabel>
-                  <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
-                    <p class="font-semibold">
-                      {{ linkedIncomeHead?.name || 'No linked income head' }}
-                    </p>
-                    <p class="mt-0.5 text-xs text-amber-700">
-                      Settles without cash/bank: CR on this income head ledger, CR on the expense
-                      bill ledger.
-                    </p>
-                  </div>
+                <div>
+                  <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    Due Remaining
+                  </p>
+                  <p
+                    class="mt-1 rounded-lg border px-3 py-2 text-lg font-bold tabular-nums"
+                    :class="
+                      payableDueAfterPayment > 0
+                        ? 'border-amber-200 bg-amber-50 text-amber-800'
+                        : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                    "
+                  >
+                    {{ formatCurrency(payableDueAfterPayment) }}
+                  </p>
+                  <p class="mt-1 text-[11px] text-slate-500">
+                    Unpaid remainder stays Due in Bills Payable.
+                  </p>
                 </div>
               </div>
+              <p v-if="payAmountExceedsRemaining" class="mb-3 text-xs text-red-600">
+                Payment cannot exceed remaining balance of {{ formatCurrency(payableRemainingAmount) }}.
+              </p>
             </template>
 
             <div
@@ -478,6 +494,13 @@
             >
               Partial payment: {{ formatCurrency(billsToPayNowAmount) }} will hit the selected account;
               {{ formatCurrency(billsToPayDueRemaining) }} Due will move to Bills Payable.
+            </p>
+            <p
+              v-else-if="isPayableSettlementMode && !isReadonly && isPayablePartialPayment"
+              class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+            >
+              Partial payment: {{ formatCurrency(payableSettlePayAmount) }} will hit the selected account;
+              {{ formatCurrency(payableDueAfterPayment) }} remains Due in Bills Payable.
             </p>
             <p
               v-else-if="isDuePayment"
@@ -662,8 +685,12 @@
                           : 'Approving...'
                       : isPayableSettlementMode
                         ? isIncomeLinkMethod
-                          ? 'Settle via Income Link'
-                          : 'Confirm Payment'
+                          ? isPayablePartialPayment
+                            ? 'Settle Partial via Income Link'
+                            : 'Settle via Income Link'
+                          : isPayablePartialPayment
+                            ? 'Pay Partial'
+                            : 'Confirm Full Payment'
                         : isBatchPayMode
                           ? `Pay Batch (${batchEntries.length})`
                           : billsToPayDueRemaining > 0 && billsToPayNowAmount > 0
@@ -889,10 +916,26 @@ const displayAmount = computed(() => {
 const payableBillTotal = computed(() => Number(form.amount) || Number(entry.value?.amount) || 0)
 const payablePaidAmount = computed(() => Number(form.paid_amount) || 0)
 const payableRemainingAmount = computed(() => getPayableRemainingAmount(form))
+const payableSettlePayAmount = computed(() => {
+  const value = Number(form.pay_amount)
+  if (Number.isNaN(value)) return 0
+  return Math.max(value, 0)
+})
+const payableDueAfterPayment = computed(() =>
+  Math.max(
+    Math.round((payableRemainingAmount.value - payableSettlePayAmount.value) * 100) / 100,
+    0
+  )
+)
+const isPayablePartialPayment = computed(
+  () =>
+    isPayableSettlementMode.value &&
+    payableSettlePayAmount.value > 0 &&
+    payableDueAfterPayment.value >= 0.005
+)
 const payAmountExceedsRemaining = computed(() => {
   if (!isPayableSettlementMode.value) return false
-  const payAmount = Number(form.pay_amount) || 0
-  return payAmount > payableRemainingAmount.value
+  return payableSettlePayAmount.value > payableRemainingAmount.value
 })
 
 const accountCategoryLabel = computed(() =>
