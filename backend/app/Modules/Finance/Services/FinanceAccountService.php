@@ -247,27 +247,15 @@ class FinanceAccountService extends BaseCachedService
         $account = $this->ensureBillsReceivableAccount();
         $voucherNo = trim($voucherNo);
         $particular = trim($particular) !== '' ? trim($particular) : 'Bills Receivable';
+        $amount = round($amount, 2);
 
-        $existingEntry = null;
-        if ($typeTransactionId || $voucherNo !== '') {
-            $existingEntry = FinanceAccountLedgerEntry::query()
-                ->where('finance_account_id', $account->id)
-                ->where(function ($query) use ($typeTransactionId, $voucherNo, $side) {
-                    if ($typeTransactionId) {
-                        $query->where('finance_account_type_transaction_id', $typeTransactionId)
-                            ->where($side === 'dr' ? 'dr_amount' : 'cr_amount', '>', 0);
-                    }
-                    if ($voucherNo !== '') {
-                        $query->orWhere(function ($inner) use ($voucherNo, $side) {
-                            $inner->where('voucher_no', $voucherNo)
-                                ->where($side === 'dr' ? 'dr_amount' : 'cr_amount', '>', 0);
-                        });
-                    }
-                })
-                ->first();
-        }
-
-        if ($existingEntry) {
+        if ($this->hasExistingReceivableSideEntry(
+            (int) $account->id,
+            $side,
+            $amount,
+            $typeTransactionId,
+            $voucherNo
+        )) {
             return;
         }
 
@@ -344,27 +332,15 @@ class FinanceAccountService extends BaseCachedService
         $particular = trim($particular) !== ''
             ? trim($particular)
             : $account->account_name;
+        $amount = round($amount, 2);
 
-        $existingEntry = null;
-        if ($typeTransactionId || $voucherNo !== '') {
-            $existingEntry = FinanceAccountLedgerEntry::query()
-                ->where('finance_account_id', $account->id)
-                ->where(function ($query) use ($typeTransactionId, $voucherNo, $side) {
-                    if ($typeTransactionId) {
-                        $query->where('finance_account_type_transaction_id', $typeTransactionId)
-                            ->where($side === 'dr' ? 'dr_amount' : 'cr_amount', '>', 0);
-                    }
-                    if ($voucherNo !== '') {
-                        $query->orWhere(function ($inner) use ($voucherNo, $side) {
-                            $inner->where('voucher_no', $voucherNo)
-                                ->where($side === 'dr' ? 'dr_amount' : 'cr_amount', '>', 0);
-                        });
-                    }
-                })
-                ->first();
-        }
-
-        if ($existingEntry) {
+        if ($this->hasExistingReceivableSideEntry(
+            (int) $account->id,
+            $side,
+            $amount,
+            $typeTransactionId,
+            $voucherNo
+        )) {
             return;
         }
 
@@ -385,6 +361,41 @@ class FinanceAccountService extends BaseCachedService
         $delta = $side === 'dr' ? $amount : -$amount;
         $account->balance = round((float) $account->balance + $delta, 2);
         $account->save();
+    }
+
+    /**
+     * Idempotent receivable posting:
+     * - Prefer type-transaction id (one DR/CR side per payment txn).
+     * - Never block a later settlement just because voucher_no was reused
+     *   (SE-001/26 collisions were skipping remaining-payment CRs).
+     * - Without type txn (legacy backfill), match voucher + amount + side.
+     */
+    private function hasExistingReceivableSideEntry(
+        int $accountId,
+        string $side,
+        float $amount,
+        ?int $typeTransactionId,
+        string $voucherNo
+    ): bool {
+        $amountColumn = $side === 'dr' ? 'dr_amount' : 'cr_amount';
+
+        if ($typeTransactionId) {
+            return FinanceAccountLedgerEntry::query()
+                ->where('finance_account_id', $accountId)
+                ->where('finance_account_type_transaction_id', $typeTransactionId)
+                ->where($amountColumn, '>', 0)
+                ->exists();
+        }
+
+        if ($voucherNo === '') {
+            return false;
+        }
+
+        return FinanceAccountLedgerEntry::query()
+            ->where('finance_account_id', $accountId)
+            ->where('voucher_no', $voucherNo)
+            ->where($amountColumn, $amount)
+            ->exists();
     }
 
     private function incomeReceivableAccountName(string $headName): string
@@ -770,6 +781,34 @@ class FinanceAccountService extends BaseCachedService
                 (string) ($row->job_title ?? '')
             );
         }
+
+        $this->syncBillsReceivableBalanceFromLedger();
+    }
+
+    /**
+     * Keep consolidating Sale Receivable wallet balance aligned with ledger DR − CR.
+     */
+    private function syncBillsReceivableBalanceFromLedger(): void
+    {
+        $account = $this->model->query()
+            ->where('category', self::BILLS_RECEIVABLE_CATEGORY)
+            ->where('code', self::BILLS_RECEIVABLE_ACCOUNT_CODE)
+            ->first();
+
+        if (!$account) {
+            return;
+        }
+
+        $totals = FinanceAccountLedgerEntry::query()
+            ->where('finance_account_id', $account->id)
+            ->selectRaw('COALESCE(SUM(dr_amount), 0) as total_dr, COALESCE(SUM(cr_amount), 0) as total_cr')
+            ->first();
+
+        $account->balance = round(
+            (float) ($totals->total_dr ?? 0) - (float) ($totals->total_cr ?? 0),
+            2
+        );
+        $account->save();
     }
 
     /**

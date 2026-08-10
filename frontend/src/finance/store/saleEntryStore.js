@@ -20,13 +20,22 @@ function getYearSuffix(date = new Date()) {
 export function generateSaleEntryNo(date, existingNos = []) {
   const yearSuffix = getYearSuffix(date)
   const prefix = 'SE'
-  const count =
-    existingNos.filter((no) => {
-      const voucher = String(no || '')
-      return voucher.startsWith(`${prefix}-`) && voucher.endsWith(`/${yearSuffix}`)
-    }).length + 1
+  let maxSeq = 0
 
-  return `${prefix}-${String(count).padStart(3, '0')}/${yearSuffix}`
+  for (const no of existingNos) {
+    const voucher = String(no || '')
+    const match = voucher.match(new RegExp(`^${prefix}-(\\d+)(?:-\\d+)?/${yearSuffix}$`))
+    if (match) {
+      maxSeq = Math.max(maxSeq, Number(match[1]) || 0)
+    }
+  }
+
+  const seq = String(maxSeq + 1).padStart(3, '0')
+  // Time suffix avoids colliding with vouchers already posted in DB but missing
+  // from the local entries cache (which was causing Sale Receivable CR skips).
+  const unique = String(Date.now()).slice(-5)
+
+  return `${prefix}-${seq}-${unique}/${yearSuffix}`
 }
 
 function normalizeCandidateRow(candidate) {
