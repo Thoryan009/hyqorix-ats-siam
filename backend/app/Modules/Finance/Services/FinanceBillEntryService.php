@@ -830,11 +830,19 @@ class FinanceBillEntryService extends BaseCachedService
                     );
 
                     // Clear {Head} Payable liability for the settled amount.
+                    // Always key off the original due voucher so DRs match the CR
+                    // even if the payment form supplies a different voucher_no.
                     $expenseHead = $this->resolveExpenseHeadForBill($billEntry, $expenseAccount);
                     if ($expenseHead) {
-                        $settleVoucherNo = $voucherNo !== ''
-                            ? sprintf('%s-P%s', $voucherNo, $typeTransactionId ?: now()->timestamp)
-                            : sprintf('BILL-PAY-%d', $billEntry->id);
+                        $payableVoucherBase = trim((string) ($billEntry->voucher_no ?? ''));
+                        if ($payableVoucherBase === '') {
+                            $payableVoucherBase = $voucherNo !== '' ? $voucherNo : 'BILL-DUE-'.$billEntry->id;
+                        }
+                        $settleVoucherNo = sprintf(
+                            '%s-P%s',
+                            $payableVoucherBase,
+                            $typeTransactionId ?: now()->timestamp
+                        );
                         $this->accountService->recordExpensePayableEntry(
                             $expenseHead,
                             $payAmount,
@@ -890,14 +898,18 @@ class FinanceBillEntryService extends BaseCachedService
                 ];
 
                 if ($isFullyPaid) {
+                    // Keep the original due voucher_no so Trial Balance / backfill
+                    // can still match CR and settlement DR rows for this bill.
                     $updateData = array_merge($updateData, [
                         'particular' => $particular,
                         'reference_no' => $referenceNo,
-                        'voucher_no' => $voucherNo,
                         'remarks' => $remarks,
                         'payment_method' => $paymentMethod,
                         ...$paymentFields,
                     ]);
+                    if (trim((string) ($billEntry->voucher_no ?? '')) === '' && $voucherNo !== '') {
+                        $updateData['voucher_no'] = $voucherNo;
+                    }
                 }
 
                 $billEntry->update($updateData);

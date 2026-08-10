@@ -469,27 +469,15 @@ class FinanceAccountService extends BaseCachedService
         $particular = trim($particular) !== ''
             ? trim($particular)
             : $account->account_name;
+        $amount = round($amount, 2);
 
-        $existingEntry = null;
-        if ($typeTransactionId || $voucherNo !== '') {
-            $existingEntry = FinanceAccountLedgerEntry::query()
-                ->where('finance_account_id', $account->id)
-                ->where(function ($query) use ($typeTransactionId, $voucherNo, $side) {
-                    if ($typeTransactionId) {
-                        $query->where('finance_account_type_transaction_id', $typeTransactionId)
-                            ->where($side === 'dr' ? 'dr_amount' : 'cr_amount', '>', 0);
-                    }
-                    if ($voucherNo !== '') {
-                        $query->orWhere(function ($inner) use ($voucherNo, $side) {
-                            $inner->where('voucher_no', $voucherNo)
-                                ->where($side === 'dr' ? 'dr_amount' : 'cr_amount', '>', 0);
-                        });
-                    }
-                })
-                ->first();
-        }
-
-        if ($existingEntry) {
+        if ($this->hasExistingReceivableSideEntry(
+            (int) $account->id,
+            $side,
+            $amount,
+            $typeTransactionId,
+            $voucherNo
+        )) {
             return;
         }
 
@@ -579,27 +567,15 @@ class FinanceAccountService extends BaseCachedService
         $particular = trim($particular) !== ''
             ? trim($particular)
             : $account->account_name;
+        $amount = round($amount, 2);
 
-        $existingEntry = null;
-        if ($typeTransactionId || $voucherNo !== '') {
-            $existingEntry = FinanceAccountLedgerEntry::query()
-                ->where('finance_account_id', $account->id)
-                ->where(function ($query) use ($typeTransactionId, $voucherNo, $side) {
-                    if ($typeTransactionId) {
-                        $query->where('finance_account_type_transaction_id', $typeTransactionId)
-                            ->where($side === 'dr' ? 'dr_amount' : 'cr_amount', '>', 0);
-                    }
-                    if ($voucherNo !== '') {
-                        $query->orWhere(function ($inner) use ($voucherNo, $side) {
-                            $inner->where('voucher_no', $voucherNo)
-                                ->where($side === 'dr' ? 'dr_amount' : 'cr_amount', '>', 0);
-                        });
-                    }
-                })
-                ->first();
-        }
-
-        if ($existingEntry) {
+        if ($this->hasExistingReceivableSideEntry(
+            (int) $account->id,
+            $side,
+            $amount,
+            $typeTransactionId,
+            $voucherNo
+        )) {
             return;
         }
 
@@ -639,18 +615,27 @@ class FinanceAccountService extends BaseCachedService
 
     /**
      * Backfill expense payable CR/DR from approved due bills and partial settlements.
+     *
+     * Settlement DRs must not be double-posted: live pay-payable already writes
+     * `{voucher}-P{txn}` rows. Only post a backfill DR for any unpaid shortfall.
      */
     public function backfillMissingExpensePayableEntries(): void
     {
-        $dueBills = FinanceBillEntry::query()
+        // Still-due bills, plus settled former dues (payment_method flips off "due"
+        // on full pay — those must still clear leftover CR on the payable ledger).
+        $bills = FinanceBillEntry::query()
             ->with('expenseHead')
             ->where('status', 'approved')
-            ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
+            ->where(function ($query) {
+                $query
+                    ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
+                    ->orWhereRaw('COALESCE(paid_amount, 0) > 0');
+            })
             ->orderBy('approved_at')
             ->orderBy('id')
             ->get();
 
-        foreach ($dueBills as $bill) {
+        foreach ($bills as $bill) {
             $head = $bill->expenseHead;
             if (!$head) {
                 continue;
@@ -662,37 +647,155 @@ class FinanceAccountService extends BaseCachedService
             }
 
             $voucherNo = trim((string) ($bill->voucher_no ?? $bill->reference_no ?? ''));
+            $voucherPrefix = $voucherNo !== '' ? $voucherNo : 'BILL-DUE-'.$bill->id;
             $entryDate = $bill->approved_at?->format('Y-m-d')
                 ?: ($bill->payment_date?->format('Y-m-d') ?? now()->toDateString());
-
-            $this->recordExpensePayableEntry(
-                $head,
-                $amount,
-                'cr',
-                $entryDate,
-                $voucherNo !== '' ? $voucherNo : 'BILL-DUE-'.$bill->id,
-                null,
-                trim((string) ($bill->particular ?? '')) ?: 'Due payable',
-                'Due',
-                (string) ($bill->remarks ?? $bill->approval_remarks ?? ''),
-                (string) ($bill->client_name ?? $bill->linked_account_name ?? '')
-            );
-
+            $isStillDue = strtolower(trim((string) ($bill->payment_method ?? ''))) === 'due';
             $paidAmount = round((float) ($bill->paid_amount ?? 0), 2);
-            if ($paidAmount > 0) {
+            if (!$isStillDue && $paidAmount <= 0) {
+                continue;
+            }
+
+            $payableAccount = $this->ensureExpensePayableAccount($head);
+
+            if ($isStillDue) {
                 $this->recordExpensePayableEntry(
                     $head,
-                    $paidAmount,
-                    'dr',
+                    $amount,
+                    'cr',
                     $entryDate,
-                    ($voucherNo !== '' ? $voucherNo : 'BILL-DUE-'.$bill->id).'-PAID',
+                    $voucherPrefix,
                     null,
-                    trim((string) ($bill->particular ?? '')) ?: 'Partial payable payment',
-                    'Partial',
+                    trim((string) ($bill->particular ?? '')) ?: 'Due payable',
+                    'Due',
                     (string) ($bill->remarks ?? $bill->approval_remarks ?? ''),
                     (string) ($bill->client_name ?? $bill->linked_account_name ?? '')
                 );
+            } else {
+                // Settled cash/bank bills never owed a payable — only clear if a due CR exists.
+                $existingCr = round((float) FinanceAccountLedgerEntry::query()
+                    ->where('finance_account_id', $payableAccount->id)
+                    ->where('voucher_no', $voucherPrefix)
+                    ->where('cr_amount', '>', 0)
+                    ->sum('cr_amount'), 2);
+                if ($existingCr <= 0.005) {
+                    continue;
+                }
+                // Full settlement should clear the original liability, not just paid_amount.
+                $paidAmount = max($paidAmount, $amount);
             }
+
+            if ($paidAmount <= 0) {
+                continue;
+            }
+
+            $this->removeRedundantExpensePayablePaidBackfill(
+                (int) $payableAccount->id,
+                $voucherPrefix,
+                $paidAmount
+            );
+
+            $existingClearing = round((float) FinanceAccountLedgerEntry::query()
+                ->where('finance_account_id', $payableAccount->id)
+                ->where('dr_amount', '>', 0)
+                ->where(function ($query) use ($voucherPrefix) {
+                    $query
+                        ->where('voucher_no', 'like', $voucherPrefix.'-P%')
+                        ->orWhere('voucher_no', $voucherPrefix.'-PAID')
+                        ->orWhere('voucher_no', 'like', $voucherPrefix.'-PAID%');
+                })
+                ->sum('dr_amount'), 2);
+
+            $shortfall = round($paidAmount - $existingClearing, 2);
+            if ($shortfall <= 0.005) {
+                continue;
+            }
+
+            $this->recordExpensePayableEntry(
+                $head,
+                $shortfall,
+                'dr',
+                $entryDate,
+                $voucherPrefix.'-PAID',
+                null,
+                trim((string) ($bill->particular ?? '')) ?: 'Partial payable payment',
+                'Partial',
+                (string) ($bill->remarks ?? $bill->approval_remarks ?? ''),
+                (string) ($bill->client_name ?? $bill->linked_account_name ?? '')
+            );
+        }
+
+        $this->syncExpensePayableBalancesFromLedger();
+    }
+
+    /**
+     * Drop legacy `{voucher}-PAID` backfill rows when live `{voucher}-P{txn}`
+     * settlements already cover paid_amount (prevents TB payable going to zero early).
+     */
+    private function removeRedundantExpensePayablePaidBackfill(
+        int $payableAccountId,
+        string $voucherPrefix,
+        float $paidAmount
+    ): void {
+        $liveClearing = round((float) FinanceAccountLedgerEntry::query()
+            ->where('finance_account_id', $payableAccountId)
+            ->where('dr_amount', '>', 0)
+            ->where('voucher_no', 'like', $voucherPrefix.'-P%')
+            ->where('voucher_no', 'not like', $voucherPrefix.'-PAID%')
+            ->sum('dr_amount'), 2);
+
+        if ($liveClearing + 0.005 < $paidAmount) {
+            return;
+        }
+
+        $backfillRows = FinanceAccountLedgerEntry::query()
+            ->where('finance_account_id', $payableAccountId)
+            ->where('dr_amount', '>', 0)
+            ->where(function ($query) use ($voucherPrefix) {
+                $query
+                    ->where('voucher_no', $voucherPrefix.'-PAID')
+                    ->orWhere('voucher_no', 'like', $voucherPrefix.'-PAID%');
+            })
+            ->get();
+
+        if ($backfillRows->isEmpty()) {
+            return;
+        }
+
+        $removed = 0.0;
+        foreach ($backfillRows as $row) {
+            $removed = round($removed + (float) $row->dr_amount, 2);
+            $row->delete();
+        }
+
+        if ($removed > 0) {
+            $account = $this->model->query()->find($payableAccountId);
+            if ($account) {
+                // Removing a DR increases liability balance again.
+                $account->balance = round((float) $account->balance + $removed, 2);
+                $account->save();
+            }
+        }
+    }
+
+    private function syncExpensePayableBalancesFromLedger(): void
+    {
+        $accounts = $this->model->query()
+            ->where('category', self::EXPENSE_PAYABLE_CATEGORY)
+            ->get();
+
+        foreach ($accounts as $account) {
+            $totals = FinanceAccountLedgerEntry::query()
+                ->where('finance_account_id', $account->id)
+                ->selectRaw('COALESCE(SUM(dr_amount), 0) as total_dr, COALESCE(SUM(cr_amount), 0) as total_cr')
+                ->first();
+
+            // Liability wallet: CR − DR
+            $account->balance = round(
+                (float) ($totals->total_cr ?? 0) - (float) ($totals->total_dr ?? 0),
+                2
+            );
+            $account->save();
         }
     }
 
