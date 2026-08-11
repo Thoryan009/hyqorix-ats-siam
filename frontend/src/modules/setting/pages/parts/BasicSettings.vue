@@ -96,9 +96,13 @@
       <BaseLabel>{{ t('setting.basic.company_logo') }}</BaseLabel>
       <BaseFileInput
         accept=".jpg, .jpeg, .png"
-        @change="handleFileChange($event, 'company_logo_file', 'company_logo_preview')"
+        @change="onFileSelected($event, 'company_logo_file', 'company_logo_preview')"
         :fileName="fileName?.company_logo_file"
       />
+      <p class="mt-1 text-xs text-gray-500">{{ t('setting.basic.image_max_size') }}</p>
+      <p v-if="fileError.company_logo_file" class="mt-1 text-sm text-red-600">
+        {{ fileError.company_logo_file }}
+      </p>
 
       <BaseImagePreview
         :src="
@@ -117,9 +121,13 @@
       <BaseLabel>{{ t('setting.basic.fav_icon') }}</BaseLabel>
       <BaseFileInput
         accept=".jpg, .jpeg, .png"
-        @change="handleFileChange($event, 'fav_icon_file', 'fav_icon_preview')"
+        @change="onFileSelected($event, 'fav_icon_file', 'fav_icon_preview')"
         :fileName="fileName?.fav_icon_file"
       />
+      <p class="mt-1 text-xs text-gray-500">{{ t('setting.basic.image_max_size') }}</p>
+      <p v-if="fileError.fav_icon_file" class="mt-1 text-sm text-red-600">
+        {{ fileError.fav_icon_file }}
+      </p>
 
       <BaseImagePreview
         :src="
@@ -139,10 +147,14 @@
       <BaseFileInput
         accept=".jpg, .jpeg, .png"
         @change="
-          handleFileChange($event, 'login_background_image_file', 'login_background_image_preview')
+          onFileSelected($event, 'login_background_image_file', 'login_background_image_preview')
         "
         :fileName="fileName?.login_background_image_file"
       />
+      <p class="mt-1 text-xs text-gray-500">{{ t('setting.basic.image_max_size') }}</p>
+      <p v-if="fileError.login_background_image_file" class="mt-1 text-sm text-red-600">
+        {{ fileError.login_background_image_file }}
+      </p>
 
       <BaseImagePreview
         :src="
@@ -191,6 +203,7 @@ import { useSettingMutations } from '../../queries/useSettingMutations'
 import { useSettingsQuery, useSettingDataQuery } from '../../queries/useSettingsQuery'
 import { useFileHandler } from '@/shared/composables/useFileHandler'
 import { useTranslate } from '@/shared/composables/useTranslate'
+import { toast } from '@/shared/config/toastConfig'
 import {
   applyPrimaryTheme,
   DEFAULT_PRIMARY_COLOR,
@@ -229,7 +242,15 @@ const formData = ref({
   primary_color: DEFAULT_PRIMARY_COLOR,
 })
 
-const { handleFileChange, fileName, cancelImage } = useFileHandler(formData.value)
+const { handleFileChange, fileName, fileError, cancelImage } = useFileHandler(formData.value)
+
+const onFileSelected = (event, fileKey, previewKey) => {
+  handleFileChange(event, fileKey, previewKey)
+
+  if (fileError.value[fileKey]) {
+    toast.error(fileError.value[fileKey])
+  }
+}
 
 // Fetch settings (single record)
 const { data, isLoading } = useSettingsQuery(1)

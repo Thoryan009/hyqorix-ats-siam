@@ -21,6 +21,7 @@ export default {
       company_logo: 'কোম্পানির লোগো',
       fav_icon: 'ফ্যাভ আইকন',
       login_background_image: 'লগইন ব্যাকগ্রাউন্ড ছবি',
+      image_max_size: 'শুধুমাত্র JPG বা PNG। সর্বোচ্চ ফাইল সাইজ: ৪০০ KB।',
       expiry_report_notify_department: 'মেয়াদোত্তীর্ণ রিপোর্টের নোটিফিকেশন বিভাগ',
       tasheer_appointment_email: 'তাসহীর অ্যাপয়েন্টমেন্ট ইমেইল',
       primary_color: 'প্রাথমিক রং',

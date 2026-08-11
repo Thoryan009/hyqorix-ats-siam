@@ -14,7 +14,8 @@ export function useSettingMutations(moduleName, options = {}) {
 
   const handleError = (error) => {
     console.error(error)
-    toast.error(`Request Failed: ${error?.message || 'Unknown error'}`)
+    const validationMessage = error?.errors && Object.values(error.errors).flat()[0]
+    toast.error(validationMessage || error?.message || 'Request failed')
     options.onError?.(error)
   }
 

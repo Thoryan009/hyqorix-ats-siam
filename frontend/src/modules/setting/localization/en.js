@@ -21,6 +21,7 @@ export default {
       company_logo: 'Company Logo',
       fav_icon: 'Fav Icon',
       login_background_image: 'Login Background Image',
+      image_max_size: 'JPG or PNG only. Maximum file size: 400 KB.',
       expiry_report_notify_department: 'Expiry Report Notify Department',
       tasheer_appointment_email: 'Tasheer Appointment Email',
       primary_color: 'Primary Color',

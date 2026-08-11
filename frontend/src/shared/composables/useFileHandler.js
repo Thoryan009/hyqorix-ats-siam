@@ -13,13 +13,15 @@ export function useFileHandler(formData) {
       return
     }
 
-  
     if (file.size > maxSize) {
       fileError.value[fileKey] =
-        `File size exceeds ${(maxSize / 1024).toFixed(2)} KB limit. Selected file size: ${(file.size / 1024).toFixed(2)} KB.`
+        `File must be ${Math.round(maxSize / 1024)} KB or smaller. Selected file is ${(file.size / 1024).toFixed(0)} KB.`
+      fileName.value[fileKey] = ''
       event.target.value = null
       return
     }
+
+    fileError.value[fileKey] = ''
 
     // Assign file directly
     formData[fileKey] = file
