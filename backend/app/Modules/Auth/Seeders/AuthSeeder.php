@@ -16,7 +16,6 @@ class AuthSeeder extends Seeder
             'password' => Hash::make('12345678'),
             'type' => 'admin',
             'created_by' => 1,
-
         ]);
     }
 }
