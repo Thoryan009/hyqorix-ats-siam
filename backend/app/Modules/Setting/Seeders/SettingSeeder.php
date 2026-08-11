@@ -19,6 +19,7 @@ class SettingSeeder extends Seeder
             'backup_email'      => 'backup@alphacorp.com',
             'company_address'   => '101 Alpha Street, City, Country',
             'company_logo_path' => 'settings/logo.png',
+            'primary_color' => '#10b981',
             'created_by' => 1,
         ];
 

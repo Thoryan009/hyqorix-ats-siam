@@ -22,6 +22,8 @@ export default {
     login_background_image: "Login Background Image",
     expiry_report_notify_department: "Expiry Report Notify Department",
     tasheer_appointment_email: "Tasheer Appointment Email",
+    primary_color: "Primary Color",
+    primary_color_hint: "Used across the admin panel for buttons, sidebar, and highlights.",
     save_settings: "Save Settings"
   },
 

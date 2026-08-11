@@ -77,6 +77,9 @@
 <script setup>
 import { ref, computed } from 'vue'
 import DashboardSectionHeading from '../../components/DashboardSectionHeading.vue'
+import { usePrimaryColor } from '@/shared/composables/usePrimaryColor'
+
+const primaryColor = usePrimaryColor()
 
 // v-for="(card, index) in currentFinanceCards" :key="card.title"
 
@@ -133,13 +136,13 @@ const currentFinanceCards = computed(() => {
       title: 'Total Billed',
       value: financeData?.total_billed,
       icon: 'fa fa-file-text',
-      color: '#10b981',
+      color: primaryColor.value,
     },
     {
       title: 'Total Paid',
       value: financeData?.total_paid,
       icon: 'fa fa-check-circle',
-      color: '#10b981',
+      color: primaryColor.value,
     },
     {
       title: 'Total Due',

@@ -60,11 +60,16 @@
 
 <script >
 import DashboardSectionHeading from '../../components/DashboardSectionHeading.vue'
+import { usePrimaryColor } from '@/shared/composables/usePrimaryColor'
 
 export default {
   name: 'CandidateProcessPipeline',
   components: {
     DashboardSectionHeading,
+  },
+  setup() {
+    const primaryColor = usePrimaryColor()
+    return { primaryColor }
   },
   props: {
     pipeline: {
@@ -79,7 +84,7 @@ export default {
     },
     pipelineCards() {
       // Map pipeline data to display cards
-      const colors = ['#10b981', '#0D71B9', '#E2232A', '#F59E0B'] // rotate colors
+      const colors = [this.primaryColor, '#0D71B9', '#E2232A', '#F59E0B'] // rotate colors
       const icons = {
         offer_extended: 'fa fa-file-text',
         visa_authorization: 'fa fa-id-card',

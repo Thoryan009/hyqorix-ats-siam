@@ -24,6 +24,7 @@ class SettingResource extends JsonResource
             'company_logo_url' => $this->company_logo_url,
             'fav_icon_path' => $this->fav_icon_path,
             'fav_icon_url' => $this->fav_icon_url,
+            'primary_color' => $this->primary_color ?: '#10b981',
             'login_background_image_path' => $this->login_background_image_path,
             'login_background_image_url' => $this->login_background_image_url,
 

@@ -1,4 +1,7 @@
 import './assets/main.css'
+import { applyPrimaryTheme, getStoredPrimaryColor } from '@/shared/utils/themeColor'
+
+applyPrimaryTheme(getStoredPrimaryColor())
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

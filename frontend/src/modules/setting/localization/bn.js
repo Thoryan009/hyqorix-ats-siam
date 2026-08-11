@@ -22,6 +22,8 @@ export default {
     login_background_image: "লগইন ব্যাকগ্রাউন্ড ছবি",
     expiry_report_notify_department: "মেয়াদোত্তীর্ণ রিপোর্টের নোটিফিকেশন বিভাগ",
     tasheer_appointment_email: "তাসহীর অ্যাপয়েন্টমেন্ট ইমেইল",
+    primary_color: "প্রাথমিক রং",
+    primary_color_hint: "অ্যাডমিন প্যানেলের বাটন, সাইডবার এবং হাইলাইটে ব্যবহৃত হয়।",
     save_settings: "সেটিংস সংরক্ষণ করুন"
   },
 

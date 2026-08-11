@@ -68,24 +68,26 @@ import { resolveQuickNavGroups } from '../config/quickNavGroups'
 import DashboardSectionHeading from './DashboardSectionHeading.vue'
 import { useI18n } from 'vue-i18n'
 import {useTranslate} from '@/shared/composables/useTranslate'
+import { usePrimaryColor } from '@/shared/composables/usePrimaryColor'
 
 const { t } = useTranslate()
 const { can } = usePermission()
+const primaryColor = usePrimaryColor()
 
-const navColors = ['#10b981', '#0D71B9', '#E2232A', '#F59E0B', '#9333EA', '#6366F1']
+const navColors = computed(() => [primaryColor.value, '#0D71B9', '#E2232A', '#F59E0B', '#9333EA', '#6366F1'])
 
 const visibleGroups = computed(() => resolveQuickNavGroups(can))
 
 const coloredGroups = computed(() =>
   visibleGroups.value.map((group, groupIndex) => {
-    const groupColor = navColors[groupIndex % navColors.length]
+    const groupColor = navColors.value[groupIndex % navColors.value.length]
 
     return {
       ...group,
       color: groupColor,
       items: group.items.map((item, itemIndex) => ({
         ...item,
-        color: navColors[(groupIndex + itemIndex + 1) % navColors.length],
+        color: navColors.value[(groupIndex + itemIndex + 1) % navColors.value.length],
       })),
     }
   }),

@@ -200,18 +200,18 @@ tr {
 }
 
 .overflow-x-auto::-webkit-scrollbar-thumb {
-  background: linear-gradient(90deg, var(--primary), var(--primary));
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary));
   border-radius: 10px;
   transition: background 0.3s ease;
 }
 
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(90deg, var(--primary), var(--primary));
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary));
 }
 
 /* Firefox */
 .overflow-x-auto {
   scrollbar-width: thin;
-  scrollbar-color: var(--primary) #f3f4f6;
+  scrollbar-color: var(--color-primary) #f3f4f6;
 }
 </style>

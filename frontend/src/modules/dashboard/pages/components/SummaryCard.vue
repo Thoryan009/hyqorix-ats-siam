@@ -50,8 +50,10 @@
 import { computed } from 'vue'
 import DashboardSectionHeading from '../../components/DashboardSectionHeading.vue'
 import {useTranslate} from '@/shared/composables/useTranslate'
+import { usePrimaryColor } from '@/shared/composables/usePrimaryColor'
 
 const { t } = useTranslate()
+const primaryColor = usePrimaryColor()
 // props
 const props = defineProps({
   summary: {
@@ -115,12 +117,12 @@ const cards = computed(() => {
 })
 
 // filtered cards (clean)
-const summaryColors = ['#10b981', '#0D71B9', '#E2232A', '#F59E0B', '#9333EA', '#6366F1']
+const summaryColors = computed(() => [primaryColor.value, '#0D71B9', '#E2232A', '#F59E0B', '#9333EA', '#6366F1'])
 
 const filteredCards = computed(() => {
   return cards.value.map((card, index) => ({
     ...card,
-    color: summaryColors[index % summaryColors.length],
+    color: summaryColors.value[index % summaryColors.value.length],
   }))
 })
 </script>

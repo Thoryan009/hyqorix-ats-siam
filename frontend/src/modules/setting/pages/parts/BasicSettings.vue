@@ -76,6 +76,25 @@
       <BaseInput v-model="formData.company_address" />
     </div>
 
+    <!-- Primary Color -->
+    <div>
+      <BaseLabel>{{ t('setting.basic.primary_color') }}</BaseLabel>
+      <div class="flex items-center gap-3">
+        <input
+          type="color"
+          :value="formData.primary_color"
+          class="h-10 w-14 cursor-pointer rounded border border-gray-300 bg-white p-1"
+          @input="formData.primary_color = $event.target.value"
+        />
+        <BaseInput v-model="formData.primary_color" class="flex-1" placeholder="#10b981" />
+        <div
+          class="h-10 w-10 shrink-0 rounded-md border border-gray-200"
+          :style="{ backgroundColor: formData.primary_color }"
+        ></div>
+      </div>
+      <p class="mt-1 text-xs text-gray-500">{{ t('setting.basic.primary_color_hint') }}</p>
+    </div>
+
     <!-- Logo -->
     <div>
       <BaseLabel>{{ t('setting.basic.company_logo') }}</BaseLabel>
@@ -171,12 +190,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useSettingStore } from '../../store/settingStore'
 import { useSettingMutations } from '../../queries/useSettingMutations'
 import { useSettingsQuery, useSettingDataQuery } from '../../queries/useSettingsQuery'
 import { useFileHandler } from '@/shared/composables/useFileHandler'
 import { useTranslate } from '@/shared/composables/useTranslate'
+import { applyPrimaryTheme, DEFAULT_PRIMARY_COLOR, isValidHexColor } from '@/shared/utils/themeColor'
 
 const { t } = useTranslate()
 const store = useSettingStore()
@@ -206,6 +226,7 @@ const formData = ref({
   fav_icon_preview: null,
   fav_icon_file: null,
   fav_icon_url: null,
+  primary_color: DEFAULT_PRIMARY_COLOR,
 })
 
 const { handleFileChange, fileName, cancelImage } = useFileHandler(formData.value)
@@ -242,6 +263,20 @@ watch(
   },
   { immediate: true }
 )
+
+watch(
+  () => formData.value.primary_color,
+  (color) => {
+    if (isValidHexColor(color)) {
+      applyPrimaryTheme(color, { persist: false })
+    }
+  }
+)
+
+onUnmounted(() => {
+  const savedColor = settingsData.value?.primary_color
+  applyPrimaryTheme(isValidHexColor(savedColor) ? savedColor : DEFAULT_PRIMARY_COLOR)
+})
 
 // Submit
 const EXCLUDED_KEYS = [

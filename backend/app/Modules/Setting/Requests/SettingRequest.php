@@ -84,6 +84,11 @@ class SettingRequest extends FormRequest
             'company_logo_file' => $this->fileRule,
             'login_background_image_file' => $this->fileRule,
             'fav_icon_file' => $this->fileRule,
+            'primary_color' => [
+                'nullable',
+                'string',
+                'regex:/^#([A-Fa-f0-9]{6})$/',
+            ],
         ];
     }
 }
