@@ -31,12 +31,7 @@
               : 'border-gray-300'
           "
         >
-          <input
-            type="radio"
-            v-model="formData.company_no_active"
-            value="1"
-            class="w-3 h-3"
-          />
+          <input type="radio" v-model="formData.company_no_active" value="1" class="w-3 h-3" />
           <p class="font-medium">{{ t('setting.basic.yes') }}</p>
         </label>
         <label
@@ -47,12 +42,7 @@
               : 'border-gray-300'
           "
         >
-          <input
-            type="radio"
-            v-model="formData.company_no_active"
-            value="0"
-            class="w-3 h-3"
-          />
+          <input type="radio" v-model="formData.company_no_active" value="0" class="w-3 h-3" />
           <p class="font-medium">{{ t('setting.basic.no') }}</p>
         </label>
       </div>
@@ -115,7 +105,6 @@
         height="120px"
       />
     </div>
-
 
     <!-- Fav Icon -->
     <div>
@@ -196,7 +185,11 @@ import { useSettingMutations } from '../../queries/useSettingMutations'
 import { useSettingsQuery, useSettingDataQuery } from '../../queries/useSettingsQuery'
 import { useFileHandler } from '@/shared/composables/useFileHandler'
 import { useTranslate } from '@/shared/composables/useTranslate'
-import { applyPrimaryTheme, DEFAULT_PRIMARY_COLOR, isValidHexColor } from '@/shared/utils/themeColor'
+import {
+  applyPrimaryTheme,
+  DEFAULT_PRIMARY_COLOR,
+  isValidHexColor,
+} from '@/shared/utils/themeColor'
 
 const { t } = useTranslate()
 const store = useSettingStore()

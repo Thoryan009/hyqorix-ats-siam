@@ -79,8 +79,8 @@ import loginData from '../data/loginData'
 import LoadingLogin from '../components/LoadingLogin.vue'
 import { useSettingsQuery } from '@/modules/home/queries/useSettingsQuery'
 
-  const { data: settingsDataResponse } = useSettingsQuery()
-  const settingsData = computed(() => settingsDataResponse?.value?.data || {})
+const { data: settingsDataResponse } = useSettingsQuery()
+const settingsData = computed(() => settingsDataResponse?.value?.data || {})
 
 const store = useAuthStore()
 const showLoading = ref(false)
