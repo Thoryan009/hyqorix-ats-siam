@@ -37,7 +37,7 @@
 
     <template v-else>
       <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div class="border-b border-gray-200 bg-emerald-50 px-4 py-3 text-center">
+        <div class="border-b border-gray-200 bg-primary-light px-4 py-3 text-center">
           <h3 class="text-lg font-bold text-gray-900">Balance Sheet</h3>
           <p class="mt-0.5 text-sm text-gray-600">As at {{ formatDisplayDate(yearDateRange.to_date) }}</p>
         </div>
@@ -48,7 +48,7 @@
             <h4 class="mb-3 text-base font-bold text-gray-900">Assets</h4>
             <table class="min-w-full border-collapse text-sm">
               <thead>
-                <tr class="bg-emerald-100 text-gray-900">
+                <tr class="bg-primary-gradient text-gray-900">
                   <th class="border border-gray-300 px-4 py-2.5 text-left font-semibold">Account</th>
                   <th class="border border-gray-300 px-4 py-2.5 text-right font-semibold">Amount (BDT)</th>
                 </tr>
@@ -65,7 +65,7 @@
                     {{ formatAmount(row.amount) }}
                   </td>
                 </tr>
-                <tr class="bg-emerald-50 font-bold text-gray-900">
+                <tr class="bg-primary-light font-bold text-gray-900">
                   <td class="border border-gray-300 px-4 py-3">Total Assets</td>
                   <td class="border border-gray-300 px-4 py-3 text-right tabular-nums">
                     {{ formatAmount(summary.total_assets) }}
@@ -80,7 +80,7 @@
             <h4 class="mb-3 text-base font-bold text-gray-900">Liabilities</h4>
             <table class="min-w-full border-collapse text-sm">
               <thead>
-                <tr class="bg-emerald-100 text-gray-900">
+                <tr class="bg-primary-gradient text-gray-900">
                   <th class="border border-gray-300 px-4 py-2.5 text-left font-semibold">Account</th>
                   <th class="border border-gray-300 px-4 py-2.5 text-right font-semibold">Amount</th>
                 </tr>
@@ -101,7 +101,7 @@
                     {{ formatAmount(row.amount) }}
                   </td>
                 </tr>
-                <tr class="bg-emerald-50 font-bold text-gray-900">
+                <tr class="bg-primary-light font-bold text-gray-900">
                   <td class="border border-gray-300 px-4 py-3">Total Liabilities</td>
                   <td class="border border-gray-300 px-4 py-3 text-right tabular-nums">
                     {{ formatAmount(summary.total_liabilities) }}
@@ -116,7 +116,7 @@
             <h4 class="mb-3 text-base font-bold text-gray-900">Owner's Equity</h4>
             <table class="min-w-full border-collapse text-sm">
               <thead>
-                <tr class="bg-emerald-100 text-gray-900">
+                <tr class="bg-primary-gradient text-gray-900">
                   <th class="border border-gray-300 px-4 py-2.5 text-left font-semibold">Account</th>
                   <th class="border border-gray-300 px-4 py-2.5 text-right font-semibold">Amount</th>
                 </tr>
@@ -136,7 +136,7 @@
                     {{ formatAmount(row.amount) }}
                   </td>
                 </tr>
-                <tr class="bg-emerald-50 font-bold text-gray-900">
+                <tr class="bg-primary-light font-bold text-gray-900">
                   <td class="border border-gray-300 px-4 py-3">Total Owner's Equity</td>
                   <td
                     class="border border-gray-300 px-4 py-3 text-right tabular-nums"
@@ -180,7 +180,7 @@
                     {{ formatAmount(summary.total_equity) }}
                   </td>
                 </tr>
-                <tr class="bg-emerald-50 font-bold text-gray-900">
+                <tr class="bg-primary-light font-bold text-gray-900">
                   <td class="border border-gray-300 px-4 py-3">Total</td>
                   <td class="border border-gray-300 px-4 py-3 text-right tabular-nums">
                     {{ formatAmount(summary.total_assets) }}
@@ -201,7 +201,7 @@
         class="mt-4 rounded-lg border p-4 text-center text-base font-semibold"
         :class="
           summary.is_balanced
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+            ? 'border-primary/30 bg-primary-light text-primary-dark'
             : 'border-amber-200 bg-amber-50 text-amber-900'
         "
       >

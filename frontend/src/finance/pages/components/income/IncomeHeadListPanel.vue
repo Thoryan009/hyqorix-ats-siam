@@ -45,19 +45,14 @@
       </template>
 
       <template #cell-name="{ row }">
-        <div class="flex items-center gap-3">
-          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
-            <i class="fa fa-list-alt text-emerald-600"></i>
-          </div>
-          <div>
-            <p class="font-medium text-gray-900">{{ row.name }}</p>
-            <p
-              v-if="row.is_bills_payable_link"
-              class="mt-0.5 text-xs font-medium text-emerald-600"
-            >
-              Bills payable link
-            </p>
-          </div>
+        <div>
+          <p class="font-medium text-gray-900">{{ row.name }}</p>
+          <p
+            v-if="row.is_bills_payable_link"
+            class="mt-0.5 text-xs font-medium text-primary"
+          >
+            Bills payable link
+          </p>
         </div>
       </template>
 

@@ -53,7 +53,7 @@
       <div v-else class="overflow-x-auto">
         <table class="min-w-full border-collapse text-sm">
           <thead>
-            <tr class="bg-emerald-100 text-gray-900">
+            <tr class="bg-primary-gradient text-gray-900">
               <th class="border border-gray-300 px-3 py-3 text-left font-semibold">
                 Debit (Expenses)
               </th>
@@ -72,13 +72,13 @@
             <tr v-for="(row, index) in pairedRows" :key="`row-${index}`">
               <td
                 class="border border-gray-200 px-3 py-2"
-                :class="row.debit?.is_balancing ? 'font-semibold text-emerald-800' : 'text-gray-800'"
+                :class="row.debit?.is_balancing ? 'font-semibold text-primary-dark' : 'text-gray-800'"
               >
                 {{ row.debit?.label || '' }}
               </td>
               <td
                 class="border border-gray-200 px-3 py-2 text-right tabular-nums"
-                :class="row.debit?.is_balancing ? 'font-semibold text-emerald-800' : 'text-gray-900'"
+                :class="row.debit?.is_balancing ? 'font-semibold text-primary-dark' : 'text-gray-900'"
               >
                 {{ row.debit ? formatCurrency(row.debit.amount) : '' }}
               </td>
@@ -115,7 +115,7 @@
       class="mt-5 rounded-lg border p-4 text-center text-base font-semibold"
       :class="
         summary.is_profit
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+          ? 'border-primary/30 bg-primary-light text-primary-dark'
           : 'border-red-200 bg-red-50 text-red-800'
       "
     >
@@ -180,12 +180,12 @@ const summaryCards = computed(() => [
   {
     title: 'Gross Profit',
     value: formatCurrency(summary.value.gross_profit),
-    valueClass: summary.value.gross_profit >= 0 ? 'text-emerald-700' : 'text-red-700',
+    valueClass: summary.value.gross_profit >= 0 ? 'text-primary' : 'text-red-700',
   },
   {
     title: 'Income Collections',
     value: formatCurrency(summary.value.total_income_collections),
-    valueClass: 'text-emerald-700',
+    valueClass: 'text-primary',
   },
   {
     title: 'Operating Expenses',
@@ -195,7 +195,7 @@ const summaryCards = computed(() => [
   {
     title: summary.value.is_profit ? 'Net Profit' : 'Net Loss',
     value: formatCurrency(Math.abs(summary.value.net_profit)),
-    valueClass: summary.value.is_profit ? 'text-emerald-700' : 'text-red-700',
+    valueClass: summary.value.is_profit ? 'text-primary' : 'text-red-700',
   },
 ])
 
