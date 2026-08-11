@@ -28,6 +28,6 @@ export default [
     path: '/application-reports/:type/print',
     name: 'Application Report Print',
     component: ApplicationReportPrintPage,
-    meta: { permissions: ['application_report.view'] },
+    meta: { requiresAuth: true, permissions: ['application_report.view'] },
   },
 ]
