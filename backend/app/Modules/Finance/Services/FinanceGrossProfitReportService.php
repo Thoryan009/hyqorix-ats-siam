@@ -7,6 +7,8 @@ use App\Modules\Finance\Models\ExpenseCategory;
 use App\Modules\Finance\Models\ExpenseHead;
 use App\Modules\Finance\Models\FinanceBillEntry;
 use App\Modules\Finance\Models\FinanceSaleCollection;
+use App\Modules\Setting\Models\Setting;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -389,6 +391,27 @@ class FinanceGrossProfitReportService
         fclose($output);
 
         return $csv === false ? '' : $csv;
+    }
+
+    public function exportPdf(array $filters = []): string
+    {
+        $report = $this->getReport($filters, true);
+        $setting = Setting::query()->find(1);
+        $logoPath = $setting?->company_logo_path
+            ? public_path('storage/' . ltrim((string) $setting->company_logo_path, '/'))
+            : null;
+
+        return Pdf::loadView('finance.gross-profit-report-pdf', [
+            'expenseHeads' => $report['expense_heads'] ?? [],
+            'rows' => $report['rows'] ?? [],
+            'summary' => $report['summary'] ?? [],
+            'filters' => $filters,
+            'setting' => [
+                'company_name' => $setting?->company_name,
+                'company_address' => $setting?->company_address,
+                'company_logo_path' => ($logoPath && is_file($logoPath)) ? $setting->company_logo_path : null,
+            ],
+        ])->setPaper('a4', 'landscape')->output();
     }
 
     /**

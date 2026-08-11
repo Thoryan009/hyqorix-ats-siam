@@ -4,11 +4,9 @@ namespace App\Modules\Finance\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Finance\Services\FinanceGrossProfitReportService;
-use App\Modules\Setting\Models\Setting;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class FinanceGrossProfitReportController extends Controller
 {
@@ -21,36 +19,31 @@ class FinanceGrossProfitReportController extends Controller
         return apiSuccess($this->service->getReport($this->filters($request), false));
     }
 
-    public function exportCsv(Request $request): StreamedResponse
+    public function exportCsv(Request $request): JsonResponse
     {
-        $csv = $this->service->exportCsv($this->filters($request));
-        $fileName = 'gross-profit-report-' . now()->format('Y-m-d') . '.csv';
+        $filename = 'gross-profit-report-' . now()->format('Y-m-d') . '.csv';
 
-        return response()->streamDownload(function () use ($csv) {
-            echo $csv;
-        }, $fileName, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
+        return apiSuccess([
+            'content' => $this->service->exportCsv($this->filters($request)),
+            'filename' => $filename,
         ]);
     }
 
-    public function exportPdf(Request $request)
+    public function exportPdf(Request $request): JsonResponse
     {
-        $report = $this->service->getReport($this->filters($request), true);
-        $setting = Setting::query()->find(1);
+        try {
+            $filename = 'gross-profit-report-' . now()->format('Y-m-d') . '.pdf';
 
-        $pdf = Pdf::loadView('finance.gross-profit-report-pdf', [
-            'expenseHeads' => $report['expense_heads'] ?? [],
-            'rows' => $report['rows'] ?? [],
-            'summary' => $report['summary'] ?? [],
-            'filters' => $this->filters($request),
-            'setting' => [
-                'company_name' => $setting?->company_name,
-                'company_address' => $setting?->company_address,
-                'company_logo_path' => $setting?->company_logo_path,
-            ],
-        ])->setPaper('a4', 'landscape');
-
-        return $pdf->download('gross-profit-report-' . now()->format('Y-m-d') . '.pdf');
+            return apiSuccess([
+                'content' => base64_encode($this->service->exportPdf($this->filters($request))),
+                'filename' => $filename,
+            ]);
+        } catch (Throwable $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage() ?: 'Failed to generate PDF.',
+            ], 500);
+        }
     }
 
     /**
@@ -59,17 +52,28 @@ class FinanceGrossProfitReportController extends Controller
     private function filters(Request $request): array
     {
         return [
-            'job_id' => $request->input('job_id', $request->input('job_list_id')),
+            'job_id' => $this->optional($request, 'job_id') ?? $this->optional($request, 'job_list_id'),
             'job_list_ids' => $request->input('job_list_ids', $request->input('job_list_ids[]')),
-            'client_id' => $request->input('client_id'),
+            'client_id' => $this->optional($request, 'client_id'),
             'client_ids' => $request->input('client_ids', $request->input('client_ids[]')),
-            'work_order_id' => $request->input('work_order_id'),
+            'work_order_id' => $this->optional($request, 'work_order_id'),
             'work_order_ids' => $request->input('work_order_ids', $request->input('work_order_ids[]')),
-            'agent_id' => $request->input('agent_id'),
-            'country_id' => $request->input('country_id'),
-            'principal_id' => $request->input('principal_id'),
-            'from_date' => $request->get('from_date'),
-            'to_date' => $request->get('to_date'),
+            'agent_id' => $this->optional($request, 'agent_id'),
+            'country_id' => $this->optional($request, 'country_id'),
+            'principal_id' => $this->optional($request, 'principal_id'),
+            'from_date' => $this->optional($request, 'from_date'),
+            'to_date' => $this->optional($request, 'to_date'),
         ];
+    }
+
+    private function optional(Request $request, string $key): mixed
+    {
+        $value = $request->input($key);
+
+        if ($value === null || $value === '' || $value === 'null' || $value === 'undefined') {
+            return null;
+        }
+
+        return $value;
     }
 }

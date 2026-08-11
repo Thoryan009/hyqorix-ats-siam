@@ -110,7 +110,7 @@
       <div class="mt-4 flex flex-wrap gap-2">
         <BaseButton
           class="bg-primary text-white hover:opacity-90"
-          :disabled="loading || exporting"
+          :disabled="isBusy"
           @click="loadSummary"
         >
           <i class="fa fa-refresh mr-1"></i>
@@ -118,7 +118,7 @@
         </BaseButton>
         <BaseButton
           class="bg-red-600 text-white hover:bg-red-700"
-          :disabled="loading || exporting"
+          :disabled="isBusy"
           @click="generatePdf"
         >
           <i class="fa fa-file-pdf-o mr-1"></i>
@@ -126,7 +126,7 @@
         </BaseButton>
         <BaseButton
           class="bg-primary text-white hover:opacity-90"
-          :disabled="loading || exporting"
+          :disabled="isBusy"
           @click="generateCsv"
         >
           <i class="fa fa-file-excel-o mr-1"></i>
@@ -164,6 +164,7 @@ import { toast } from '@/shared/config/toastConfig'
 const authStore = useAuthStore()
 const loading = ref(false)
 const exporting = ref('')
+const isBusy = computed(() => loading.value || Boolean(exporting.value))
 const summary = ref({
   candidate_count: 0,
   total_sale: 0,
@@ -265,12 +266,18 @@ async function loadSummary() {
   }
 }
 
+function exportErrorMessage(error, fallback) {
+  if (typeof error === 'string' && error.trim()) return error
+  return error?.message || error?.error || fallback
+}
+
 async function generatePdf() {
   exporting.value = 'pdf'
   try {
     await exportGrossProfitPdf(activeFilters())
+    toast.success('PDF generated.')
   } catch (error) {
-    toast.error(error?.message || 'Failed to generate PDF.')
+    toast.error(exportErrorMessage(error, 'Failed to generate PDF.'))
   } finally {
     exporting.value = ''
   }
@@ -280,8 +287,9 @@ async function generateCsv() {
   exporting.value = 'csv'
   try {
     await exportGrossProfitCsv(activeFilters())
+    toast.success('CSV generated.')
   } catch (error) {
-    toast.error(error?.message || 'Failed to generate CSV.')
+    toast.error(exportErrorMessage(error, 'Failed to generate CSV.'))
   } finally {
     exporting.value = ''
   }
