@@ -5,8 +5,9 @@ export function useSettingsQuery() {
   return useQuery({
     queryKey: ['public-settings'],
     queryFn: fetchAll,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
     cacheTime: 60 * 60 * 1000,
+    refetchOnMount: 'always',
     meta: { persist: true },
   })
 }

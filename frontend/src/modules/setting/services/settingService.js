@@ -28,7 +28,6 @@ export async function updateData({ id, payload }) {
   await api.sendRequest(`${BASE_URL}/${id}`, 'POST', payload, {
     headers: {
       'X-HTTP-Method-Override': 'PUT',
-      'Content-Type': 'multipart/form-data',
     },
   })
 
@@ -43,7 +42,6 @@ export async function updateEmbassyData({ id, payload }) {
   await api.sendRequest(`${BASE_URL}/embassy/${id}`, 'POST', payload, {
     headers: {
       'X-HTTP-Method-Override': 'PUT',
-      'Content-Type': 'multipart/form-data',
     },
   })
 

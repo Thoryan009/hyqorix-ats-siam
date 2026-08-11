@@ -2,7 +2,7 @@
   <div
     class="min-h-screen flex items-center md:pb-10 justify-center px-4 bg-cover bg-center bg-no-repeat"
     :style="{
-      backgroundImage: `url(${settingsData?.login_background_image_url || loginBackgroundImage})`,
+      backgroundImage: backgroundImage,
       backgroundPosition: 'bottom',
       backgroundRepeat: 'no-repeat',
       backgroundSize: 'cover',
@@ -21,4 +21,9 @@ import { computed } from 'vue'
 const { data: settingsDataResponse } = useSettingsQuery()
 const settingsData = computed(() => settingsDataResponse.value?.data || {})
 const loginBackgroundImage = import.meta.env.VITE_APP_LOGIN_BACKGROUND_IMAGE_URL
+
+const backgroundImage = computed(() => {
+  const url = settingsData.value?.login_background_image_url || loginBackgroundImage
+  return url ? `url("${encodeURI(url)}")` : 'none'
+})
 </script>
