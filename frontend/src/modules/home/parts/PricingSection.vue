@@ -16,11 +16,11 @@
       <div class="grid gap-12 lg:grid-cols-2 max-w-5xl mx-auto">
         <!-- Standard Edition - Fixed Price -->
         <div
-          class="group relative rounded-2xl border-2 border-[#10B981] bg-gradient-to-br from-emerald-50 to-emerald-100 p-8 shadow-2xl transform lg:scale-105"
+          class="group relative rounded-2xl border-2 border-primary bg-gradient-to-br from-primary-light to-primary-gradient p-8 shadow-2xl transform lg:scale-105"
         >
           <!-- Recommended Badge -->
           <div
-            class="absolute -top-5 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-[#10B981] to-[#059669] px-6 py-2 text-sm font-semibold text-white shadow-lg"
+            class="absolute -top-5 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-primary to-primary-dark px-6 py-2 text-sm font-semibold text-white shadow-lg"
           >
             Recommended
           </div>
@@ -35,7 +35,7 @@
               <span class="text-5xl font-extrabold text-gray-900">$1,999</span>
             </div>
             <p class="mt-2 text-sm text-gray-600">One-time payment • Lifetime license</p>
-            <div class="mt-4 flex items-center text-sm text-[#10B981] font-semibold">
+            <div class="mt-4 flex items-center text-sm text-primary font-semibold">
               <svg class="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   stroke-linecap="round"
@@ -51,7 +51,7 @@
           <ul class="space-y-4 mb-8">
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -67,7 +67,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -83,7 +83,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -99,7 +99,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -115,7 +115,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -131,7 +131,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -147,7 +147,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -163,7 +163,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -179,7 +179,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -196,7 +196,7 @@
           </ul>
 
           <button
-            class="w-full rounded-lg bg-gradient-to-r from-[#10B981] to-[#059669] px-6 py-4 text-base font-semibold text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 hover:from-[#34D399] hover:to-[#047857]"
+            class="w-full rounded-lg bg-gradient-to-r from-primary to-primary-dark px-6 py-4 text-base font-semibold text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 hover:from-primary-hover hover:to-primary-dark"
           >
             Purchase Now
           </button>
@@ -204,7 +204,7 @@
 
         <!-- Enterprise - Custom Pricing -->
         <div
-          class="group rounded-2xl border-2 border-gray-200 bg-white p-8 hover:border-[#10B981] hover:shadow-2xl transition-all duration-300"
+          class="group rounded-2xl border-2 border-gray-200 bg-white p-8 hover:border-primary hover:shadow-2xl transition-all duration-300"
         >
           <div class="mb-8">
             <h3 class="text-2xl font-bold text-gray-900 mb-2">Enterprise Edition</h3>
@@ -216,7 +216,7 @@
               <span class="text-5xl font-extrabold text-gray-900">Custom</span>
             </div>
             <p class="mt-2 text-sm text-gray-600">Tailored pricing based on your requirements</p>
-            <div class="mt-4 flex items-center text-sm text-[#10B981] font-semibold">
+            <div class="mt-4 flex items-center text-sm text-primary font-semibold">
               <svg class="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   stroke-linecap="round"
@@ -232,7 +232,7 @@
           <ul class="space-y-4 mb-8">
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -248,7 +248,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -264,7 +264,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -280,7 +280,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -296,7 +296,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -312,7 +312,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -328,7 +328,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -344,7 +344,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -360,7 +360,7 @@
             </li>
             <li class="flex items-start">
               <svg
-                class="h-6 w-6 text-[#10B981] flex-shrink-0"
+                class="h-6 w-6 text-primary flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -377,7 +377,7 @@
           </ul>
 
           <button
-            class="w-full rounded-lg border-2 border-[#10B981] bg-white px-6 py-4 text-base font-semibold text-[#10B981] hover:bg-[#10B981] hover:text-white transition-all duration-200"
+            class="w-full rounded-lg border-2 border-primary bg-white px-6 py-4 text-base font-semibold text-primary hover:bg-primary hover:text-white transition-all duration-200"
           >
             Contact Sales
           </button>

@@ -2,7 +2,7 @@
   <footer class="relative bg-gray-900 px-4 py-16 sm:px-6 lg:px-8 overflow-hidden">
     <!-- Background decoration -->
     <div
-      class="absolute inset-0 bg-gradient-to-br from-emerald-900/20 via-gray-900 to-emerald-800/20 pointer-events-none"
+      class="absolute inset-0 bg-gradient-to-br from-primary-dark/20 via-gray-900 to-primary/20 pointer-events-none"
     ></div>
 
     <div class="relative mx-auto max-w-7xl">

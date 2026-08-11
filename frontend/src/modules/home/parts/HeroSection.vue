@@ -5,7 +5,7 @@
         <!-- Left Content -->
         <div class="space-y-8">
           <div
-            class="inline-flex items-center rounded-full bg-emerald-100 px-4 py-2 text-sm font-medium text-primary"
+            class="inline-flex items-center rounded-full bg-primary-light px-4 py-2 text-sm font-medium text-primary"
           >
             <span class="mr-2">🚀</span>
             {{ t('home.hero.subTitle') }}
@@ -80,13 +80,13 @@
         <!-- Right Image/Illustration -->
         <div class="relative">
           <div
-            class="absolute -inset-4 rounded-3xl bg-gradient-to-r from-emerald-200 to-emerald-300 opacity-30 blur-3xl"
+            class="absolute -inset-4 rounded-3xl bg-gradient-to-r from-primary-gradient to-primary-ring opacity-30 blur-3xl"
           ></div>
           <div class="relative rounded-2xl bg-white p-8 shadow-2xl">
             <div class="space-y-4">
               <!-- Mock Dashboard Preview -->
               <div
-                class="flex items-center justify-between rounded-lg bg-gradient-to-r from-emerald-50 to-emerald-100 p-4"
+                class="flex items-center justify-between rounded-lg bg-gradient-to-r from-primary-light to-primary-gradient p-4"
               >
                 <div class="flex items-center space-x-3">
                   <div class="h-10 w-10 rounded-full bg-primary/60"></div>
