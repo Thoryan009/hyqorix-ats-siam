@@ -18,7 +18,7 @@
           class="group rounded-2xl border-2 border-gray-100 p-8 hover:border-primary/30 hover:shadow-xl transition-all duration-300"
         >
           <div
-            class="mb-4 inline-flex rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 p-3 group-hover:scale-110 transition-transform"
+            class="mb-4 inline-flex rounded-xl bg-gradient-to-br from-primary-light to-primary-gradient p-3 group-hover:scale-110 transition-transform"
           >
             <span v-html="icons[index]" class="h-8 w-8 text-primary-dark"></span>
           </div>

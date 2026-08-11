@@ -27,6 +27,11 @@ class SettingRequest extends FormRequest
                 'string',
                 'max:255',
             ],
+            'software_version' => [
+                'nullable',
+                'string',
+                'max:50',
+            ],
             'company_name' => [
                 'required',
                 'string',
@@ -84,6 +89,11 @@ class SettingRequest extends FormRequest
             'company_logo_file' => $this->fileRule,
             'login_background_image_file' => $this->fileRule,
             'fav_icon_file' => $this->fileRule,
+            'primary_color' => [
+                'nullable',
+                'string',
+                'regex:/^#([A-Fa-f0-9]{6})$/',
+            ],
         ];
     }
 }

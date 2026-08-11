@@ -14,10 +14,10 @@
             <!-- Contact Info Items -->
             <div class="flex items-start space-x-4">
               <div
-                class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-green-100 to-green-200 flex-shrink-0"
+                class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary-light to-primary-gradient flex-shrink-0"
               >
                 <svg
-                  class="h-6 w-6 text-[#10B981]"
+                  class="h-6 w-6 text-primary"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -38,10 +38,10 @@
 
             <div class="flex items-start space-x-4">
               <div
-                class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-green-100 to-green-200 flex-shrink-0"
+                class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary-light to-primary-gradient flex-shrink-0"
               >
                 <svg
-                  class="h-6 w-6 text-[#059669]"
+                  class="h-6 w-6 text-primary-hover"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -62,10 +62,10 @@
 
             <div class="flex items-start space-x-4">
               <div
-                class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-green-100 to-green-200 flex-shrink-0"
+                class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary-light to-primary-gradient flex-shrink-0"
               >
                 <svg
-                  class="h-6 w-6 text-[#047857]"
+                  class="h-6 w-6 text-primary-dark"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -101,7 +101,7 @@
               <a
                 href="https://www.facebook.com/share/18HtdQhUcU/?mibextid=wwXIfr"
                 target="_blank"
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gradient-to-br hover:from-[#71BC44] hover:to-[#5fa537] hover:text-white transition-all duration-200"
+                class="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gradient-to-br hover:from-primary hover:to-primary-dark hover:text-white transition-all duration-200"
               >
                 <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                   <path
@@ -113,7 +113,7 @@
               <a
                 href="https://www.linkedin.com/company/111232030/admin/notifications/all/"
                 target="_blank"
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gradient-to-br hover:from-[#71BC44] hover:to-[#5fa537] hover:text-white transition-all duration-200"
+                class="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gradient-to-br hover:from-primary hover:to-primary-dark hover:text-white transition-all duration-200"
               >
                 <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                   <path
@@ -128,7 +128,7 @@
         <!-- Right Form -->
         <div class="relative">
           <div
-            class="absolute -inset-4 rounded-3xl bg-gradient-to-r from-emerald-200 to-emerald-300 opacity-20 blur-2xl"
+            class="absolute -inset-4 rounded-3xl bg-gradient-to-r from-primary-gradient to-primary-ring opacity-20 blur-2xl"
           ></div>
           <div class="relative rounded-2xl bg-white border-2 border-gray-100 p-8 shadow-xl">
             <form @submit.prevent="handleSubmit" class="space-y-6">
@@ -141,7 +141,7 @@
                   v-model="formData.name"
                   type="text"
                   required
-                  class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-[#71BC44] focus:outline-none focus:ring-2 focus:ring-[#71BC44]/20 transition-all"
+                  class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   placeholder="John Doe"
                 />
               </div>
@@ -155,7 +155,7 @@
                   v-model="formData.email"
                   type="email"
                   required
-                  class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-[#71BC44] focus:outline-none focus:ring-2 focus:ring-[#71BC44]/20 transition-all"
+                  class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   placeholder="john@example.com"
                 />
               </div>
@@ -169,7 +169,7 @@
                   v-model="formData.subject"
                   type="text"
                   required
-                  class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-[#71BC44] focus:outline-none focus:ring-2 focus:ring-[#71BC44]/20 transition-all"
+                  class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   placeholder="How can we help?"
                 />
               </div>
@@ -183,7 +183,7 @@
                   v-model="formData.message"
                   required
                   rows="5"
-                  class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-[#71BC44] focus:outline-none focus:ring-2 focus:ring-[#71BC44]/20 transition-all resize-none"
+                  class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                   placeholder="Tell us more about your inquiry..."
                 ></textarea>
               </div>
@@ -191,7 +191,7 @@
               <button
                 type="submit"
                 :disabled="isSubmitting"
-                class="w-full rounded-lg bg-gradient-to-r from-[#10B981] to-[#059669] px-6 py-4 text-base font-semibold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:from-[#34D399] hover:to-[#047857]"
+                class="w-full rounded-lg bg-gradient-to-r from-primary to-primary-dark px-6 py-4 text-base font-semibold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:from-primary-hover hover:to-primary-dark"
               >
                 <span v-if="!isSubmitting">Send Message</span>
                 <span v-else class="flex items-center justify-center">
@@ -222,9 +222,9 @@
               <!-- Success Message -->
               <div
                 v-if="showSuccess"
-                class="rounded-lg bg-green-50 border-2 border-green-200 p-4 text-center"
+                class="rounded-lg bg-primary-light border-2 border-primary-gradient p-4 text-center"
               >
-                <p class="text-sm font-semibold text-green-800">
+                <p class="text-sm font-semibold text-primary-dark">
                   ✓ Message sent successfully! We'll get back to you soon.
                 </p>
               </div>

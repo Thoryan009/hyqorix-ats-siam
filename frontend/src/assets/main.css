@@ -4,8 +4,8 @@
   --color-primary: #10b981;
   --color-primary-light: #ecfdf5;
   --color-primary-gradient: #d1fae5;
-  --color-primary-ring: #93c5fd;
-  --color-primary-hover: #0369a1;
+  --color-primary-ring: #6ee7b7;
+  --color-primary-hover: #059669;
   --color-primary-dark: #064e3b;
   --color-secondary: #e2232a;
   --color-secondary-dark: #4b5563;
@@ -46,17 +46,17 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #588f36, #6ba843);
+  background: var(--color-primary);
   border-radius: 10px;
   transition: background 0.2s;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #6ba843, #7dc050);
+  background: var(--color-primary-hover);
 }
 
 /* Firefox */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #588f36 transparent;
+  scrollbar-color: var(--color-primary) transparent;
 }

@@ -7,6 +7,12 @@
       <BaseInput v-model="formData.software_name" required />
     </div>
 
+    <!-- Software Version -->
+    <div>
+      <BaseLabel>{{ t('setting.basic.software_version') }}</BaseLabel>
+      <BaseInput v-model="formData.software_version" placeholder="26.1" />
+    </div>
+
     <!-- Company Name -->
     <div>
       <BaseLabel>{{ t('setting.basic.company_name') }}</BaseLabel>
@@ -31,12 +37,7 @@
               : 'border-gray-300'
           "
         >
-          <input
-            type="radio"
-            v-model="formData.company_no_active"
-            value="1"
-            class="w-3 h-3"
-          />
+          <input type="radio" v-model="formData.company_no_active" value="1" class="w-3 h-3" />
           <p class="font-medium">{{ t('setting.basic.yes') }}</p>
         </label>
         <label
@@ -47,12 +48,7 @@
               : 'border-gray-300'
           "
         >
-          <input
-            type="radio"
-            v-model="formData.company_no_active"
-            value="0"
-            class="w-3 h-3"
-          />
+          <input type="radio" v-model="formData.company_no_active" value="0" class="w-3 h-3" />
           <p class="font-medium">{{ t('setting.basic.no') }}</p>
         </label>
       </div>
@@ -76,14 +72,37 @@
       <BaseInput v-model="formData.company_address" />
     </div>
 
+    <!-- Primary Color -->
+    <div>
+      <BaseLabel>{{ t('setting.basic.primary_color') }}</BaseLabel>
+      <div class="flex items-center gap-3">
+        <input
+          type="color"
+          :value="formData.primary_color"
+          class="h-10 w-14 cursor-pointer rounded border border-gray-300 bg-white p-1"
+          @input="formData.primary_color = $event.target.value"
+        />
+        <BaseInput v-model="formData.primary_color" class="flex-1" placeholder="#10b981" />
+        <div
+          class="h-10 w-10 shrink-0 rounded-md border border-gray-200"
+          :style="{ backgroundColor: formData.primary_color }"
+        ></div>
+      </div>
+      <p class="mt-1 text-xs text-gray-500">{{ t('setting.basic.primary_color_hint') }}</p>
+    </div>
+
     <!-- Logo -->
     <div>
       <BaseLabel>{{ t('setting.basic.company_logo') }}</BaseLabel>
       <BaseFileInput
         accept=".jpg, .jpeg, .png"
-        @change="handleFileChange($event, 'company_logo_file', 'company_logo_preview')"
+        @change="onFileSelected($event, 'company_logo_file', 'company_logo_preview')"
         :fileName="fileName?.company_logo_file"
       />
+      <p class="mt-1 text-xs text-gray-500">{{ t('setting.basic.image_max_size') }}</p>
+      <p v-if="fileError.company_logo_file" class="mt-1 text-sm text-red-600">
+        {{ fileError.company_logo_file }}
+      </p>
 
       <BaseImagePreview
         :src="
@@ -97,15 +116,18 @@
       />
     </div>
 
-
     <!-- Fav Icon -->
     <div>
       <BaseLabel>{{ t('setting.basic.fav_icon') }}</BaseLabel>
       <BaseFileInput
         accept=".jpg, .jpeg, .png"
-        @change="handleFileChange($event, 'fav_icon_file', 'fav_icon_preview')"
+        @change="onFileSelected($event, 'fav_icon_file', 'fav_icon_preview')"
         :fileName="fileName?.fav_icon_file"
       />
+      <p class="mt-1 text-xs text-gray-500">{{ t('setting.basic.image_max_size') }}</p>
+      <p v-if="fileError.fav_icon_file" class="mt-1 text-sm text-red-600">
+        {{ fileError.fav_icon_file }}
+      </p>
 
       <BaseImagePreview
         :src="
@@ -125,10 +147,14 @@
       <BaseFileInput
         accept=".jpg, .jpeg, .png"
         @change="
-          handleFileChange($event, 'login_background_image_file', 'login_background_image_preview')
+          onFileSelected($event, 'login_background_image_file', 'login_background_image_preview')
         "
         :fileName="fileName?.login_background_image_file"
       />
+      <p class="mt-1 text-xs text-gray-500">{{ t('setting.basic.image_max_size') }}</p>
+      <p v-if="fileError.login_background_image_file" class="mt-1 text-sm text-red-600">
+        {{ fileError.login_background_image_file }}
+      </p>
 
       <BaseImagePreview
         :src="
@@ -171,12 +197,18 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useSettingStore } from '../../store/settingStore'
 import { useSettingMutations } from '../../queries/useSettingMutations'
 import { useSettingsQuery, useSettingDataQuery } from '../../queries/useSettingsQuery'
 import { useFileHandler } from '@/shared/composables/useFileHandler'
 import { useTranslate } from '@/shared/composables/useTranslate'
+import { toast } from '@/shared/config/toastConfig'
+import {
+  applyPrimaryTheme,
+  DEFAULT_PRIMARY_COLOR,
+  isValidHexColor,
+} from '@/shared/utils/themeColor'
 
 const { t } = useTranslate()
 const store = useSettingStore()
@@ -184,6 +216,7 @@ const store = useSettingStore()
 const formData = ref({
   id: '',
   software_name: '',
+  software_version: '26.1',
   company_name: '',
   company_no: '',
   company_no_active: '0',
@@ -206,9 +239,18 @@ const formData = ref({
   fav_icon_preview: null,
   fav_icon_file: null,
   fav_icon_url: null,
+  primary_color: DEFAULT_PRIMARY_COLOR,
 })
 
-const { handleFileChange, fileName, cancelImage } = useFileHandler(formData.value)
+const { handleFileChange, fileName, fileError, cancelImage } = useFileHandler(formData.value)
+
+const onFileSelected = (event, fileKey, previewKey) => {
+  handleFileChange(event, fileKey, previewKey)
+
+  if (fileError.value[fileKey]) {
+    toast.error(fileError.value[fileKey])
+  }
+}
 
 // Fetch settings (single record)
 const { data, isLoading } = useSettingsQuery(1)
@@ -242,6 +284,20 @@ watch(
   },
   { immediate: true }
 )
+
+watch(
+  () => formData.value.primary_color,
+  (color) => {
+    if (isValidHexColor(color)) {
+      applyPrimaryTheme(color, { persist: false })
+    }
+  }
+)
+
+onUnmounted(() => {
+  const savedColor = settingsData.value?.primary_color
+  applyPrimaryTheme(isValidHexColor(savedColor) ? savedColor : DEFAULT_PRIMARY_COLOR)
+})
 
 // Submit
 const EXCLUDED_KEYS = [

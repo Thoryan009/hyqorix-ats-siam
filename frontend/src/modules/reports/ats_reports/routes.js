@@ -27,6 +27,6 @@ export default [
       path: '/ats-reports/:type/print',
       name: 'ATS Report Print',
       component: AtsReportPrintPage,
-      meta: { permissions: ['ats_report.view'] },
+      meta: { requiresAuth: true, permissions: ['ats_report.view'] },
     },
 ]

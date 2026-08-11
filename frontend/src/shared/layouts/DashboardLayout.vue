@@ -45,13 +45,13 @@ import { useRouter } from 'vue-router'
 
 import { useAuthQuery } from '@/modules/auth/queries/useAuthQuery'
 import { useAuthMutations } from '@/modules/auth/queries/useAuthMutations'
+import { useAuthStore } from '@/modules/auth/store/authStore'
 
 const isSidebarOpen = ref(false)
 const isSidebarCollapsed = ref(false)
 const isProfileDropdownOpen = ref(false)
 const activeNav = ref('Dashboard')
 const router = useRouter()
-import app from '../config/appConfig'
 import FooterComponent from './components/FooterComponent.vue'
 
 // Methods
@@ -63,13 +63,11 @@ const { data, isLoading } = useAuthQuery()
 
 const user = computed(() => data.value?.data ?? {})
 
+const authStore = useAuthStore()
 const { logout } = useAuthMutations('Auth', {
   onSuccess(data) {
     if (data?.success) {
-      localStorage.removeItem(app.tokenKey)
-      localStorage.removeItem(app.userRolesKey)
-      localStorage.removeItem(app.userPermissionsKey)
-      localStorage.removeItem(app.userType)
+      authStore.clearSession()
       router.push({ name: 'Login' })
     }
   },

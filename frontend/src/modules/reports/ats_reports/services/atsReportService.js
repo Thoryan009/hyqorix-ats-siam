@@ -25,6 +25,7 @@ export async function fetchOne(filters = {}) {
   })
 
   await api.sendRequest(url)
+  if (api.error.value) throw api.error.value
   return response(api)
 }
 

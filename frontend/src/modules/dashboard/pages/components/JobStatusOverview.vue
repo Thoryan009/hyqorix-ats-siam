@@ -57,11 +57,16 @@
 
 <script>
 import DashboardSectionHeading from '../../components/DashboardSectionHeading.vue'
+import { usePrimaryColor } from '@/shared/composables/usePrimaryColor'
 
 export default {
   name: 'JobStatusOverview',
   components: {
     DashboardSectionHeading,
+  },
+  setup() {
+    const primaryColor = usePrimaryColor()
+    return { primaryColor }
   },
   props: {
     jobs: {
@@ -71,7 +76,7 @@ export default {
   computed: {
     cards() {
       return [
-        { title: 'Open', value: this.jobs?.open, icon: 'fa fa-folder-open', color: '#10b981', path: '/jobs' },
+        { title: 'Open', value: this.jobs?.open, icon: 'fa fa-folder-open', color: this.primaryColor, path: '/jobs' },
         {
           title: 'Closed',
           value: this.jobs?.closed,

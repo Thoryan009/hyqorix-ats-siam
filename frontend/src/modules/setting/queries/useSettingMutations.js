@@ -7,14 +7,16 @@ export function useSettingMutations(moduleName, options = {}) {
 
   const handleSuccess = (data, variables) => {
     toast.success(`${moduleName} updated successfully`)
-    queryClient.invalidateQueries(['settings'])
-    queryClient.invalidateQueries(['public-settings'])
+    queryClient.invalidateQueries({ queryKey: ['settings'] })
+    queryClient.invalidateQueries({ queryKey: ['public-settings'] })
+    queryClient.removeQueries({ queryKey: ['public-settings'] })
     options.onSuccess?.(data, variables)
   }
 
   const handleError = (error) => {
     console.error(error)
-    toast.error(`Request Failed: ${error?.message || 'Unknown error'}`)
+    const validationMessage = error?.errors && Object.values(error.errors).flat()[0]
+    toast.error(validationMessage || error?.message || 'Request failed')
     options.onError?.(error)
   }
 

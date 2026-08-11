@@ -79,8 +79,8 @@ import loginData from '../data/loginData'
 import LoadingLogin from '../components/LoadingLogin.vue'
 import { useSettingsQuery } from '@/modules/home/queries/useSettingsQuery'
 
-  const { data: settingsDataResponse } = useSettingsQuery()
-  const settingsData = computed(() => settingsDataResponse?.value?.data || {})
+const { data: settingsDataResponse } = useSettingsQuery()
+const settingsData = computed(() => settingsDataResponse?.value?.data || {})
 
 const store = useAuthStore()
 const showLoading = ref(false)
@@ -95,15 +95,15 @@ const formData = ref({
 const { login, loginLoading, loginError } = useAuthMutations(store.moduleName, {
   onSuccess(data) {
     if (data?.success && data?.token) {
-      localStorage.setItem(app.userType, data.user?.type)
-      localStorage.setItem(app.tokenKey, data.token)
-      localStorage.setItem(app.userRolesKey, JSON.stringify(data.roles))
-      localStorage.setItem(app.userPermissionsKey, JSON.stringify(data.permissions))
+      store.setSession({
+        token: data.token,
+        user: data.user,
+        roles: data.roles || [],
+        permissions: data.permissions || [],
+      })
 
-      // Show loading screen before navigation
       showLoading.value = true
 
-      // Navigate after showing loading animation
       setTimeout(() => {
         router.push({ name: 'Dashboard' })
       }, 1000)
