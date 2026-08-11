@@ -18,6 +18,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('finance-reports/gross-profit', [FinanceGrossProfitReportController::class, 'index'])
     ->middleware('permission:gross_profit_report.view');
+Route::get('finance-reports/gross-profit/export-csv', [FinanceGrossProfitReportController::class, 'exportCsv'])
+    ->middleware('permission:gross_profit_report.view');
+Route::get('finance-reports/gross-profit/export-pdf', [FinanceGrossProfitReportController::class, 'exportPdf'])
+    ->middleware('permission:gross_profit_report.view');
 Route::get('finance-reports/trial-balance', [FinanceTrialBalanceController::class, 'index'])
     ->middleware('permission:trial_balance.view');
 Route::get('finance-reports/income-statement', [FinanceIncomeStatementController::class, 'index'])

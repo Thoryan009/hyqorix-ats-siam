@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class FinanceGrossProfitReportService
 {
-    public function getReport(array $filters = []): array
+    public function getReport(array $filters = [], bool $includeRows = true): array
     {
         $category = ExpenseCategory::query()
             ->where('code', 'direct_cost')
@@ -34,9 +34,12 @@ class FinanceGrossProfitReportService
             'name' => $head->name,
         ])->values()->all();
 
-        $jobListIds = $this->normalizeIdList($filters['job_list_ids'] ?? null);
-        $clientIds = $this->normalizeIdList($filters['client_ids'] ?? null);
-        $workOrderIdsFilter = $this->normalizeIdList($filters['work_order_ids'] ?? null);
+        $jobListIds = $this->mergeIdFilters($filters, ['job_list_ids', 'job_id', 'job_list_id']);
+        $clientIds = $this->mergeIdFilters($filters, ['client_ids', 'client_id']);
+        $workOrderIdsFilter = $this->mergeIdFilters($filters, ['work_order_ids', 'work_order_id']);
+        $agentIds = $this->mergeIdFilters($filters, ['agent_ids', 'agent_id']);
+        $countryIds = $this->mergeIdFilters($filters, ['country_ids', 'country_id']);
+        $principalIds = $this->mergeIdFilters($filters, ['principal_ids', 'principal_id']);
 
         $billQuery = FinanceBillEntry::query()
             ->whereNotNull('application_id')
@@ -105,7 +108,10 @@ class FinanceGrossProfitReportService
         $applications = Application::query()
             ->with([
                 'currentProcess.process',
+                'agent',
+                'jobList.principal',
                 'jobList.workOrder.client.user',
+                'jobList.workOrder.client.country',
             ])
             ->whereIn('id', $applicationIds)
             ->get()
@@ -184,6 +190,13 @@ class FinanceGrossProfitReportService
             $demandLetter = (string) ($workOrder?->work_order_id ?? '');
             $clientId = $workOrder?->client_id ? (int) $workOrder->client_id : null;
             $clientName = (string) ($workOrder?->client?->user?->name ?? '');
+            $agentId = $application?->agent_id ? (int) $application->agent_id : null;
+            $countryId = $workOrder?->client?->country_id
+                ? (int) $workOrder->client->country_id
+                : ($application?->country_id ? (int) $application->country_id : null);
+            $principalId = $application?->jobList?->principal_id
+                ? (int) $application->jobList->principal_id
+                : null;
 
             $rowExpenseTotal = round(array_sum($expenses), 2);
             $salePrice = round((float) ($sale->sale_price ?? 0), 2);
@@ -204,6 +217,9 @@ class FinanceGrossProfitReportService
                 'job_name' => $jobName,
                 'client_id' => $clientId,
                 'client_name' => $clientName,
+                'agent_id' => $agentId,
+                'country_id' => $countryId,
+                'principal_id' => $principalId,
                 'work_order_id' => $workOrderId ?: null,
                 'demand_letter' => $demandLetter,
                 'current_process' => $currentProcess,
@@ -230,7 +246,10 @@ class FinanceGrossProfitReportService
                 $row,
                 $jobListIds,
                 $clientIds,
-                $workOrderIdsFilter
+                $workOrderIdsFilter,
+                $agentIds,
+                $countryIds,
+                $principalIds
             )
         ));
 
@@ -288,10 +307,9 @@ class FinanceGrossProfitReportService
             $rows[$index]['adjusted_avg_profit_loss'] = $adjustedAvgProfitLoss;
         }
 
-        return [
+        $payload = [
             'expense_heads' => $expenseHeads,
             'filter_options' => $filterOptions,
-            'rows' => $rows,
             'summary' => [
                 'candidate_count' => $activeCount,
                 'total_sale' => round($totalSale, 2),
@@ -305,6 +323,72 @@ class FinanceGrossProfitReportService
                 'adjusted_gross_profit_loss' => $adjustedGrossProfitLoss,
             ],
         ];
+
+        if ($includeRows) {
+            $payload['rows'] = $rows;
+        }
+
+        return $payload;
+    }
+
+    public function exportCsv(array $filters = []): string
+    {
+        $report = $this->getReport($filters, true);
+        $heads = $report['expense_heads'] ?? [];
+        $rows = $report['rows'] ?? [];
+        $summary = $report['summary'] ?? [];
+
+        $output = fopen('php://temp', 'r+');
+
+        $header = [
+            'Candidate',
+            'Passport',
+            'Job',
+            'Client',
+            'Demand Letter',
+            'Process',
+        ];
+        foreach ($heads as $head) {
+            $header[] = (string) ($head['name'] ?? '');
+        }
+        array_push($header, 'Avg C.R.E', 'Total Expense', 'Sale Price', 'Profit / Loss');
+        fputcsv($output, $header);
+
+        foreach ($rows as $row) {
+            $line = [
+                $row['candidate_name'] ?? '',
+                $row['passport_no'] ?? '',
+                trim(($row['job_code'] ?? '') . ' ' . ($row['job_name'] ?? '')),
+                $row['client_name'] ?? '',
+                $row['demand_letter'] ?? '',
+                $row['current_process'] ?? '',
+            ];
+            foreach ($heads as $head) {
+                $line[] = $this->formatAmount($row['expenses'][(string) $head['id']] ?? 0);
+            }
+            array_push(
+                $line,
+                $this->formatAmount($row['avg_cre'] ?? 0),
+                $this->formatAmount($row['total_expense'] ?? 0),
+                $this->formatAmount($row['sale_price'] ?? 0),
+                $this->formatAmount($row['profit_loss'] ?? 0)
+            );
+            fputcsv($output, $line);
+        }
+
+        fputcsv($output, []);
+        fputcsv($output, ['Candidates', $summary['candidate_count'] ?? 0]);
+        fputcsv($output, ['Total Sale Price', $this->formatAmount($summary['total_sale'] ?? 0)]);
+        fputcsv($output, ['Total Direct Expense', $this->formatAmount($summary['total_expense'] ?? 0)]);
+        fputcsv($output, ['Total Profit / Loss', $this->formatAmount($summary['total_profit_loss'] ?? 0)]);
+        fputcsv($output, ['Rejected / Declined Expense', $this->formatAmount($summary['rejected_declined_expense'] ?? 0)]);
+        fputcsv($output, ['Adjusted Gross Profit / Loss', $this->formatAmount($summary['adjusted_gross_profit_loss'] ?? 0)]);
+
+        rewind($output);
+        $csv = stream_get_contents($output);
+        fclose($output);
+
+        return $csv === false ? '' : $csv;
     }
 
     /**
@@ -370,12 +454,18 @@ class FinanceGrossProfitReportService
      * @param  list<int>  $jobListIds
      * @param  list<int>  $clientIds
      * @param  list<int>  $workOrderIds
+     * @param  list<int>  $agentIds
+     * @param  list<int>  $countryIds
+     * @param  list<int>  $principalIds
      */
     private function matchesDimensionFilters(
         array $row,
         array $jobListIds,
         array $clientIds,
-        array $workOrderIds
+        array $workOrderIds,
+        array $agentIds = [],
+        array $countryIds = [],
+        array $principalIds = []
     ): bool {
         if ($jobListIds !== [] && !in_array((int) ($row['job_list_id'] ?? 0), $jobListIds, true)) {
             return false;
@@ -389,7 +479,39 @@ class FinanceGrossProfitReportService
             return false;
         }
 
+        if ($agentIds !== [] && !in_array((int) ($row['agent_id'] ?? 0), $agentIds, true)) {
+            return false;
+        }
+
+        if ($countryIds !== [] && !in_array((int) ($row['country_id'] ?? 0), $countryIds, true)) {
+            return false;
+        }
+
+        if ($principalIds !== [] && !in_array((int) ($row['principal_id'] ?? 0), $principalIds, true)) {
+            return false;
+        }
+
         return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @param  list<string>  $keys
+     * @return list<int>
+     */
+    private function mergeIdFilters(array $filters, array $keys): array
+    {
+        $ids = [];
+        foreach ($keys as $key) {
+            $ids = array_merge($ids, $this->normalizeIdList($filters[$key] ?? null));
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    private function formatAmount(mixed $value): string
+    {
+        return number_format((float) $value, 2, '.', '');
     }
 
     /**
