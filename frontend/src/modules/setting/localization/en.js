@@ -9,6 +9,7 @@ export default {
 
     basic: {
       software_name: 'Software Name',
+      software_version: 'Software Version',
       company_name: 'Company Name',
       company_no: 'Company No.',
       company_no_active: 'Company No. Active',

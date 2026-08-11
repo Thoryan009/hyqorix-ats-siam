@@ -7,6 +7,12 @@
       <BaseInput v-model="formData.software_name" required />
     </div>
 
+    <!-- Software Version -->
+    <div>
+      <BaseLabel>{{ t('setting.basic.software_version') }}</BaseLabel>
+      <BaseInput v-model="formData.software_version" placeholder="26.1" />
+    </div>
+
     <!-- Company Name -->
     <div>
       <BaseLabel>{{ t('setting.basic.company_name') }}</BaseLabel>
@@ -197,6 +203,7 @@ const store = useSettingStore()
 const formData = ref({
   id: '',
   software_name: '',
+  software_version: '26.1',
   company_name: '',
   company_no: '',
   company_no_active: '0',

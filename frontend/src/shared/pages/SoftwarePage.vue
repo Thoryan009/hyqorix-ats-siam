@@ -109,13 +109,13 @@
 import { computed } from 'vue'
 import { useSettingsQuery } from '@/modules/home/queries/useSettingsQuery'
 
-const version = '26.1'
 const currentYear = new Date().getFullYear()
 
 const { data } = useSettingsQuery()
 const settings = computed(() => data.value?.data || {})
 
 const softwareName = computed(() => settings.value.software_name || 'Hyqorix ATS')
+const version = computed(() => settings.value.software_version || '26.1')
 const logoUrl = computed(
   () => settings.value.fav_icon_url || settings.value.company_logo_url || '/hyqorix-logo.png'
 )
@@ -129,7 +129,7 @@ const details = computed(() => [
   {
     icon: 'fa-code-fork',
     label: 'Version',
-    value: version,
+    value: version.value,
   },
   {
     icon: 'fa-building',

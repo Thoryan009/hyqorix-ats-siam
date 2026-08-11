@@ -13,6 +13,7 @@ class SettingSeeder extends Seeder
 
         $setting = [
             'software_name'     => 'AlphaSoft',
+            'software_version'  => '26.1',
             'company_name'      => 'Alpha Corp',
             'company_phone'     => '+1-555-1001',
             'company_email'     => 'contact@alphacorp.com',

@@ -27,6 +27,11 @@ class SettingRequest extends FormRequest
                 'string',
                 'max:255',
             ],
+            'software_version' => [
+                'nullable',
+                'string',
+                'max:50',
+            ],
             'company_name' => [
                 'required',
                 'string',

@@ -13,6 +13,7 @@ class SettingResource extends JsonResource
         return [
             'id' => $this->id,
             'software_name' => $this->software_name,
+            'software_version' => $this->software_version ?: '26.1',
             'company_name' => $this->company_name,
             'company_no' => $this->company_no,
             'company_no_active' => (int) $this->company_no_active,

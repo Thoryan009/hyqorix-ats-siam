@@ -9,6 +9,7 @@ export default {
 
     basic: {
       software_name: 'সফটওয়্যারের নাম',
+      software_version: 'সফটওয়্যার ভার্সন',
       company_name: 'কোম্পানির নাম',
       company_no: 'কোম্পানি নং',
       company_no_active: 'কোম্পানি নং সক্রিয়',
