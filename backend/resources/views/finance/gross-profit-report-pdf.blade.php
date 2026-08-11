@@ -22,10 +22,30 @@
         .value { font-size: 11px; font-weight: bold; }
         .profit { color: #047857; }
         .loss { color: #b91c1c; }
-        .totals { background: #f9fafb; font-weight: bold; }
+        tfoot td { background: #f3f4f6; font-weight: bold; }
     </style>
 </head>
 <body>
+@php
+    $headTotals = [];
+    foreach ($expenseHeads as $head) {
+        $headTotals[(string) $head['id']] = 0.0;
+    }
+    $totalAvgCre = 0.0;
+    $totalExpense = 0.0;
+    $totalSale = 0.0;
+    $totalProfitLoss = 0.0;
+    foreach ($rows as $row) {
+        foreach ($expenseHeads as $head) {
+            $key = (string) $head['id'];
+            $headTotals[$key] += (float) ($row['expenses'][$key] ?? 0);
+        }
+        $totalAvgCre += (float) ($row['avg_cre'] ?? 0);
+        $totalExpense += (float) ($row['total_expense'] ?? 0);
+        $totalSale += (float) ($row['sale_price'] ?? 0);
+        $totalProfitLoss += (float) ($row['profit_loss'] ?? 0);
+    }
+@endphp
     <div class="brand-header">
         <table class="brand-table">
             <tr>
@@ -110,6 +130,22 @@
                 </tr>
             @endforelse
         </tbody>
+        @if(count($rows))
+            <tfoot>
+                <tr>
+                    <td>Total ({{ count($rows) }})</td>
+                    <td>—</td>
+                    <td>—</td>
+                    @foreach($expenseHeads as $head)
+                        <td class="num">{{ number_format($headTotals[(string) $head['id']] ?? 0, 2) }}</td>
+                    @endforeach
+                    <td class="num">{{ number_format($totalAvgCre, 2) }}</td>
+                    <td class="num">{{ number_format($totalExpense, 2) }}</td>
+                    <td class="num">{{ number_format($totalSale, 2) }}</td>
+                    <td class="num {{ $totalProfitLoss >= 0 ? 'profit' : 'loss' }}">{{ number_format($totalProfitLoss, 2) }}</td>
+                </tr>
+            </tfoot>
+        @endif
     </table>
 
     <p style="margin-top: 10px;">
