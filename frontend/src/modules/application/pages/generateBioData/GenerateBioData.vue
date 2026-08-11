@@ -20,7 +20,7 @@
             <div class="flex gap-2">
               <button
                 @click="Object.keys(printSettings).forEach((key) => (printSettings[key] = true))"
-                class="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                class="text-xs px-2 py-1 bg-primary text-white rounded hover:bg-primary-hover"
               >
                 Select All
               </button>
@@ -170,7 +170,7 @@
           <div class="text-center">
             <button
               @click="handleDownloadPDF"
-              class="bg-[#588F36] text-white px-6 py-2 mt-10 rounded-lg hover:bg-[#446d28] transition-colors"
+              class="bg-primary text-white px-6 py-2 mt-10 rounded-lg hover:bg-primary-hover transition-colors"
             >
               <i class="fa fa-download mr-2"></i>Download PDF
             </button>
@@ -191,7 +191,7 @@
             <div class="flex justify-center mb-4" v-if="printSettings.showPhoto">
               <div
                 v-if="applicationData.worker_image_url"
-                class="w-32 h-32 rounded-full border-4 border-[#588F36] overflow-hidden"
+                class="w-32 h-32 rounded-full border-4 border-primary overflow-hidden"
               >
                 <img
                   :src="applicationData.worker_image_url"
@@ -209,7 +209,7 @@
             <!-- Name & Position -->
             <div class="text-center mb-6">
               <h2 class="text-xl font-bold text-gray-900">{{ applicationData.full_name }}</h2>
-              <p class="text-[#588F36] font-medium text-sm" v-if="applicationData.just_job">
+              <p class="text-primary font-medium text-sm" v-if="applicationData.just_job">
                 {{ applicationData.just_job }}
               </p>
             </div>
@@ -221,14 +221,14 @@
                 printSettings.showMobile || printSettings.showEmail || printSettings.showAddress
               "
             >
-              <h3 class="text-md font-bold text-[#588F36] mb-3">Contact Information</h3>
+              <h3 class="text-md font-bold text-primary mb-3">Contact Information</h3>
               <div class="space-y-3 text-sm">
                 <div class="flex items-start" v-if="printSettings.showMobile">
-                  <i class="fa fa-phone text-[#588F36] mr-2 mt-1"></i>
+                  <i class="fa fa-phone text-primary mr-2 mt-1"></i>
                   <span class="text-gray-700">{{ applicationData.mobile }}</span>
                 </div>
                 <div v-if="role != 'client' && printSettings.showEmail" class="flex items-start">
-                  <i class="fa fa-envelope text-[#588F36] mr-2 mt-1"></i>
+                  <i class="fa fa-envelope text-primary mr-2 mt-1"></i>
                   <span class="text-gray-700 break-all">{{ applicationData.email }}</span>
                 </div>
                 <div
@@ -238,7 +238,7 @@
                     (applicationData.address || applicationData.place_of_birth)
                   "
                 >
-                  <i class="fa fa-map-marker text-[#588F36] mr-2 mt-1"></i>
+                  <i class="fa fa-map-marker text-primary mr-2 mt-1"></i>
                   <span class="text-gray-700">{{
                     applicationData.address || applicationData.place_of_birth
                   }}</span>
@@ -248,7 +248,7 @@
 
             <!-- Language Skills -->
             <div class="mb-6" v-if="printSettings.showLanguage && applicationData.language">
-              <h3 class="text-md font-bold text-[#588F36] mb-3">Language Skills</h3>
+              <h3 class="text-md font-bold text-primary mb-3">Language Skills</h3>
               <p class="text-sm text-gray-700">{{ applicationData.language }}</p>
             </div>
 
@@ -260,7 +260,7 @@
                 (applicationData.qualification || applicationData.subject)
               "
             >
-              <h3 class="text-md font-bold text-[#588F36] mb-3">Education</h3>
+              <h3 class="text-md font-bold text-primary mb-3">Education</h3>
               <div class="text-sm space-y-2">
                 <p class="font-semibold text-gray-900" v-if="applicationData.qualification">
                   <span class="font-medium">Qualification:</span>
@@ -277,7 +277,7 @@
           <div class="right-content bg-white px-5 py-12" style="width: 65%">
             <!-- Professional Summary -->
             <section class="mb-5" v-if="printSettings.showSummary && applicationData.summary">
-              <h2 class="text-lg font-bold text-[#588F36] mb-3">Professional Summary</h2>
+              <h2 class="text-lg font-bold text-primary mb-3">Professional Summary</h2>
               <p class="text-sm text-justify text-gray-700 leading-relaxed">
                 {{ applicationData.summary }}
               </p>
@@ -285,7 +285,7 @@
 
             <!-- Personal Information -->
             <section class="mb-5">
-              <h2 class="text-lg font-bold text-[#588F36] mb-3">Personal Information</h2>
+              <h2 class="text-lg font-bold text-primary mb-3">Personal Information</h2>
               <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
                 <div
                   class="flex flex-col gap-2"
@@ -413,7 +413,7 @@
                   (applicationData.experiences && applicationData.experiences.length > 0))
               "
             >
-              <h2 class="text-lg font-bold text-[#588F36] mb-3">Work Experience</h2>
+              <h2 class="text-lg font-bold text-primary mb-3">Work Experience</h2>
 
               <!-- Display new experiences array -->
               <div
@@ -430,7 +430,7 @@
                       <h3 class="font-semibold text-gray-900">
                         {{ experience.position || 'Position Not Specified' }} &nbsp;
                       </h3>
-                      <p class="text-sm text-[#588F36]" v-if="experience.company_name">
+                      <p class="text-sm text-primary" v-if="experience.company_name">
                         ({{ experience.company_name }})
                       </p>
                     </div>
@@ -476,7 +476,7 @@
                   <h3 class="font-semibold text-gray-900">{{ applicationData.job }}</h3>
                   <span class="text-xs text-gray-600">Current</span>
                 </div>
-                <p class="text-sm text-[#588F36]" v-if="applicationData.qualification">
+                <p class="text-sm text-primary" v-if="applicationData.qualification">
                   {{ applicationData.qualification }}
                 </p>
                 <div
@@ -495,7 +495,7 @@
 
             <!-- Job Application Details -->
             <!-- <section class="mb-5">
-              <h2 class="text-lg font-bold text-[#588F36] mb-3">Job Application Details</h2>
+              <h2 class="text-lg font-bold text-primary mb-3">Job Application Details</h2>
               <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 <div class="flex flex-col gap-1" v-if="applicationData.job">
                   <p class="font-semibold text-gray-900">Applied Position:</p>
@@ -692,6 +692,16 @@ const formatDate = (dateString) => {
   #biodata-print span,
   #biodata-print li {
     color: #000 !important;
+  }
+
+  #biodata-print .text-primary,
+  #biodata-print h2.text-primary,
+  #biodata-print h3.text-primary {
+    color: var(--color-primary) !important;
+  }
+
+  #biodata-print .border-primary {
+    border-color: var(--color-primary) !important;
   }
 
   #biodata-print * {

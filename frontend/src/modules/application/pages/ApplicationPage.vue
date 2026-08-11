@@ -14,7 +14,7 @@
         >{{ t('application.add') }}</BaseButton>
         <BaseButton
           v-can="'application.bulk_upload'"
-          class="bg-tertiary text-white hover:bg-tertiary-dark"
+          class="bg-yellow-500 text-white hover:bg-yellow-600"
           @click="store.handleToggleModalBulkUpload"
         >{{ t('application.bulk_upload') }}</BaseButton>
       </div>
