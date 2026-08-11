@@ -23,6 +23,10 @@
         .profit { color: #047857; }
         .loss { color: #b91c1c; }
         tfoot td { background: #f3f4f6; font-weight: bold; }
+        .calc { width: 420px; margin-top: 12px; margin-left: auto; border-collapse: collapse; }
+        .calc td { border: none; padding: 3px 4px; }
+        .calc .line { border-top: 1px dashed #9ca3af; }
+        .calc .result { border-top: 1px solid #111827; font-weight: bold; font-size: 10px; }
     </style>
 </head>
 <body>
@@ -148,12 +152,28 @@
         @endif
     </table>
 
-    <p style="margin-top: 10px;">
-        Rejected / Declined expense ({{ (int) ($summary['rejected_declined_count'] ?? 0) }}):
-        {{ number_format((float) ($summary['rejected_declined_expense'] ?? 0), 2) }}
-        &nbsp;|&nbsp;
-        Total Profit / Loss:
-        {{ number_format((float) ($summary['total_profit_loss'] ?? 0), 2) }}
-    </p>
+    @php
+        $rejectedExpense = (float) ($summary['rejected_declined_expense'] ?? 0);
+        $rejectedCount = (int) ($summary['rejected_declined_count'] ?? 0);
+        $activeProfitLoss = (float) ($summary['total_profit_loss'] ?? $totalProfitLoss);
+        $adjusted = (float) ($summary['adjusted_gross_profit_loss'] ?? ($activeProfitLoss - $rejectedExpense));
+    @endphp
+    <table class="calc">
+        <tr>
+            <td>Total Profit / Loss (Active Candidates)</td>
+            <td class="num {{ $activeProfitLoss >= 0 ? 'profit' : 'loss' }}">{{ number_format($activeProfitLoss, 2) }}</td>
+        </tr>
+        <tr>
+            <td>
+                Less: Rejected / Declined Candidate Expense
+                ({{ $rejectedCount }} candidate{{ $rejectedCount === 1 ? '' : 's' }})
+            </td>
+            <td class="num loss">− {{ number_format($rejectedExpense, 2) }}</td>
+        </tr>
+        <tr>
+            <td class="result">Adjusted Gross Profit / Loss</td>
+            <td class="num result {{ $adjusted >= 0 ? 'profit' : 'loss' }}">{{ number_format($adjusted, 2) }}</td>
+        </tr>
+    </table>
 </body>
 </html>

@@ -134,11 +134,52 @@
         </BaseButton>
       </div>
     </div>
+
+    <Teleport to="body">
+      <Transition name="export-fade">
+        <div
+          v-if="exporting"
+          class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/45 px-4 backdrop-blur-sm"
+        >
+          <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div class="mb-5 flex items-center gap-4">
+              <div
+                class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-md"
+                :class="exporting === 'pdf' ? 'bg-red-600' : 'bg-primary'"
+              >
+                <i
+                  class="fa text-2xl"
+                  :class="exporting === 'pdf' ? 'fa-file-pdf-o' : 'fa-file-excel-o'"
+                ></i>
+              </div>
+              <div>
+                <p class="text-lg font-semibold text-gray-900">
+                  {{ exporting === 'pdf' ? 'Generating PDF' : 'Generating CSV' }}
+                </p>
+                <p class="mt-0.5 text-sm text-gray-500">{{ exportStatusText }}</p>
+              </div>
+            </div>
+
+            <div class="mb-2 flex items-center justify-between text-sm font-medium text-gray-700">
+              <span>Progress</span>
+              <span class="tabular-nums text-primary">{{ exportProgress }}%</span>
+            </div>
+            <div class="h-2.5 overflow-hidden rounded-full bg-gray-100">
+              <div
+                class="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                :style="{ width: `${exportProgress}%` }"
+              ></div>
+            </div>
+            <p class="mt-3 text-center text-xs text-gray-400">Please wait. Do not close this page.</p>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </SectionHeader>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
 import TableFilters from '@/shared/components/ui/TableFilters.vue'
@@ -164,7 +205,39 @@ import { toast } from '@/shared/config/toastConfig'
 const authStore = useAuthStore()
 const loading = ref(false)
 const exporting = ref('')
+const exportProgress = ref(0)
 const isBusy = computed(() => loading.value || Boolean(exporting.value))
+const exportStatusText = computed(() => {
+  if (exportProgress.value >= 100) return 'Download ready'
+  if (exportProgress.value >= 70) return 'Preparing your file…'
+  if (exportProgress.value >= 35) return 'Building report from server…'
+  return 'Collecting report data…'
+})
+
+let progressTimer = null
+
+function startExportProgress() {
+  exportProgress.value = 6
+  clearInterval(progressTimer)
+  progressTimer = setInterval(() => {
+    if (exportProgress.value >= 90) return
+    const remaining = 90 - exportProgress.value
+    exportProgress.value += Math.max(1, Math.round(remaining * 0.07))
+  }, 280)
+}
+
+function stopExportProgress() {
+  clearInterval(progressTimer)
+  progressTimer = null
+}
+
+function finishExportProgress() {
+  stopExportProgress()
+  exportProgress.value = 100
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, 450)
+  })
+}
 const summary = ref({
   candidate_count: 0,
   total_sale: 0,
@@ -273,25 +346,33 @@ function exportErrorMessage(error, fallback) {
 
 async function generatePdf() {
   exporting.value = 'pdf'
+  startExportProgress()
   try {
     await exportGrossProfitPdf(activeFilters())
+    await finishExportProgress()
     toast.success('PDF generated.')
   } catch (error) {
+    stopExportProgress()
     toast.error(exportErrorMessage(error, 'Failed to generate PDF.'))
   } finally {
     exporting.value = ''
+    exportProgress.value = 0
   }
 }
 
 async function generateCsv() {
   exporting.value = 'csv'
+  startExportProgress()
   try {
     await exportGrossProfitCsv(activeFilters())
+    await finishExportProgress()
     toast.success('CSV generated.')
   } catch (error) {
+    stopExportProgress()
     toast.error(exportErrorMessage(error, 'Failed to generate CSV.'))
   } finally {
     exporting.value = ''
+    exportProgress.value = 0
   }
 }
 
@@ -313,4 +394,20 @@ function filterJobList(option, query) {
 }
 
 onMounted(loadSummary)
+
+onUnmounted(() => {
+  stopExportProgress()
+})
 </script>
+
+<style scoped>
+.export-fade-enter-active,
+.export-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.export-fade-enter-from,
+.export-fade-leave-to {
+  opacity: 0;
+}
+</style>
