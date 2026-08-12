@@ -899,6 +899,7 @@ class FinanceBillEntryService extends BaseCachedService
                         $billEntry,
                         $expenseAccount,
                         $counterpartyAccount,
+                        $paymentAccount,
                         $payAmount,
                         $paymentDate,
                         $ledgerParticular,
@@ -1699,6 +1700,27 @@ class FinanceBillEntryService extends BaseCachedService
         return $account;
     }
 
+    /**
+     * When paying from a non-main account that is also the bill's linked party account,
+     * only the payment DR should appear on that ledger (not vendor-mirror DR/CR rows).
+     */
+    private function isPartyLinkedAccountSameAsNonMainPaymentAccount(
+        ?FinanceAccount $partyLinkedAccount,
+        ?FinanceAccount $paymentAccount
+    ): bool {
+        if (!$partyLinkedAccount || !$paymentAccount) {
+            return false;
+        }
+
+        if ((int) $partyLinkedAccount->id !== (int) $paymentAccount->id) {
+            return false;
+        }
+
+        $paymentCategory = strtolower(trim((string) ($paymentAccount->category ?? '')));
+
+        return $paymentCategory !== '' && $paymentCategory !== 'main';
+    }
+
     private function postPartyLinkedAccountApprovalLedgers(
         FinanceBillEntry $billEntry,
         ?FinanceAccount $expenseAccount,
@@ -1724,6 +1746,10 @@ class FinanceBillEntryService extends BaseCachedService
             ->lockForUpdate()
             ->findOrFail($partyLinkedAccount->id);
         $this->assertActiveFinanceAccount($partyLinkedAccount);
+
+        if ($this->isPartyLinkedAccountSameAsNonMainPaymentAccount($partyLinkedAccount, $paymentAccount)) {
+            return;
+        }
 
         $counterpartyLabel = $expenseAccount
             ? $this->accountLabel($expenseAccount)
@@ -1776,6 +1802,7 @@ class FinanceBillEntryService extends BaseCachedService
         FinanceBillEntry $billEntry,
         ?FinanceAccount $expenseAccount,
         ?FinanceAccount $counterpartyAccount,
+        ?FinanceAccount $paymentAccount,
         float $payAmount,
         string $paymentDate,
         string $particular,
@@ -1793,6 +1820,10 @@ class FinanceBillEntryService extends BaseCachedService
             ->lockForUpdate()
             ->findOrFail($partyLinkedAccount->id);
         $this->assertActiveFinanceAccount($partyLinkedAccount);
+
+        if ($this->isPartyLinkedAccountSameAsNonMainPaymentAccount($partyLinkedAccount, $paymentAccount)) {
+            return;
+        }
 
         $counterpartyLabel = $counterpartyAccount
             ? $this->accountLabel($counterpartyAccount)
