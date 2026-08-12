@@ -116,8 +116,12 @@ class FinanceGrossProfitReportService
                 'jobList.workOrder.client.country',
             ])
             ->whereIn('id', $applicationIds)
+            ->whereRaw("UPPER(application_status) = 'ATS'")
             ->get()
             ->keyBy('id');
+
+        // Only ATS candidates are eligible for this report.
+        $applicationIds = $applications->keys()->values();
 
         // Resolve work_order_id from job_list when application relation is missing.
         $jobListIdsForWo = $expenseRows
@@ -144,6 +148,10 @@ class FinanceGrossProfitReportService
             $expenseGroup = $expensesByApplication->get($applicationId, collect());
             $sale = $saleRows->get($applicationId);
             $application = $applications->get($applicationId);
+
+            if (!$application) {
+                continue;
+            }
 
             $expenses = [];
             foreach ($heads as $head) {
@@ -175,40 +183,39 @@ class FinanceGrossProfitReportService
                 $jobName = $sale->job_title ?: $jobName;
             }
 
-            if ($application) {
-                $passportNo = $passportNo ?: (string) ($application->passport_no ?? '');
-                $jobListId = $jobListId ?: $application->job_list_id;
-                $jobCode = $jobCode ?: (string) ($application->jobList?->job_code ?? '');
-                $jobName = $jobName ?: (string) ($application->jobList?->name ?? '');
-            }
+            $passportNo = $passportNo ?: (string) ($application->passport_no ?? '');
+            $jobListId = $jobListId ?: $application->job_list_id;
+            $jobCode = $jobCode ?: (string) ($application->jobList?->job_code ?? '');
+            $jobName = $jobName ?: (string) ($application->jobList?->name ?? '');
 
             $jobListId = $jobListId ? (int) $jobListId : null;
-            $workOrder = $application?->jobList?->workOrder;
+            $workOrder = $application->jobList?->workOrder;
             $workOrderId = (int) (
                 $workOrder?->id
-                ?? $application?->jobList?->work_order_id
+                ?? $application->jobList?->work_order_id
                 ?? ($jobListId ? ($workOrderIdByJobList[$jobListId] ?? $workOrderIdByJobList[(string) $jobListId] ?? 0) : 0)
             );
             $demandLetter = (string) ($workOrder?->work_order_id ?? '');
             $clientId = $workOrder?->client_id ? (int) $workOrder->client_id : null;
             $clientName = (string) ($workOrder?->client?->user?->name ?? '');
-            $agentId = $application?->agent_id ? (int) $application->agent_id : null;
+            $agentId = $application->agent_id ? (int) $application->agent_id : null;
             $countryId = $workOrder?->client?->country_id
                 ? (int) $workOrder->client->country_id
-                : ($application?->country_id ? (int) $application->country_id : null);
-            $principalId = $application?->jobList?->principal_id
+                : ($application->country_id ? (int) $application->country_id : null);
+            $principalId = $application->jobList?->principal_id
                 ? (int) $application->jobList->principal_id
                 : null;
 
             $rowExpenseTotal = round(array_sum($expenses), 2);
             $salePrice = round((float) ($sale->sale_price ?? 0), 2);
             $collectedAmount = round((float) ($sale->collected_amount ?? 0), 2);
-            $currentProcess = $application?->resolved_current_process
-                ?: $application?->current_process_name
-                ?: 'hiring_list';
+            $currentProcess = $application->resolved_current_process
+                ?: $application->current_process_name
+                ?: 'ATS';
 
-            $isExcludedProcess = in_array(strtolower((string) $currentProcess), ['declined', 'rejected'], true)
-                || in_array(strtolower((string) ($application?->currentProcess?->status ?? '')), ['declined', 'rejected'], true);
+            // Only exclude when the ATS candidate's current process status is rejected/declined.
+            $processStatus = strtolower((string) ($application->currentProcess?->status ?? ''));
+            $isExcludedProcess = in_array($processStatus, ['declined', 'rejected'], true);
 
             $allRows[] = [
                 'application_id' => (int) $applicationId,
