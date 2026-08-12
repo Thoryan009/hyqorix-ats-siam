@@ -354,8 +354,13 @@ import {
 import { formatRequestedByParagraph } from '@/finance/data/expensePaymentData'
 import {
   billAccountCategoryOptions,
+  billPartyPaymentCategories,
   getBillAccountCategoryLabel,
+  getBillPaymentAccountName,
+  getBillPaymentAccountTypeLabel,
+  isBillPartyPaymentCategory,
   mainAccountTypeOptions,
+  mapBillPaymentAccountOption,
   mapPaymentMethodToMainAccountType,
   isDuePaymentMethod,
 } from '@/finance/data/billApprovalAccountData'
@@ -453,26 +458,7 @@ const canSelectPaymentAccount = computed(() => {
 })
 
 function mapPaymentAccountOption(account) {
-  const balance = formatCurrency(account.balance ?? account.current_balance ?? 0)
-
-  if (account.category === ACCOUNT_CATEGORIES.MAIN) {
-    return {
-      id: account.id,
-      name: `${account.account_type} — ${account.account_name} (${account.account_label}) — ${balance}`,
-    }
-  }
-
-  if (account.category === ACCOUNT_CATEGORIES.STAFF) {
-    return {
-      id: account.id,
-      name: `Staff — ${account.staff_code} — ${account.staff_name} — ${balance}`,
-    }
-  }
-
-  return {
-    id: account.id,
-    name: `${account.account_name} — ${balance}`,
-  }
+  return mapBillPaymentAccountOption(account, formatCurrency)
 }
 
 function getFinanceAccount(accountId) {
@@ -499,6 +485,13 @@ const paymentAccountOptions = computed(() => {
   if (form.payment_account_category === 'staff') {
     return financeAccountStore
       .getAccountsByCategory(ACCOUNT_CATEGORIES.STAFF)
+      .filter((account) => account.status === 'Active')
+      .map(mapPaymentAccountOption)
+  }
+
+  if (isBillPartyPaymentCategory(form.payment_account_category)) {
+    return financeAccountStore
+      .getAccountsByCategory(form.payment_account_category)
       .filter((account) => account.status === 'Active')
       .map(mapPaymentAccountOption)
   }
@@ -730,7 +723,10 @@ watch(
 
     form.main_account_type =
       category === 'main' ? mapPaymentMethodToMainAccountType(form.payment_method) : ''
-    form.payment_account_type = category === 'staff' ? 'Staff' : ''
+    form.payment_account_type =
+      category === 'staff' || isBillPartyPaymentCategory(category)
+        ? getBillPaymentAccountTypeLabel(category)
+        : ''
     form.payment_account_id = ''
     form.payment_account_name = ''
   }
@@ -764,10 +760,13 @@ watch(
       return
     }
 
-    if (form.payment_account_category === 'staff') {
+    if (
+      form.payment_account_category === 'staff' ||
+      isBillPartyPaymentCategory(form.payment_account_category)
+    ) {
       const account = getFinanceAccount(accountId)
-      form.payment_account_type = 'Staff'
-      form.payment_account_name = account ? `${account.staff_code} — ${account.staff_name}` : ''
+      form.payment_account_type = getBillPaymentAccountTypeLabel(form.payment_account_category)
+      form.payment_account_name = getBillPaymentAccountName(account, form.payment_account_category)
     }
   }
 )
@@ -831,6 +830,9 @@ async function loadApprovalAccounts() {
   await Promise.all([
     financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.MAIN, true),
     financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.STAFF, true),
+    ...billPartyPaymentCategories.map((category) =>
+      financeAccountStore.fetchAccounts(category, true)
+    ),
     expenseCostAccountsStore.fetchAccounts('direct_cost'),
     expenseCostAccountsStore.fetchAccounts('client_recruitment_cost'),
     expenseCostAccountsStore.fetchAccounts('operating_cost'),
