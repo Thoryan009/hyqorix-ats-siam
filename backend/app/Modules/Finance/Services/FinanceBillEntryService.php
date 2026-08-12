@@ -604,6 +604,23 @@ class FinanceBillEntryService extends BaseCachedService
                             }
                         }
                     }
+
+                    $this->postPartyLinkedAccountApprovalLedgers(
+                        $billEntry,
+                        $expenseAccount,
+                        $paymentAccount,
+                        $billTotal,
+                        $payAmount,
+                        $paymentDate,
+                        $expenseBillParticular,
+                        $voucherNo,
+                        $hasDueRemaining,
+                        $hasCashPayment,
+                        $paymentMethodLabel,
+                        $approvalRemarks,
+                        $remarks,
+                        $typeTransactionId
+                    );
                 }
 
                 if ($paymentAccount) {
@@ -832,17 +849,18 @@ class FinanceBillEntryService extends BaseCachedService
                     // Clear {Head} Payable liability for the settled amount.
                     // Always key off the original due voucher so DRs match the CR
                     // even if the payment form supplies a different voucher_no.
+                    $payableVoucherBase = trim((string) ($billEntry->voucher_no ?? ''));
+                    if ($payableVoucherBase === '') {
+                        $payableVoucherBase = $voucherNo !== '' ? $voucherNo : 'BILL-DUE-'.$billEntry->id;
+                    }
+                    $settleVoucherNo = sprintf(
+                        '%s-P%s',
+                        $payableVoucherBase,
+                        $typeTransactionId ?: now()->timestamp
+                    );
+
                     $expenseHead = $this->resolveExpenseHeadForBill($billEntry, $expenseAccount);
                     if ($expenseHead) {
-                        $payableVoucherBase = trim((string) ($billEntry->voucher_no ?? ''));
-                        if ($payableVoucherBase === '') {
-                            $payableVoucherBase = $voucherNo !== '' ? $voucherNo : 'BILL-DUE-'.$billEntry->id;
-                        }
-                        $settleVoucherNo = sprintf(
-                            '%s-P%s',
-                            $payableVoucherBase,
-                            $typeTransactionId ?: now()->timestamp
-                        );
                         $this->accountService->recordExpensePayableEntry(
                             $expenseHead,
                             $payAmount,
@@ -856,6 +874,19 @@ class FinanceBillEntryService extends BaseCachedService
                             (string) ($billEntry->client_name ?? '')
                         );
                     }
+
+                    $this->postPartyLinkedAccountSettlementLedger(
+                        $billEntry,
+                        $expenseAccount,
+                        $counterpartyAccount,
+                        $payAmount,
+                        $paymentDate,
+                        $ledgerParticular,
+                        $settleVoucherNo,
+                        $paymentMethodLabel,
+                        $ledgerRemarks,
+                        $typeTransactionId
+                    );
                 }
 
                 if ($paymentAccount) {
@@ -1529,7 +1560,10 @@ class FinanceBillEntryService extends BaseCachedService
 
     private function resolveExpenseAccountForBill(FinanceBillEntry $billEntry): ?FinanceAccount
     {
-        $accountId = (int) ($billEntry->linked_account_id ?: $billEntry->expense_cost_account_id ?: 0);
+        $accountId = (int) ($billEntry->expense_cost_account_id ?: 0);
+        if ($accountId <= 0) {
+            $accountId = (int) ($billEntry->linked_account_id ?: 0);
+        }
 
         if ($accountId > 0) {
             $account = FinanceAccount::query()->find($accountId);
@@ -1590,6 +1624,152 @@ class FinanceBillEntryService extends BaseCachedService
             ->where('category', 'vendor')
             ->where('status', 'active')
             ->first();
+    }
+
+    private function resolvePartyLinkedAccountForBill(FinanceBillEntry $billEntry): ?FinanceAccount
+    {
+        $linkedAccountId = (int) ($billEntry->linked_account_id ?? 0);
+        if ($linkedAccountId <= 0) {
+            return null;
+        }
+
+        $expenseCostAccountId = (int) ($billEntry->expense_cost_account_id ?? 0);
+        if ($expenseCostAccountId > 0 && $linkedAccountId === $expenseCostAccountId) {
+            return null;
+        }
+
+        $account = FinanceAccount::query()
+            ->where('id', $linkedAccountId)
+            ->where('status', 'active')
+            ->first();
+
+        if (!$account) {
+            return null;
+        }
+
+        if (in_array((string) $account->category, self::EXPENSE_ACCOUNT_CATEGORIES, true)) {
+            return null;
+        }
+
+        if ((string) $account->category === 'main') {
+            return null;
+        }
+
+        return $account;
+    }
+
+    private function postPartyLinkedAccountApprovalLedgers(
+        FinanceBillEntry $billEntry,
+        ?FinanceAccount $expenseAccount,
+        ?FinanceAccount $paymentAccount,
+        float $billTotal,
+        float $payAmount,
+        string $paymentDate,
+        string $particular,
+        string $voucherNo,
+        bool $hasDueRemaining,
+        bool $hasCashPayment,
+        ?string $paymentMethodLabel,
+        string $approvalRemarks,
+        string $remarks,
+        ?int $typeTransactionId
+    ): void {
+        $partyLinkedAccount = $this->resolvePartyLinkedAccountForBill($billEntry);
+        if (!$partyLinkedAccount) {
+            return;
+        }
+
+        $partyLinkedAccount = FinanceAccount::query()
+            ->lockForUpdate()
+            ->findOrFail($partyLinkedAccount->id);
+        $this->assertActiveFinanceAccount($partyLinkedAccount);
+
+        $counterpartyLabel = $expenseAccount
+            ? $this->accountLabel($expenseAccount)
+            : trim((string) ($billEntry->expense_cost_account_name ?? $billEntry->client_name ?? ''));
+
+        // Party linked ledger mirrors vendor asset pattern: DR charge, CR payment.
+        $this->postBillLedgerEntry(
+            $partyLinkedAccount,
+            $billEntry->id,
+            $billTotal,
+            $paymentDate,
+            $particular,
+            $voucherNo,
+            $counterpartyLabel,
+            $hasDueRemaining ? null : ($hasCashPayment ? $paymentMethodLabel : null),
+            $approvalRemarks ?: $remarks ?: 'Bill approved',
+            $typeTransactionId,
+            false
+        );
+
+        if (!$hasCashPayment) {
+            return;
+        }
+
+        $settleVoucherNo = $voucherNo !== ''
+            ? sprintf('%s-P%s', $voucherNo, $typeTransactionId ?: now()->timestamp)
+            : sprintf('BILL-PAY-%d', $billEntry->id);
+        $paymentCounterparty = $paymentAccount
+            ? $this->accountLabel($paymentAccount)
+            : $counterpartyLabel;
+
+        $this->postBillLedgerEntry(
+            $partyLinkedAccount,
+            $billEntry->id,
+            $payAmount,
+            $paymentDate,
+            $particular,
+            $settleVoucherNo,
+            $paymentCounterparty,
+            $paymentMethodLabel,
+            $approvalRemarks ?: ($hasDueRemaining
+                ? 'Partial bill payment approved'
+                : 'Bill payment approved'),
+            $typeTransactionId,
+            true
+        );
+    }
+
+    private function postPartyLinkedAccountSettlementLedger(
+        FinanceBillEntry $billEntry,
+        ?FinanceAccount $expenseAccount,
+        ?FinanceAccount $counterpartyAccount,
+        float $payAmount,
+        string $paymentDate,
+        string $particular,
+        string $settleVoucherNo,
+        ?string $paymentMethodLabel,
+        string $remarks,
+        ?int $typeTransactionId
+    ): void {
+        $partyLinkedAccount = $this->resolvePartyLinkedAccountForBill($billEntry);
+        if (!$partyLinkedAccount) {
+            return;
+        }
+
+        $partyLinkedAccount = FinanceAccount::query()
+            ->lockForUpdate()
+            ->findOrFail($partyLinkedAccount->id);
+        $this->assertActiveFinanceAccount($partyLinkedAccount);
+
+        $counterpartyLabel = $counterpartyAccount
+            ? $this->accountLabel($counterpartyAccount)
+            : ($expenseAccount ? $this->accountLabel($expenseAccount) : '');
+
+        $this->postBillLedgerEntry(
+            $partyLinkedAccount,
+            $billEntry->id,
+            $payAmount,
+            $paymentDate,
+            $particular,
+            $settleVoucherNo,
+            $counterpartyLabel,
+            $paymentMethodLabel,
+            $remarks,
+            $typeTransactionId,
+            true
+        );
     }
 
     private function resolveExpenseHeadForBill(
