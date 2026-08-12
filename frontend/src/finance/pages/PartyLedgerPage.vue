@@ -90,7 +90,7 @@
                 </td>
               </tr>
               <tr
-                v-for="row in filteredRows"
+                v-for="row in paginatedRows"
                 :key="row.id"
                 class="border-b border-gray-100 hover:bg-gray-50"
               >
@@ -131,6 +131,18 @@
             </tbody>
           </table>
         </div>
+
+        <div v-if="filteredRows.length" class="mt-3 print:hidden">
+          <BasePagination
+            :total="filteredRows.length"
+            :showing="showing"
+            :links="links"
+            :per-page="perPage"
+            :per-page-options="perPageOptions"
+            @update:page="setPage"
+            @update:perPage="setPerPage"
+          />
+        </div>
       </div>
 
       <div class="mt-4 print:hidden">
@@ -162,6 +174,8 @@ import {
   formatLedgerCreditAmount,
   isApplicantLedgerAmountDebit,
 } from '@/finance/utils/partyLedgerCsvUtils'
+import BasePagination from '@/shared/components/base/BasePagination.vue'
+import { useClientLedgerPagination } from '@/finance/composables/useClientLedgerPagination'
 
 const props = defineProps({
   partyType: {
@@ -267,6 +281,21 @@ watch(accountId, (id) => {
 const filteredRows = computed(() =>
   filterLedgerByDate(ledgerRows.value, fromDate.value, toDate.value)
 )
+
+const {
+  perPage,
+  perPageOptions,
+  showing,
+  links,
+  paginatedRows,
+  setPage,
+  setPerPage,
+  resetPage,
+} = useClientLedgerPagination(filteredRows)
+
+watch([fromDate, toDate], () => {
+  resetPage()
+})
 
 function amountColumnClass(key) {
   if (['dr_amount', 'discount', 'cr_amount', 'balance'].includes(key)) {
