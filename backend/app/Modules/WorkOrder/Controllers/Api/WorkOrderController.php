@@ -40,6 +40,8 @@ class WorkOrderController extends Controller
         $filters['employee_id'] = $request->get('employee_id', null);
         $filters['has_jobs'] = $request->get('has_jobs');
         $filters['include_jobs_count'] = $request->get('include_jobs_count');
+        $filters['has_applications'] = $request->get('has_applications');
+        $filters['include_applications_count'] = $request->get('include_applications_count');
         $filters['with'] = ['client.user', 'employee.user'];
         $data = $this->service->getPaginatedDataWithCache($filters);
 

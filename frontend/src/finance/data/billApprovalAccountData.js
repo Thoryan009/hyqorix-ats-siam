@@ -100,3 +100,18 @@ export function getBillPaymentAccountName(account, category) {
 export function getBillAccountCategoryLabel(category) {
   return billAccountCategoryOptions.find((option) => option.id === category)?.name ?? category
 }
+
+export function requiresAdvanceAdjustmentAsset(category) {
+  return Boolean(category && category !== 'main')
+}
+
+export function mapAdvanceAdjustmentAssetAccountOption(account, formatCurrency) {
+  const balance = formatCurrency(account.balance ?? account.current_balance ?? 0)
+  const name = account.account_name ?? account.account_label ?? 'Asset'
+  const code = account.code ? `${account.code} — ` : ''
+
+  return {
+    id: account.id,
+    name: `${code}${name} — ${balance}`,
+  }
+}

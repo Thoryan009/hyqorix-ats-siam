@@ -233,7 +233,7 @@
                     <BaseSelect
                       id="txn_from_category"
                       v-model="form.from_account_category"
-                      :options="accountCategoryOptions"
+                      :options="fromAccountCategoryOptions"
                       placeholder="Select category"
                       :required="true"
                     />
@@ -303,7 +303,7 @@
                     <BaseSelect
                       id="txn_to_category"
                       v-model="form.to_account_category"
-                      :options="accountCategoryOptions"
+                      :options="toAccountCategoryOptions"
                       placeholder="Select category"
                       :required="true"
                     />
@@ -475,6 +475,20 @@ const paymentModes = [
 ]
 const accountCategoryOptions = accountTransactionCategoryOptions
 
+const fromAccountCategoryOptions = computed(() => {
+  if (hasExtraAccountSelected.value && form.transaction_direction === 'receive') {
+    return accountCategoryOptions.filter((option) => option.id !== 'main')
+  }
+  return accountCategoryOptions
+})
+
+const toAccountCategoryOptions = computed(() => {
+  if (hasExtraAccountSelected.value && form.transaction_direction === 'payment') {
+    return accountCategoryOptions.filter((option) => option.id !== 'main')
+  }
+  return accountCategoryOptions
+})
+
 const isBillsToPayMode = computed(
   () => !props.transactionOnly && activePaymentMode.value === BILLS_TO_PAY_MODE
 )
@@ -590,6 +604,47 @@ watch(
     }
   }
 )
+
+function syncAccountCategoriesForDirection() {
+  if (!hasExtraAccountSelected.value) return
+
+  if (
+    form.transaction_direction === 'receive' &&
+    form.from_account_category === 'main'
+  ) {
+    form.from_account_category = getDefaultFromCategory(form.transaction_type)
+    if (form.from_account_category === 'main') {
+      form.from_account_category = 'staff'
+    }
+    form.from_main_account_type = form.from_account_category === 'main' ? 'Cash' : ''
+    form.from_account_id = ''
+  }
+
+  if (
+    form.transaction_direction === 'payment' &&
+    form.to_account_category === 'main'
+  ) {
+    form.to_account_category = getDefaultToCategory(form.transaction_type)
+    if (form.to_account_category === 'main') {
+      form.to_account_category = 'staff'
+    }
+    form.to_main_account_type = form.to_account_category === 'main' ? 'Cash' : ''
+    form.to_account_id = ''
+  }
+}
+
+watch(
+  () => form.transaction_direction,
+  () => {
+    syncAccountCategoriesForDirection()
+  }
+)
+
+watch(hasExtraAccountSelected, (selected) => {
+  if (selected) {
+    syncAccountCategoriesForDirection()
+  }
+})
 
 const fromSectionLabel = computed(() => {
   if (form.transaction_type === 'loan_repay' || form.transaction_type === 'advanced_repay') {

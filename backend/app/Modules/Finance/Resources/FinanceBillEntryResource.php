@@ -24,6 +24,8 @@ class FinanceBillEntryResource extends JsonResource
             'asset_account_name' => $this->assetAccount?->account_name ?? '',
             'vendor_account_id' => $this->vendor_account_id,
             'vendor_account_name' => $this->vendorAccount?->account_name ?? '',
+            'advance_adjustment_asset_account_id' => $this->advance_adjustment_asset_account_id,
+            'advance_adjustment_asset_account_name' => $this->advanceAdjustmentAssetAccount?->account_name ?? '',
             'amount' => (float) $this->amount,
             'paid_amount' => (float) ($this->paid_amount ?? 0),
             'payable_remaining' => round(max((float) $this->amount - (float) ($this->paid_amount ?? 0), 0), 2),

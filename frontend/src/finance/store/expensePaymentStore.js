@@ -1094,7 +1094,67 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
       }
     }
 
+    const partyCategories = [
+      ACCOUNT_CATEGORIES.CLIENT,
+      ACCOUNT_CATEGORIES.VENDOR,
+      ACCOUNT_CATEGORIES.PRINCIPAL,
+    ]
+
+    if (partyCategories.includes(category)) {
+      if (account.category !== category) {
+        return { ok: false, message: 'Selected account does not match the chosen account category.' }
+      }
+
+      const config = getPartyConfig(category)
+      const code = config ? account[config.codeKey] ?? account.code ?? '' : account.code ?? ''
+      const name = config ? account[config.nameKey] ?? account.account_name ?? '' : account.account_name ?? ''
+
+      return {
+        ok: true,
+        data: {
+          payment_account_category: category,
+          payment_account_type: config?.partyLabel ?? category,
+          payment_account_id: accountId,
+          payment_account_name: `${code} — ${name}`,
+        },
+      }
+    }
+
     return { ok: false, message: 'Please select a valid account category.' }
+  }
+
+  function resolveAdvanceAdjustmentAsset(payload) {
+    const financeAccountStore = useFinanceAccountStore()
+    const category = payload.payment_account_category
+
+    if (!category || category === 'main') {
+      return { ok: true, data: {} }
+    }
+
+    const assetId = Number(payload.advance_adjustment_asset_account_id)
+    if (!assetId) {
+      return { ok: false, message: 'Please select an asset account for advanced adjustment.' }
+    }
+
+    const account = financeAccountStore.getAccount(assetId)
+    if (!account || account.category !== ACCOUNT_CATEGORIES.ASSET || account.status !== 'Active') {
+      return { ok: false, message: 'Selected asset account was not found.' }
+    }
+
+    if (account.link_to_purchase) {
+      return {
+        ok: false,
+        message: 'Please select an asset account that is not linked to purchase.',
+      }
+    }
+
+    return {
+      ok: true,
+      data: {
+        advance_adjustment_asset_account_id: assetId,
+        advance_adjustment_asset_account_name: account.account_name ?? '',
+      },
+    }
   }
 
   async function refreshAccountsAfterBillAction(entry) {
@@ -1128,6 +1188,16 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
       }
       if (account?.category) categories.add(account.category)
       accountLedgerStore.invalidateAccountLedger(paymentAccountId)
+    }
+
+    const advanceAssetAccountId = Number(entry.advance_adjustment_asset_account_id || 0)
+    if (advanceAssetAccountId) {
+      let account = financeAccountStore.getAccount(advanceAssetAccountId)
+      if (!account) {
+        account = await financeAccountStore.fetchAccountById(advanceAssetAccountId)
+      }
+      if (account?.category) categories.add(account.category)
+      accountLedgerStore.invalidateAccountLedger(advanceAssetAccountId)
     }
 
     if (!categories.size) return
@@ -1270,6 +1340,15 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
         return accountResult
       }
       accountData = accountResult.data
+
+      const assetResult = resolveAdvanceAdjustmentAsset({
+        ...payload,
+        ...accountData,
+      })
+      if (!assetResult.ok) {
+        return assetResult
+      }
+      accountData = { ...accountData, ...assetResult.data }
     } else {
       accountData = {
         payment_account_category: '',
@@ -1390,6 +1469,15 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
         return accountResult
       }
       accountData = accountResult.data
+
+      const assetResult = resolveAdvanceAdjustmentAsset({
+        ...payload,
+        ...accountData,
+      })
+      if (!assetResult.ok) {
+        return assetResult
+      }
+      accountData = { ...accountData, ...assetResult.data }
     }
 
     const payAmount = Number(payload.pay_amount ?? payload.amount)

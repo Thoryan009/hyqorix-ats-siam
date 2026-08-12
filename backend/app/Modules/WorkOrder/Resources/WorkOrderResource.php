@@ -25,6 +25,7 @@ class WorkOrderResource extends JsonResource
             'client_email' => $this->client->user->email ?? null,
             'client_phone' => $this->client->user->phone ?? null,
             'jobs_count' => (int) ($this->jobs_count ?? $this->jobLists?->count() ?? 0),
+            'applications_count' => (int) ($this->applications_count ?? 0),
             'work_order_url' => $this->work_order_url,
             'visa_issue_number' => $this->visa_issue_number,
             'sponsor_id' => $this->sponsor_id,

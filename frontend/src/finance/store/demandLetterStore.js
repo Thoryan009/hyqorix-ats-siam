@@ -22,15 +22,15 @@ export const useDemandLetterStore = defineStore('financeDemandLetter', () => {
 
     try {
       const { data, error } = await fetchWorkOrders(1, 500, {
-        has_jobs: 1,
-        include_jobs_count: 1,
+        has_applications: 1,
+        include_applications_count: 1,
       })
       if (error) throw error
 
       demandLetters.value = sortDemandLettersAlphabetically(
         extractPaginatedRows(data)
           .map(mapDemandLetterFromApi)
-          .filter((item) => item.jobs_count > 0)
+          .filter((item) => item.applications_count > 0)
       )
       isLoadedDemandLetters.value = true
     } catch {

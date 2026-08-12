@@ -27,6 +27,7 @@ class FinanceBillEntryUpdateRequest extends FormRequest
             'payment_account_type' => ['nullable', 'string', 'max:100'],
             'payment_account_id' => ['nullable', 'integer', 'exists:finance_accounts,id'],
             'payment_account_name' => ['nullable', 'string', 'max:255'],
+            'advance_adjustment_asset_account_id' => ['nullable', 'integer', 'exists:finance_accounts,id'],
             'approved_by' => ['nullable', 'string', 'max:255'],
             'manual_approval_manager_id' => ['nullable', 'integer', 'exists:employees,id'],
             'manual_approval_path' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:4096'],

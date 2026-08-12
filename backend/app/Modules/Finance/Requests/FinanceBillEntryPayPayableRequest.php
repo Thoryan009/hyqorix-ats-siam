@@ -39,6 +39,16 @@ class FinanceBillEntryPayPayableRequest extends FormRequest
                 'exists:finance_accounts,id',
             ],
             'payment_account_name' => ['nullable', 'string', 'max:255'],
+            'advance_adjustment_asset_account_id' => [
+                Rule::requiredIf(
+                    !$isIncomeLink
+                    && strtolower((string) $this->input('payment_account_category', '')) !== ''
+                    && strtolower((string) $this->input('payment_account_category', '')) !== 'main'
+                ),
+                'nullable',
+                'integer',
+                'exists:finance_accounts,id',
+            ],
             'approved_by' => ['nullable', 'string', 'max:255'],
         ];
     }

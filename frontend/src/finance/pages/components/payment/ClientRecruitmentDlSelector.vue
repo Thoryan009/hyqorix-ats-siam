@@ -27,7 +27,7 @@
       v-if="!demandLetterStore.isLoadingDemandLetters && !demandLetterOptions.length"
       class="rounded-lg border border-dashed border-violet-200 bg-white px-4 py-5 text-center text-sm text-gray-500"
     >
-      No demand letters with jobs found.
+      No demand letters with applications found.
     </div>
 
     <div
@@ -41,11 +41,11 @@
         </div>
         <div class="flex flex-wrap gap-2">
           <span
-            v-if="selectedDemandLetter.jobs_count"
+            v-if="selectedDemandLetter.applications_count"
             class="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700"
           >
-            {{ selectedDemandLetter.jobs_count }}
-            {{ selectedDemandLetter.jobs_count === 1 ? 'Job' : 'Jobs' }}
+            {{ selectedDemandLetter.applications_count }}
+            {{ selectedDemandLetter.applications_count === 1 ? 'Application' : 'Applications' }}
           </span>
           <span
             v-if="selectedDemandLetter.country"

@@ -21,6 +21,8 @@ class WorkOrderRepository extends BaseRepository
         $this->applyEmployeeFilter($query, $filters['employee_id'] ?? null);
         $this->applyHasJobsFilter($query, $filters['has_jobs'] ?? null);
         $this->applyJobsCount($query, $filters['include_jobs_count'] ?? null);
+        $this->applyHasApplicationsFilter($query, $filters['has_applications'] ?? null);
+        $this->applyApplicationsCount($query, $filters['include_applications_count'] ?? null);
         $this->applyDateFilter($query, $filters);
     }
 
@@ -82,6 +84,25 @@ class WorkOrderRepository extends BaseRepository
         }
 
         $query->withCount('jobLists as jobs_count')
+            ->with(['client.country', 'client.user']);
+    }
+
+    protected function applyHasApplicationsFilter(Builder $query, mixed $value): void
+    {
+        if (!$value) {
+            return;
+        }
+
+        $query->whereHas('applications');
+    }
+
+    protected function applyApplicationsCount(Builder $query, mixed $value): void
+    {
+        if (!$value) {
+            return;
+        }
+
+        $query->withCount('applications as applications_count')
             ->with(['client.country', 'client.user']);
     }
 

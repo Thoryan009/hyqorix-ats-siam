@@ -5,6 +5,7 @@ export function mapDemandLetterFromApi(row) {
     client_name: row.client_name ?? row.client ?? '',
     country: row.country ?? '',
     jobs_count: Number(row.jobs_count) || 0,
+    applications_count: Number(row.applications_count) || 0,
     status: 'Active',
   }
 }
@@ -15,11 +16,11 @@ export function sortDemandLettersAlphabetically(demandLetters = []) {
   )
 }
 
-function formatJobsCount(count) {
+function formatApplicationsCount(count) {
   const total = Number(count) || 0
   if (total <= 0) return ''
 
-  return ` · ${total} ${total === 1 ? 'Job' : 'Jobs'}`
+  return ` · ${total} ${total === 1 ? 'Application' : 'Applications'}`
 }
 
 export function formatDemandLetterLabel(demandLetter) {
@@ -28,10 +29,10 @@ export function formatDemandLetterLabel(demandLetter) {
 }
 
 export function formatDemandLetterSelectOption(demandLetter) {
-  const jobsSuffix = formatJobsCount(demandLetter.jobs_count)
+  const applicationsSuffix = formatApplicationsCount(demandLetter.applications_count)
 
   return {
     id: demandLetter.id,
-    name: `${demandLetter.dl_no} (${demandLetter.client_name})${jobsSuffix}`,
+    name: `${demandLetter.dl_no} (${demandLetter.client_name})${applicationsSuffix}`,
   }
 }

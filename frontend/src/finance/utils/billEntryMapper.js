@@ -128,6 +128,8 @@ export function buildPayableBillPaymentPayload(payload) {
     payment_account_type: payload.payment_account_type || '',
     payment_account_id: payload.payment_account_id || null,
     payment_account_name: payload.payment_account_name || '',
+    advance_adjustment_asset_account_id: payload.advance_adjustment_asset_account_id || null,
+    advance_adjustment_asset_account_name: payload.advance_adjustment_asset_account_name || '',
     approved_by: payload.approved_by?.trim() || 'Accountant',
   }
 }
@@ -151,6 +153,8 @@ export function buildBillEntryUpdatePayload(payload) {
     payment_account_type: payload.payment_account_type || '',
     payment_account_id: payload.payment_account_id || null,
     payment_account_name: payload.payment_account_name || '',
+    advance_adjustment_asset_account_id: payload.advance_adjustment_asset_account_id || null,
+    advance_adjustment_asset_account_name: payload.advance_adjustment_asset_account_name || '',
     approved_by: payload.approved_by?.trim() || 'Accountant',
   }
 }

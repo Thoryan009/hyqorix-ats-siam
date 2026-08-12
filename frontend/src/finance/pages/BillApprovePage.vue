@@ -528,6 +528,30 @@
                 </p>
               </div>
 
+              <div
+                v-if="showAdvanceAdjustmentAssetField"
+                class="space-y-1 md:col-span-2"
+              >
+                <BaseLabel for="pay_advance_asset_account_id">Asset Account</BaseLabel>
+                <BaseSelect
+                  v-if="!isReadonly"
+                  id="pay_advance_asset_account_id"
+                  v-model="form.advance_adjustment_asset_account_id"
+                  :options="advanceAdjustmentAssetOptions"
+                  placeholder="Select asset account"
+                  :required="true"
+                />
+                <p
+                  v-else
+                  class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800"
+                >
+                  {{ form.advance_adjustment_asset_account_name || '—' }}
+                </p>
+                <p v-if="!isReadonly" class="text-[11px] text-slate-500">
+                  Advanced adjustment — posts CR on the selected asset account (not linked to purchase).
+                </p>
+              </div>
+
               <div class="space-y-1 md:col-span-2">
                 <BaseLabel for="pay_payment_account_id">Payment Account</BaseLabel>
                 <BaseSelect
@@ -751,7 +775,9 @@ import {
   getBillPaymentAccountTypeLabel,
   isBillPartyPaymentCategory,
   isDuePaymentMethod,
+  mapAdvanceAdjustmentAssetAccountOption,
   mapBillPaymentAccountOption,
+  requiresAdvanceAdjustmentAsset,
 } from '@/finance/data/billApprovalAccountData'
 import { paymentMethods } from '@/finance/data/paymentData'
 import { formatCurrency, getBillBatchKey, getBillBatchLabel } from '@/finance/utils/billUtils'
@@ -813,6 +839,8 @@ const form = reactive({
   payment_account_type: '',
   payment_account_id: '',
   payment_account_name: '',
+  advance_adjustment_asset_account_id: '',
+  advance_adjustment_asset_account_name: '',
   expense_cost_type: '',
   expense_cost_account_id: '',
   expense_cost_account_name: '',
@@ -948,6 +976,19 @@ const accountCategoryLabel = computed(() =>
 )
 
 const canSelectPaymentAccount = computed(() => Boolean(form.payment_account_category))
+
+const showAdvanceAdjustmentAssetField = computed(
+  () =>
+    showPaymentAccountFields.value &&
+    requiresAdvanceAdjustmentAsset(form.payment_account_category)
+)
+
+const advanceAdjustmentAssetOptions = computed(() =>
+  financeAccountStore
+    .getAccountsByCategory(ACCOUNT_CATEGORIES.ASSET)
+    .filter((account) => account.status === 'Active' && !account.link_to_purchase)
+    .map((account) => mapAdvanceAdjustmentAssetAccountOption(account, formatCurrency))
+)
 
 function mapPaymentAccountOption(account) {
   return mapBillPaymentAccountOption(account, formatCurrency)
@@ -1244,6 +1285,10 @@ function populateForm(bill) {
     payment_account_type: bill.payment_account_type || '',
     payment_account_id: bill.payment_account_id ? String(bill.payment_account_id) : '',
     payment_account_name: bill.payment_account_name || '',
+    advance_adjustment_asset_account_id: bill.advance_adjustment_asset_account_id
+      ? String(bill.advance_adjustment_asset_account_id)
+      : '',
+    advance_adjustment_asset_account_name: bill.advance_adjustment_asset_account_name || '',
     expense_cost_type: bill.expense_cost_type || '',
     expense_cost_account_id: bill.expense_cost_account_id ?? '',
     expense_cost_account_name: bill.expense_cost_account_name || '',
@@ -1529,10 +1574,14 @@ watch(
     if (category === 'staff' || isBillPartyPaymentCategory(category)) {
       form.main_account_type = ''
       form.payment_account_type = getBillPaymentAccountTypeLabel(category)
+      form.advance_adjustment_asset_account_id = ''
+      form.advance_adjustment_asset_account_name = ''
       return
     }
 
     if (category === 'main') {
+      form.advance_adjustment_asset_account_id = ''
+      form.advance_adjustment_asset_account_name = ''
       // Bills To Pay: filter Payment Account by Cash/Bank from payment method.
       // Bills Payable / batch: leave type empty so all main accounts are listed.
       if (!isPayableSettlementMode.value && !isBatchPayMode.value) {
@@ -1597,6 +1646,30 @@ watch(
   }
 )
 
+watch(
+  () => form.advance_adjustment_asset_account_id,
+  (accountId) => {
+    if (!accountId) {
+      form.advance_adjustment_asset_account_name = ''
+      return
+    }
+
+    const account = getFinanceAccount(accountId)
+    form.advance_adjustment_asset_account_name = account?.account_name ?? ''
+  }
+)
+
+async function autoSelectFirstAdvanceAdjustmentAsset() {
+  if (isReadonly.value) return
+  if (!showAdvanceAdjustmentAssetField.value) return
+  if (form.advance_adjustment_asset_account_id) return
+
+  const options = advanceAdjustmentAssetOptions.value
+  if (!options.length) return
+
+  form.advance_adjustment_asset_account_id = String(options[0].id)
+}
+
 async function autoSelectFirstPaymentAccount() {
   if (isReadonly.value) return
   if (!showPaymentAccountFields.value) return
@@ -1613,13 +1686,16 @@ async function autoSelectFirstPaymentAccount() {
 watch(
   () => [
     showPaymentAccountFields.value,
+    showAdvanceAdjustmentAssetField.value,
     form.payment_account_category,
     form.main_account_type,
     paymentAccountOptions.value.length,
+    advanceAdjustmentAssetOptions.value.length,
     isReadonly.value,
   ],
   async () => {
     await nextTick()
+    await autoSelectFirstAdvanceAdjustmentAsset()
     await autoSelectFirstPaymentAccount()
   },
   { immediate: true }
@@ -1633,6 +1709,7 @@ async function loadPage() {
     paymentStore.fetchBillSummary(),
     financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.MAIN, true),
     financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.STAFF, true),
+    financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.ASSET, true),
     ...billPartyPaymentCategories.map((category) =>
       financeAccountStore.fetchAccounts(category, true)
     ),

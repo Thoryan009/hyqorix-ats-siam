@@ -640,6 +640,25 @@ class FinanceBillEntryService extends BaseCachedService
                         $typeTransactionId,
                         false
                     );
+
+                    $advanceAssetAccount = $this->postAdvanceAdjustmentAssetLedgerIfRequired(
+                        $billEntry,
+                        $data,
+                        (string) ($paymentFields['payment_account_category'] ?? ''),
+                        $paymentAccount,
+                        $payAmount,
+                        $paymentDate,
+                        $voucherNo,
+                        $particular !== '' ? $particular : $expenseBillParticular,
+                        $paymentMethodLabel,
+                        $typeTransactionId
+                    );
+
+                    if ($advanceAssetAccount) {
+                        $billEntry->update([
+                            'advance_adjustment_asset_account_id' => $advanceAssetAccount->id,
+                        ]);
+                    }
                 }
 
                 $this->accountService->flushCache();
@@ -811,11 +830,12 @@ class FinanceBillEntryService extends BaseCachedService
                     $paymentFields
                 );
                 $typeTransactionId = $typeTransaction?->id;
+                $advanceAssetAccountId = null;
+                $settleVoucherNo = $voucherNo !== ''
+                    ? sprintf('%s-P%s', $voucherNo, $typeTransactionId ?: now()->timestamp)
+                    : sprintf('BILL-PAY-%d', $billEntry->id);
 
                 if ($isAssetPurchase) {
-                    $settleVoucherNo = $voucherNo !== ''
-                        ? sprintf('%s-P%s', $voucherNo, $typeTransactionId ?: now()->timestamp)
-                        : sprintf('BILL-PAY-%d', $billEntry->id);
                     // Vendor ledger: CR payment when settling due payable.
                     $this->postBillLedgerEntry(
                         $vendorAccount,
@@ -904,6 +924,23 @@ class FinanceBillEntryService extends BaseCachedService
                         $typeTransactionId,
                         false
                     );
+
+                    $advanceAssetAccount = $this->postAdvanceAdjustmentAssetLedgerIfRequired(
+                        $billEntry,
+                        $data,
+                        (string) ($paymentFields['payment_account_category'] ?? ''),
+                        $paymentAccount,
+                        $payAmount,
+                        $paymentDate,
+                        $settleVoucherNo,
+                        $ledgerParticular,
+                        $paymentMethodLabel,
+                        $typeTransactionId
+                    );
+
+                    if ($advanceAssetAccount) {
+                        $advanceAssetAccountId = $advanceAssetAccount->id;
+                    }
                 }
 
                 if ($incomeAccount) {
@@ -927,6 +964,10 @@ class FinanceBillEntryService extends BaseCachedService
                     'paid_amount' => round($alreadyPaid + $payAmount, 2),
                     'approval_remarks' => $approvalRemarks,
                 ];
+
+                if ($advanceAssetAccountId) {
+                    $updateData['advance_adjustment_asset_account_id'] = $advanceAssetAccountId;
+                }
 
                 if ($isFullyPaid) {
                     // Keep the original due voucher_no so Trial Balance / backfill
@@ -1770,6 +1811,130 @@ class FinanceBillEntryService extends BaseCachedService
             $typeTransactionId,
             true
         );
+    }
+
+    private function requiresAdvanceAdjustmentAsset(?string $paymentAccountCategory): bool
+    {
+        $category = strtolower(trim((string) ($paymentAccountCategory ?? '')));
+
+        return $category !== '' && $category !== 'main';
+    }
+
+    private function resolveAdvanceAdjustmentAssetAccount(
+        array $data,
+        ?string $paymentAccountCategory
+    ): ?FinanceAccount {
+        if (!$this->requiresAdvanceAdjustmentAsset($paymentAccountCategory)) {
+            return null;
+        }
+
+        $assetAccountId = (int) ($data['advance_adjustment_asset_account_id'] ?? 0);
+        if ($assetAccountId <= 0) {
+            throw ValidationException::withMessages([
+                'advance_adjustment_asset_account_id' => ['Please select an asset account for advanced adjustment.'],
+            ]);
+        }
+
+        $account = FinanceAccount::query()
+            ->where('id', $assetAccountId)
+            ->where('category', 'asset')
+            ->where('link_to_purchase', false)
+            ->where('status', 'active')
+            ->first();
+
+        if (!$account) {
+            throw ValidationException::withMessages([
+                'advance_adjustment_asset_account_id' => ['Please select a valid asset account that is not linked to purchase.'],
+            ]);
+        }
+
+        return $account;
+    }
+
+    private function formatAdvanceAdjustmentParticular(
+        FinanceBillEntry $billEntry,
+        FinanceAccount $paymentAccount,
+        FinanceAccount $assetAccount,
+        string $billParticular,
+        string $voucherNo
+    ): string {
+        $paymentLabel = $this->accountLabel($paymentAccount);
+        $assetName = trim((string) $assetAccount->account_name);
+        $headName = trim((string) ($billEntry->expenseHead?->name ?? ''));
+        $voucher = trim($voucherNo) !== '' ? trim($voucherNo) : ('BILL-'.$billEntry->id);
+        $billParticular = trim($billParticular);
+
+        $segments = [
+            'Advanced Adjustment',
+            "via {$paymentLabel}",
+        ];
+
+        if ($assetName !== '') {
+            $segments[] = "on {$assetName}";
+        }
+
+        if ($headName !== '') {
+            $segments[] = "for {$headName}";
+        }
+
+        if ($billParticular !== '') {
+            $segments[] = "— {$billParticular}";
+        }
+
+        $segments[] = "({$voucher})";
+
+        return implode(' ', $segments);
+    }
+
+    private function postAdvanceAdjustmentAssetLedgerIfRequired(
+        FinanceBillEntry $billEntry,
+        array $data,
+        string $paymentAccountCategory,
+        FinanceAccount $paymentAccount,
+        float $amount,
+        string $paymentDate,
+        string $voucherNo,
+        string $billParticular,
+        ?string $paymentMethodLabel,
+        ?int $typeTransactionId
+    ): ?FinanceAccount {
+        if ($amount <= 0 || !$this->requiresAdvanceAdjustmentAsset($paymentAccountCategory)) {
+            return null;
+        }
+
+        $assetAccount = $this->resolveAdvanceAdjustmentAssetAccount($data, $paymentAccountCategory);
+        if (!$assetAccount) {
+            return null;
+        }
+
+        $assetAccount = FinanceAccount::query()
+            ->lockForUpdate()
+            ->findOrFail($assetAccount->id);
+        $this->assertActiveFinanceAccount($assetAccount);
+
+        $particular = $this->formatAdvanceAdjustmentParticular(
+            $billEntry,
+            $paymentAccount,
+            $assetAccount,
+            $billParticular,
+            $voucherNo
+        );
+
+        $this->postBillLedgerEntry(
+            $assetAccount,
+            $billEntry->id,
+            $amount,
+            $paymentDate,
+            $particular,
+            $voucherNo,
+            $this->accountLabel($paymentAccount),
+            $paymentMethodLabel,
+            $particular,
+            $typeTransactionId,
+            true
+        );
+
+        return $assetAccount;
     }
 
     private function resolveExpenseHeadForBill(
