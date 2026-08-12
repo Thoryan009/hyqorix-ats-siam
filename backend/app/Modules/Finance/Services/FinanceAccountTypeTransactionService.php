@@ -216,13 +216,13 @@ class FinanceAccountTypeTransactionService extends BaseCachedService
                 $fromDelta = $signed;
                 $toDelta = $signed;
             } elseif ($extraCategory === 'asset' || $extraCategory === 'liabilities') {
-                // Payment: cash/from DR (funds out), party/to CR (payment), asset DR / liability DR.
-                // Receive: from CR, cash/to CR, asset/liability CR.
+                // Payment: cash/from DR (funds out), party/to CR, asset/liability DR.
+                // Receive: pay-from DR, cash/to CR, asset/liability CR.
                 if ($direction === 'payment') {
                     $fromDelta = -$amount;
                     $toDelta = $amount;
                 } elseif ($direction === 'receive') {
-                    $fromDelta = $amount;
+                    $fromDelta = -$amount;
                     $toDelta = $amount;
                 } else {
                     ['from_delta' => $fromDelta, 'to_delta' => $toDelta] = $this->resolveTransferEffects(
