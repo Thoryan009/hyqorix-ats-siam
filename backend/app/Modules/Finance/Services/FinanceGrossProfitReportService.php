@@ -98,16 +98,10 @@ class FinanceGrossProfitReportService
             ->get()
             ->keyBy('application_id');
 
-        $applicationIds = $expenseRows
-            ->pluck('application_id')
-            ->merge($saleRows->keys())
-            ->unique()
-            ->filter()
-            ->values();
-
         $expensesByApplication = $expenseRows->groupBy('application_id');
 
-        $applications = Application::query()
+        // Include every ATS candidate — direct expense / sale is optional.
+        $applicationQuery = Application::query()
             ->with([
                 'currentProcess.process',
                 'agent',
@@ -115,19 +109,51 @@ class FinanceGrossProfitReportService
                 'jobList.workOrder.client.user',
                 'jobList.workOrder.client.country',
             ])
-            ->whereIn('id', $applicationIds)
-            ->whereRaw("UPPER(application_status) = 'ATS'")
-            ->get()
-            ->keyBy('id');
+            ->whereRaw("UPPER(application_status) = 'ATS'");
 
-        // Only ATS candidates are eligible for this report.
+        if ($jobListIds !== []) {
+            $applicationQuery->whereIn('job_list_id', $jobListIds);
+        }
+
+        if ($agentIds !== []) {
+            $applicationQuery->whereIn('agent_id', $agentIds);
+        }
+
+        if ($workOrderIdsFilter !== []) {
+            $applicationQuery->whereHas('jobList', function ($q) use ($workOrderIdsFilter) {
+                $q->whereIn('work_order_id', $workOrderIdsFilter);
+            });
+        }
+
+        if ($clientIds !== []) {
+            $applicationQuery->whereHas('jobList.workOrder', function ($q) use ($clientIds) {
+                $q->whereIn('client_id', $clientIds);
+            });
+        }
+
+        if ($countryIds !== []) {
+            $applicationQuery->where(function ($q) use ($countryIds) {
+                $q->whereIn('country_id', $countryIds)
+                    ->orWhereHas('jobList.workOrder.client', function ($clientQuery) use ($countryIds) {
+                        $clientQuery->whereIn('country_id', $countryIds);
+                    });
+            });
+        }
+
+        if ($principalIds !== []) {
+            $applicationQuery->whereHas('jobList', function ($q) use ($principalIds) {
+                $q->whereIn('principal_id', $principalIds);
+            });
+        }
+
+        $applications = $applicationQuery->get()->keyBy('id');
         $applicationIds = $applications->keys()->values();
 
         // Resolve work_order_id from job_list when application relation is missing.
-        $jobListIdsForWo = $expenseRows
+        $jobListIdsForWo = $applications
             ->pluck('job_list_id')
+            ->merge($expenseRows->pluck('job_list_id'))
             ->merge($saleRows->pluck('job_list_id'))
-            ->merge($applications->pluck('job_list_id'))
             ->map(fn($id) => (int) $id)
             ->filter()
             ->unique()
@@ -158,11 +184,11 @@ class FinanceGrossProfitReportService
                 $expenses[(string) $head->id] = 0.0;
             }
 
-            $candidateName = '';
-            $passportNo = '';
-            $jobListId = null;
-            $jobCode = '';
-            $jobName = '';
+            $candidateName = trim(($application->sur_name ?? '') . ' ' . ($application->given_name ?? ''));
+            $passportNo = (string) ($application->passport_no ?? '');
+            $jobListId = $application->job_list_id;
+            $jobCode = (string) ($application->jobList?->job_code ?? '');
+            $jobName = (string) ($application->jobList?->name ?? '');
 
             /** @var Collection $expenseGroup */
             foreach ($expenseGroup as $expenseRow) {
@@ -182,11 +208,6 @@ class FinanceGrossProfitReportService
                 $jobCode = $sale->job_code ?: $jobCode;
                 $jobName = $sale->job_title ?: $jobName;
             }
-
-            $passportNo = $passportNo ?: (string) ($application->passport_no ?? '');
-            $jobListId = $jobListId ?: $application->job_list_id;
-            $jobCode = $jobCode ?: (string) ($application->jobList?->job_code ?? '');
-            $jobName = $jobName ?: (string) ($application->jobList?->name ?? '');
 
             $jobListId = $jobListId ? (int) $jobListId : null;
             $workOrder = $application->jobList?->workOrder;
@@ -219,7 +240,7 @@ class FinanceGrossProfitReportService
 
             $allRows[] = [
                 'application_id' => (int) $applicationId,
-                'candidate_name' => $candidateName ?: ('Candidate #' . $applicationId),
+                'candidate_name' => $candidateName !== '' ? $candidateName : ('Candidate #' . $applicationId),
                 'passport_no' => $passportNo,
                 'job_list_id' => $jobListId,
                 'job_code' => $jobCode,
