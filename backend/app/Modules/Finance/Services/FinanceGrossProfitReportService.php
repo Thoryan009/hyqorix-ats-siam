@@ -306,7 +306,18 @@ class FinanceGrossProfitReportService
         }
 
         $rejectedDeclinedExpense = round($rejectedDeclinedExpense, 2);
-        $adjustedGrossProfitLoss = round($totalProfit - $rejectedDeclinedExpense, 2);
+
+        $lessDl = $this->calculateLessDlExpenses(
+            $clientRecruitmentCategory?->id,
+            $filters,
+            $workOrderIdsFilter,
+            $clientIds,
+            $jobListIds
+        );
+        $lessDlExpense = $lessDl['amount'];
+        $lessDlCount = $lessDl['dl_count'];
+
+        $adjustedGrossProfitLoss = round($totalProfit - $rejectedDeclinedExpense - $lessDlExpense, 2);
         $activeCount = count($rows);
         $adjustedAvgProfitLoss = $activeCount > 0
             ? round($adjustedGrossProfitLoss / $activeCount, 2)
@@ -329,6 +340,8 @@ class FinanceGrossProfitReportService
                 'adjusted_avg_profit_loss' => $adjustedAvgProfitLoss,
                 'rejected_declined_count' => $rejectedDeclinedCount,
                 'rejected_declined_expense' => $rejectedDeclinedExpense,
+                'less_dl_count' => $lessDlCount,
+                'less_dl_expense' => $lessDlExpense,
                 'adjusted_gross_profit_loss' => $adjustedGrossProfitLoss,
             ],
         ];
@@ -391,6 +404,7 @@ class FinanceGrossProfitReportService
         fputcsv($output, ['Total Direct Expense', $this->formatAmount($summary['total_expense'] ?? 0)]);
         fputcsv($output, ['Total Profit / Loss', $this->formatAmount($summary['total_profit_loss'] ?? 0)]);
         fputcsv($output, ['Rejected / Declined Expense', $this->formatAmount($summary['rejected_declined_expense'] ?? 0)]);
+        fputcsv($output, ['Less DL Expenses', $this->formatAmount($summary['less_dl_expense'] ?? 0)]);
         fputcsv($output, ['Adjusted Gross Profit / Loss', $this->formatAmount($summary['adjusted_gross_profit_loss'] ?? 0)]);
 
         rewind($output);
@@ -561,6 +575,108 @@ class FinanceGrossProfitReportService
             array_map(static fn($id) => (int) $id, $value),
             static fn(int $id) => $id > 0
         )));
+    }
+
+    /**
+     * Sum approved Client Recruitment expenses for DLs that have zero ATS candidates.
+     * DLs with at least one ATS candidate keep the existing avg CRE allocation.
+     *
+     * @param  list<int>  $workOrderIdsFilter
+     * @param  list<int>  $clientIds
+     * @param  list<int>  $jobListIds
+     * @return array{amount: float, dl_count: int}
+     */
+    private function calculateLessDlExpenses(
+        ?int $creCategoryId,
+        array $filters,
+        array $workOrderIdsFilter,
+        array $clientIds,
+        array $jobListIds
+    ): array {
+        if ($creCategoryId === null) {
+            return ['amount' => 0.0, 'dl_count' => 0];
+        }
+
+        $query = FinanceBillEntry::query()
+            ->where('expense_category_id', $creCategoryId)
+            ->where('status', 'approved')
+            ->whereNotNull('work_order_id');
+
+        if (!empty($filters['from_date'])) {
+            $query->whereDate('payment_date', '>=', $filters['from_date']);
+        }
+
+        if (!empty($filters['to_date'])) {
+            $query->whereDate('payment_date', '<=', $filters['to_date']);
+        }
+
+        if ($workOrderIdsFilter !== []) {
+            $query->whereIn('work_order_id', $workOrderIdsFilter);
+        }
+
+        if ($clientIds !== []) {
+            $query->whereIn('work_order_id', function ($sub) use ($clientIds) {
+                $sub->select('id')
+                    ->from('work_orders')
+                    ->whereIn('client_id', $clientIds);
+            });
+        }
+
+        if ($jobListIds !== []) {
+            $query->whereIn('work_order_id', function ($sub) use ($jobListIds) {
+                $sub->select('work_order_id')
+                    ->from('job_lists')
+                    ->whereIn('id', $jobListIds)
+                    ->whereNotNull('work_order_id');
+            });
+        }
+
+        $creByWorkOrder = $query
+            ->select([
+                'work_order_id',
+                DB::raw('SUM(amount) as total_amount'),
+            ])
+            ->groupBy('work_order_id')
+            ->pluck('total_amount', 'work_order_id');
+
+        if ($creByWorkOrder->isEmpty()) {
+            return ['amount' => 0.0, 'dl_count' => 0];
+        }
+
+        $workOrderIds = $creByWorkOrder->keys()
+            ->map(fn($id) => (int) $id)
+            ->filter(fn(int $id) => $id > 0)
+            ->values()
+            ->all();
+
+        $atsWorkOrderIds = DB::table('applications')
+            ->join('job_lists', 'job_lists.id', '=', 'applications.job_list_id')
+            ->whereIn('job_lists.work_order_id', $workOrderIds)
+            ->whereRaw("UPPER(applications.application_status) = 'ATS'")
+            ->distinct()
+            ->pluck('job_lists.work_order_id')
+            ->map(fn($id) => (int) $id)
+            ->all();
+
+        $atsSet = array_flip($atsWorkOrderIds);
+
+        $amount = 0.0;
+        $dlCount = 0;
+
+        foreach ($creByWorkOrder as $workOrderId => $total) {
+            $woId = (int) $workOrderId;
+            if ($woId <= 0 || isset($atsSet[$woId])) {
+                continue;
+            }
+
+            $amount += (float) $total;
+            $dlCount++;
+        }
+
+        return [
+            'amount' => round($amount, 2),
+            'dl_count' => $dlCount,
+        ];
     }
 
     /**

@@ -155,8 +155,10 @@
     @php
         $rejectedExpense = (float) ($summary['rejected_declined_expense'] ?? 0);
         $rejectedCount = (int) ($summary['rejected_declined_count'] ?? 0);
+        $lessDlExpense = (float) ($summary['less_dl_expense'] ?? 0);
+        $lessDlCount = (int) ($summary['less_dl_count'] ?? 0);
         $activeProfitLoss = (float) ($summary['total_profit_loss'] ?? $totalProfitLoss);
-        $adjusted = (float) ($summary['adjusted_gross_profit_loss'] ?? ($activeProfitLoss - $rejectedExpense));
+        $adjusted = (float) ($summary['adjusted_gross_profit_loss'] ?? ($activeProfitLoss - $rejectedExpense - $lessDlExpense));
     @endphp
     <table class="calc">
         <tr>
@@ -169,6 +171,13 @@
                 ({{ $rejectedCount }} candidate{{ $rejectedCount === 1 ? '' : 's' }})
             </td>
             <td class="num loss">− {{ number_format($rejectedExpense, 2) }}</td>
+        </tr>
+        <tr>
+            <td>
+                Less: DL Expenses
+                ({{ $lessDlCount }} DL{{ $lessDlCount === 1 ? '' : 's' }} with no ATS candidate)
+            </td>
+            <td class="num loss">− {{ number_format($lessDlExpense, 2) }}</td>
         </tr>
         <tr>
             <td class="result">Adjusted Gross Profit / Loss</td>

@@ -247,6 +247,8 @@ const summary = ref({
   total_profit_loss: 0,
   rejected_declined_count: 0,
   rejected_declined_expense: 0,
+  less_dl_count: 0,
+  less_dl_expense: 0,
   adjusted_gross_profit_loss: 0,
 })
 
@@ -305,7 +307,7 @@ const summaryCards = computed(() => [
   {
     title: 'Adjusted Gross Profit / Loss',
     value: formatCurrency(summary.value.adjusted_gross_profit_loss),
-    subtitle: 'After rejected / declined expense',
+    subtitle: 'After rejected / declined and DL expenses',
     valueClass:
       summary.value.adjusted_gross_profit_loss >= 0 ? 'text-primary' : 'text-red-700',
   },
@@ -329,6 +331,8 @@ async function loadSummary() {
       total_profit_loss: data?.summary?.total_profit_loss ?? 0,
       rejected_declined_count: data?.summary?.rejected_declined_count ?? 0,
       rejected_declined_expense: data?.summary?.rejected_declined_expense ?? 0,
+      less_dl_count: data?.summary?.less_dl_count ?? 0,
+      less_dl_expense: data?.summary?.less_dl_expense ?? 0,
       adjusted_gross_profit_loss:
         data?.summary?.adjusted_gross_profit_loss ?? data?.summary?.net_profit_loss ?? 0,
     }
