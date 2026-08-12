@@ -46,6 +46,27 @@ abstract class BaseRepository
         );
     }
 
+    /**
+     * Fetch all matching data with filters (no pagination).
+     *
+     * Useful for exports where the backend should return the full dataset.
+     */
+    public function getAllData(array $filters = [])
+    {
+        $query = $this->baseQuery();
+
+        // Apply module-specific filters
+        $this->applyFilters($query, $filters);
+
+        // Apply eager loads
+        $this->applyEagerLoads($query, $filters);
+
+        // Apply ordering
+        $this->applyOrder($query, $filters);
+
+        return $query->get();
+    }
+
     protected function applyEagerLoads(Builder $query, array $filters): void
     {
         if (isset($filters['with']) && is_array($filters['with'])) {

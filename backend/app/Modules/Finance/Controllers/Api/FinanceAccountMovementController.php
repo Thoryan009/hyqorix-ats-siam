@@ -11,6 +11,7 @@ use App\Modules\Finance\Resources\FinanceAccountLedgerEntryResource;
 use App\Modules\Finance\Resources\FinanceAccountTransactionResource;
 use App\Modules\Finance\Services\FinanceAccountMovementService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class FinanceAccountMovementController extends Controller
@@ -115,5 +116,48 @@ class FinanceAccountMovementController extends Controller
         return FinanceAccountLedgerEntryResource::collection(
             $this->service->getLedgerEntries($financeAccount->id, $filters)
         );
+    }
+
+    public function exportLedgerCsv(Request $request, FinanceAccount $financeAccount): JsonResponse
+    {
+        $filters = [
+            'from_date' => $request->get('from_date'),
+            'to_date' => $request->get('to_date'),
+            'search' => $request->get('search'),
+        ];
+
+        $filename = 'account-ledger-' . now()->format('Y-m-d') . '.csv';
+
+        $content = $this->service->exportAccountLedgerCsv($financeAccount->id, $filters);
+
+        return apiSuccess([
+            'content' => $content,
+            'filename' => $filename,
+        ]);
+    }
+
+    public function exportLedgerPdf(Request $request, FinanceAccount $financeAccount): JsonResponse
+    {
+        try {
+            $filters = [
+                'from_date' => $request->get('from_date'),
+                'to_date' => $request->get('to_date'),
+                'search' => $request->get('search'),
+            ];
+
+            $filename = 'account-ledger-' . now()->format('Y-m-d') . '.pdf';
+
+            $binary = $this->service->exportAccountLedgerPdf($financeAccount->id, $filters);
+
+            return apiSuccess([
+                'content' => base64_encode($binary),
+                'filename' => $filename,
+            ]);
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage() ?: 'Failed to generate PDF.',
+            ], 500);
+        }
     }
 }

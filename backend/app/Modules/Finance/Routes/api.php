@@ -117,6 +117,10 @@ Route::get('finance-accounts/bills-receivable/{applicationId}', [FinanceAccountM
     ->where('applicationId', '-?[0-9]+');
 Route::get('finance-accounts/{financeAccount}/ledger', [FinanceAccountMovementController::class, 'ledger'])
     ->middleware('permission:finance_account.view');
+Route::get('finance-accounts/{financeAccount}/ledger/export-csv', [FinanceAccountMovementController::class, 'exportLedgerCsv'])
+    ->middleware('permission:finance_account.view');
+Route::get('finance-accounts/{financeAccount}/ledger/export-pdf', [FinanceAccountMovementController::class, 'exportLedgerPdf'])
+    ->middleware('permission:finance_account.view');
 
 Route::crud('finance-accounts', FinanceAccountController::class, 'finance_account');
 

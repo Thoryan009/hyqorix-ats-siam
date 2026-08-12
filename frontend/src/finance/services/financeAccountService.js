@@ -8,6 +8,21 @@ const response = (api) => ({
   error: api.error.value,
 })
 
+function downloadBlob(blob, filename) {
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
+}
+
+function unwrapPayload(payload) {
+  return payload?.data ?? payload
+}
+
 export async function fetchAll(page = 1, perPage = 10, filters = {}) {
   const api = useApi()
   const url = buildUrl(BASE_URL, {
@@ -237,4 +252,42 @@ export async function fetchLedger(accountId, page = 1, perPage = 100, filters = 
 
   await api.sendRequest(url)
   return response(api)
+}
+
+export async function exportAccountLedgerCsv(accountId, filters = {}) {
+  const api = useApi()
+  const url = buildUrl(`${BASE_URL}/${accountId}/ledger/export-csv`, filters)
+  await api.sendRequest(url)
+  if (api.error.value) throw api.error.value
+
+  const payload = unwrapPayload(api.data.value)
+  const content = payload?.content
+  if (!content) throw new Error('No data available for CSV export.')
+
+  downloadBlob(
+    new Blob([content], { type: 'text/csv;charset=utf-8;' }),
+    payload.filename || `account-ledger-${new Date().toISOString().slice(0, 10)}.csv`
+  )
+}
+
+export async function exportAccountLedgerPdf(accountId, filters = {}) {
+  const api = useApi()
+  const url = buildUrl(`${BASE_URL}/${accountId}/ledger/export-pdf`, filters)
+  await api.sendRequest(url)
+  if (api.error.value) throw api.error.value
+
+  const payload = unwrapPayload(api.data.value)
+  const content = payload?.content
+  if (!content) throw new Error('No data available for PDF export.')
+
+  const binary = atob(content)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+
+  downloadBlob(
+    new Blob([bytes], { type: 'application/pdf' }),
+    payload.filename || `account-ledger-${new Date().toISOString().slice(0, 10)}.pdf`
+  )
 }

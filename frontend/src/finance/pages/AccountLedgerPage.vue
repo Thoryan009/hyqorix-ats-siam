@@ -92,7 +92,7 @@
                 </td>
               </tr>
               <tr
-                v-for="row in filteredRows"
+                v-for="row in paginatedRows"
                 :key="row.id"
                 class="border-b border-gray-100 hover:bg-gray-50"
               >
@@ -127,6 +127,18 @@
             </tbody>
           </table>
         </div>
+
+        <div v-if="filteredRows.length" class="mt-3 print:hidden">
+          <BasePagination
+            :total="filteredRows.length"
+            :showing="showing"
+            :links="links"
+            :per-page="perPage"
+            :per-page-options="[10, 25, 50, 100, 250]"
+            @update:page="setPage"
+            @update:perPage="setPerPage"
+          />
+        </div>
       </div>
 
       <div class="mt-4 print:hidden">
@@ -142,7 +154,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { ACCOUNT_CATEGORIES } from '@/finance/data/accountCategoryCodes'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
@@ -152,15 +164,15 @@ import { filterLedgerByDate } from '@/finance/data/accountLedgerData'
 import { useAccountLedgerStore } from '@/finance/store/accountLedgerStore'
 import { formatCurrency, formatDisplayDate } from '@/finance/utils/billUtils'
 import {
-  downloadAccountLedgerCsv,
   formatAccountLedgerAmount,
   formatAccountLedgerBalanceAmount,
   formatAccountLedgerCreditAmount,
   isAccountLedgerAmountDebit,
 } from '@/finance/utils/accountLedgerCsvUtils'
+import BasePagination from '@/shared/components/base/BasePagination.vue'
+import { exportAccountLedgerCsv, exportAccountLedgerPdf } from '@/finance/services/financeAccountService'
 
 const route = useRoute()
-const router = useRouter()
 const accountStore = useAccountStore()
 const financeAccountStore = useFinanceAccountStore()
 const ledgerStore = useAccountLedgerStore()
@@ -307,6 +319,45 @@ const filteredRows = computed(() =>
   filterLedgerByDate(ledgerRows.value, fromDate.value, toDate.value)
 )
 
+const page = ref(1)
+const perPage = ref(250)
+
+const total = computed(() => filteredRows.value.length)
+const showing = computed(() => Math.min(total.value, page.value * perPage.value))
+const links = computed(() => {
+  const lastPage = Math.max(1, Math.ceil(total.value / perPage.value))
+  return Array.from({ length: lastPage }, (_, index) => {
+    const p = index + 1
+    return {
+      label: String(p),
+      active: p === page.value,
+      url: p === page.value ? null : '#',
+    }
+  })
+})
+
+const paginatedRows = computed(() => {
+  const start = (page.value - 1) * perPage.value
+  const end = start + perPage.value
+  return filteredRows.value.slice(start, end)
+})
+
+function setPage(value) {
+  if (value && value !== page.value) page.value = value
+}
+
+function setPerPage(value) {
+  const next = Number(value)
+  if (Number.isFinite(next) && next > 0 && next !== perPage.value) {
+    perPage.value = next
+    page.value = 1
+  }
+}
+
+watch([fromDate, toDate], () => {
+  page.value = 1
+})
+
 function amountColumnClass(key) {
   if (['dr_amount', 'discount', 'cr_amount', 'balance'].includes(key)) {
     return 'text-right'
@@ -321,27 +372,16 @@ function clearDateFilter() {
 
 function handleExportCsv() {
   if (!account.value) return
-
-  downloadAccountLedgerCsv(filteredRows.value, {
-    accountName: account.value.account_name,
-    accountLabel: account.value.account_label,
-    category: account.value.category,
-    fromDate: fromDate.value,
-    toDate: toDate.value,
-    useAmountLabel: useAmountLabel.value,
+  exportAccountLedgerCsv(accountId.value, {
+    from_date: fromDate.value || null,
+    to_date: toDate.value || null,
   })
 }
 
 function handlePrint() {
-  const routeData = router.resolve({
-    name: 'Account Ledger Print',
-    params: { accountId: accountId.value },
-    query: {
-      ...(fromDate.value ? { from: fromDate.value } : {}),
-      ...(toDate.value ? { to: toDate.value } : {}),
-    },
+  exportAccountLedgerPdf(accountId.value, {
+    from_date: fromDate.value || null,
+    to_date: toDate.value || null,
   })
-
-  window.open(routeData.href, '_blank')
 }
 </script>

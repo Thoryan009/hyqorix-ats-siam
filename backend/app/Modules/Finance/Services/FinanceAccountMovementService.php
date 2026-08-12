@@ -10,6 +10,7 @@ use App\Modules\Finance\Models\FinanceSaleCollection;
 use App\Modules\Finance\Repositories\FinanceAccountLedgerRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class FinanceAccountMovementService
 {
@@ -1641,6 +1642,236 @@ class FinanceAccountMovementService
         return $this->ledgerRepository->getPaginatedData(array_merge($filters, [
             'finance_account_id' => $accountId,
         ]));
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function getLedgerRowsForExport(int $accountId, array $filters): array
+    {
+        $account = FinanceAccount::query()->findOrFail($accountId);
+        $this->ensureOpeningBalanceEntry($account);
+
+        $entries = $this->ledgerRepository->getAllData(array_merge($filters, [
+            'finance_account_id' => $accountId,
+        ]));
+
+        $balance = 0.0;
+        $rows = [];
+
+        foreach ($entries as $entry) {
+            $dr = (float) ($entry->dr_amount ?? 0);
+            $discount = (float) ($entry->discount ?? 0);
+            $cr = (float) ($entry->cr_amount ?? 0);
+
+            if ($dr > 0) {
+                $balance -= max($dr - $discount, 0);
+            } elseif ($cr > 0) {
+                $balance += $cr + $discount;
+            }
+
+            $rows[] = [
+                'id' => (int) $entry->id,
+                'date' => $entry->entry_date?->format('Y-m-d') ?? $entry->entry_date?->toDateString() ?? '',
+                'particular' => (string) ($entry->particular ?? ''),
+                'voucher_no' => (string) ($entry->voucher_no ?? ''),
+                'demand_letter' => (string) ($entry->demand_letter ?? ''),
+                'job' => (string) ($entry->job ?? ''),
+                'client_name' => (string) ($entry->client_name ?? ''),
+                'dr_amount' => $dr,
+                'discount' => $discount,
+                'cr_amount' => $cr,
+                'payment_method' => (string) ($entry->payment_method ?? ''),
+                'remarks' => (string) ($entry->remarks ?? ''),
+                'balance' => $balance,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return array{useAmountLabel: bool, isSystemLedger: bool, isIncomeHeadLedger: bool, isManualAmountLedger: bool, drLabel: string, crLabel: string, amountLabel: string}
+     */
+    private function resolveAccountLedgerDisplayMode(string $category): array
+    {
+        $normalized = strtolower(trim($category));
+
+        $isSystemLedger = in_array($normalized, ['capital', 'sale', 'bills_receivable', 'income_receivable'], true);
+        $isIncomeHeadLedger = in_array($normalized, ['client_income', 'recruitment_income', 'other_income'], true);
+        $isManualAmountLedger = in_array($normalized, ['asset', 'liabilities', 'owners_equity'], true);
+
+        $useAmountLabel = $isIncomeHeadLedger || $isManualAmountLedger;
+
+        $drLabel = ($isSystemLedger || $isManualAmountLedger)
+            ? 'DR'
+            : ($isIncomeHeadLedger ? 'DR (Bill)' : 'DR (Payment)');
+
+        $crLabel = ($isSystemLedger || $isManualAmountLedger) ? 'CR' : 'CR (Received)';
+
+        $amountLabel = $useAmountLabel ? 'Amount' : 'Balance';
+
+        return [
+            'useAmountLabel' => $useAmountLabel,
+            'isSystemLedger' => $isSystemLedger,
+            'isIncomeHeadLedger' => $isIncomeHeadLedger,
+            'isManualAmountLedger' => $isManualAmountLedger,
+            'drLabel' => $drLabel,
+            'crLabel' => $crLabel,
+            'amountLabel' => $amountLabel,
+        ];
+    }
+
+    private function formatNumber(float $value, int $decimals = 2): string
+    {
+        $str = number_format($value, $decimals, '.', '');
+        return rtrim(rtrim($str, '0'), '.');
+    }
+
+    private function escapeCsvValue(string $value): string
+    {
+        $needsQuotes = str_contains($value, ',') || str_contains($value, '"') || str_contains($value, "\n");
+        if (!$needsQuotes) return $value;
+
+        return '"' . str_replace('"', '""', $value) . '"';
+    }
+
+    private function formatLedgerCellAmount(float $value): string
+    {
+        if ($value <= 0) return '';
+        return $this->formatNumber($value, 2);
+    }
+
+    private function formatBalanceCell(float $balance): string
+    {
+        if (abs($balance) < 0.00001) return '';
+        if ($balance < 0) {
+            return $this->formatNumber(abs($balance), 2) . ' DR';
+        }
+
+        return $this->formatNumber($balance, 2) . ' CR';
+    }
+
+    public function exportAccountLedgerCsv(int $accountId, array $filters = []): string
+    {
+        $account = FinanceAccount::query()->findOrFail($accountId);
+        $mode = $this->resolveAccountLedgerDisplayMode((string) ($account->category ?? ''));
+
+        $rows = $this->getLedgerRowsForExport($accountId, $filters);
+
+        $lines = [];
+
+        $fromDate = $filters['from_date'] ?? null;
+        $toDate = $filters['to_date'] ?? null;
+
+        if (!empty($account->account_name)) {
+            $lines[] = 'Account,' . $this->escapeCsvValue((string) $account->account_name);
+        }
+
+        if (!empty($account->account_label)) {
+            $lines[] = 'Account Label,' . $this->escapeCsvValue((string) $account->account_label);
+        }
+
+        if (!empty($fromDate) || !empty($toDate)) {
+            $lines[] = 'Date Range,' . $this->escapeCsvValue(
+                sprintf(
+                    '%s to %s',
+                    $fromDate ? (string) $fromDate : 'Start',
+                    $toDate ? (string) $toDate : 'End'
+                )
+            );
+        }
+
+        if ($lines !== []) {
+            $lines[] = '';
+        }
+
+        $lines[] = implode(',', [
+            'Date',
+            'Particular',
+            'Voucher No',
+            'Demand Letter',
+            'Job',
+            'Reference',
+            $mode['drLabel'],
+            'Discount',
+            $mode['crLabel'],
+            'Payment Method',
+            $mode['amountLabel'],
+            'Remarks',
+        ]);
+
+        foreach ($rows as $row) {
+            $amountCell = $mode['useAmountLabel']
+                ? $this->formatBalanceCell((float) $row['balance'])
+                : $this->formatNumber((float) $row['balance'], 2);
+
+            $cells = [
+                (string) $row['date'],
+                (string) $row['particular'],
+                (string) $row['voucher_no'],
+                (string) $row['demand_letter'],
+                (string) $row['job'],
+                (string) $row['client_name'],
+                $this->formatLedgerCellAmount((float) $row['dr_amount']),
+                $this->formatLedgerCellAmount((float) $row['discount']),
+                $this->formatLedgerCellAmount((float) $row['cr_amount']),
+                (string) $row['payment_method'],
+                $amountCell,
+                (string) $row['remarks'],
+            ];
+
+            $escaped = array_map(fn ($value) => $this->escapeCsvValue((string) $value), $cells);
+            $lines[] = implode(',', $escaped);
+        }
+
+        $bom = "\xEF\xBB\xBF";
+        return $bom . implode("\n", $lines);
+    }
+
+    public function exportAccountLedgerPdf(int $accountId, array $filters = []): string
+    {
+        $account = FinanceAccount::query()->findOrFail($accountId);
+        $mode = $this->resolveAccountLedgerDisplayMode((string) ($account->category ?? ''));
+
+        $rows = $this->getLedgerRowsForExport($accountId, $filters);
+
+        $fromDate = $filters['from_date'] ?? '';
+        $toDate = $filters['to_date'] ?? '';
+
+        // Pre-format values for the PDF template.
+        $formattedRows = array_map(function (array $row) use ($mode) {
+            $dr = (float) $row['dr_amount'];
+            $discount = (float) $row['discount'];
+            $cr = (float) $row['cr_amount'];
+            $balance = (float) $row['balance'];
+
+            return [
+                'id' => $row['id'],
+                'date' => $row['date'],
+                'particular' => $row['particular'],
+                'voucher_no' => $row['voucher_no'],
+                'demand_letter' => $row['demand_letter'],
+                'job' => $row['job'],
+                'client_name' => $row['client_name'],
+                'dr_amount' => $dr > 0 ? $this->formatNumber($dr, 2) : '',
+                'discount' => $discount > 0 ? $this->formatNumber($discount, 2) : '',
+                'cr_amount' => $cr > 0 ? $this->formatNumber($cr, 2) : '',
+                'payment_method' => $row['payment_method'],
+                'amount' => $mode['useAmountLabel'] ? $this->formatBalanceCell($balance) : $this->formatNumber($balance, 2),
+                'remarks' => $row['remarks'],
+            ];
+        }, $rows);
+
+        return Pdf::loadView('finance.account-ledger-pdf', [
+            'accountName' => (string) ($account->account_name ?? $account->head_name ?? ''),
+            'accountLabel' => (string) ($account->account_label ?? ''),
+            'category' => (string) ($account->category ?? ''),
+            'fromDate' => (string) $fromDate,
+            'toDate' => (string) $toDate,
+            'mode' => $mode,
+            'rows' => $formattedRows,
+        ])->setPaper('a4', 'landscape')->output();
     }
 
     private function ensureOpeningBalanceEntry(FinanceAccount $account): void
