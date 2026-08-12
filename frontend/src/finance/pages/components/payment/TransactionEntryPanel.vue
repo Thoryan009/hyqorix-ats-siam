@@ -505,7 +505,7 @@ const createDefaultForm = () => ({
   particular: '',
   reference_no: '',
   remarks: '',
-  transaction_direction: 'receive',
+  transaction_direction: 'payment',
   owners_equity_account_id: '',
   asset_account_id: '',
   liabilities_account_id: '',
@@ -535,16 +535,16 @@ const hasExtraAccountSelected = computed(
 
 const directionOptions = [
   {
-    id: 'receive',
-    label: 'Receive',
-    icon: 'fa fa-arrow-down',
-    activeClass: 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500',
-  },
-  {
     id: 'payment',
     label: 'Payment',
     icon: 'fa fa-arrow-up',
     activeClass: 'border-amber-500 bg-amber-50 text-amber-900 ring-1 ring-amber-500',
+  },
+  {
+    id: 'receive',
+    label: 'Receive',
+    icon: 'fa fa-arrow-down',
+    activeClass: 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500',
   },
 ]
 
