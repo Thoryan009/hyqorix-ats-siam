@@ -117,6 +117,14 @@
           {{ loading ? 'Loading...' : 'Refresh Summary' }}
         </BaseButton>
         <BaseButton
+          class="bg-slate-900 text-white hover:bg-slate-800"
+          :disabled="isBusy"
+          @click="viewGrossProfit"
+        >
+          <i class="fa fa-eye mr-1"></i>
+          {{ previewing ? 'Opening...' : 'View Gross Profit' }}
+        </BaseButton>
+        <BaseButton
           class="bg-red-600 text-white hover:bg-red-700"
           :disabled="isBusy"
           @click="generatePdf"
@@ -175,6 +183,18 @@
         </div>
       </Transition>
     </Teleport>
+
+    <GrossProfitPdfPreviewModal
+      :is-visible="previewOpen"
+      :loading="previewing"
+      :error="previewError"
+      :pdf-url="previewUrl"
+      :filename="previewFilename"
+      @close="closePreview"
+      @download="downloadPreviewPdf"
+      @print="printPreviewPdf"
+      @retry="viewGrossProfit"
+    />
   </SectionHeader>
 </template>
 
@@ -196,17 +216,24 @@ import {
 import {
   exportGrossProfitCsv,
   exportGrossProfitPdf,
+  fetchGrossProfitPdf,
   fetchGrossProfitReport,
 } from '@/finance/services/grossProfitReportService'
 import { formatCurrency } from '@/finance/utils/billUtils'
 import { removeEmptyKeys } from '@/shared/helpers/objectHelper'
 import { toast } from '@/shared/config/toastConfig'
+import GrossProfitPdfPreviewModal from '@/finance/pages/components/reports/GrossProfitPdfPreviewModal.vue'
 
 const authStore = useAuthStore()
 const loading = ref(false)
 const exporting = ref('')
+const previewing = ref(false)
+const previewOpen = ref(false)
+const previewUrl = ref('')
+const previewFilename = ref('')
+const previewError = ref('')
 const exportProgress = ref(0)
-const isBusy = computed(() => loading.value || Boolean(exporting.value))
+const isBusy = computed(() => loading.value || Boolean(exporting.value) || previewing.value)
 const exportStatusText = computed(() => {
   if (exportProgress.value >= 100) return 'Download ready'
   if (exportProgress.value >= 70) return 'Preparing your file…'
@@ -348,6 +375,61 @@ function exportErrorMessage(error, fallback) {
   return error?.message || error?.error || fallback
 }
 
+function revokePreviewUrl() {
+  if (previewUrl.value) {
+    window.URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+  }
+}
+
+function closePreview() {
+  previewOpen.value = false
+  previewing.value = false
+  previewError.value = ''
+  revokePreviewUrl()
+  previewFilename.value = ''
+}
+
+async function viewGrossProfit() {
+  previewOpen.value = true
+  previewing.value = true
+  previewError.value = ''
+  revokePreviewUrl()
+
+  try {
+    const { blob, filename } = await fetchGrossProfitPdf(activeFilters())
+    previewFilename.value = filename
+    previewUrl.value = window.URL.createObjectURL(blob)
+  } catch (error) {
+    previewError.value = exportErrorMessage(error, 'Failed to load gross profit PDF.')
+  } finally {
+    previewing.value = false
+  }
+}
+
+function downloadPreviewPdf() {
+  if (!previewUrl.value) return
+  const link = document.createElement('a')
+  link.href = previewUrl.value
+  link.setAttribute('download', previewFilename.value || 'gross-profit-report.pdf')
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+function printPreviewPdf() {
+  if (!previewUrl.value) return
+  const printWindow = window.open(previewUrl.value, '_blank')
+  if (!printWindow) {
+    toast.error('Please allow pop-ups to print the report.')
+    return
+  }
+  printWindow.addEventListener('load', () => {
+    printWindow.focus()
+    printWindow.print()
+  })
+}
+
 async function generatePdf() {
   exporting.value = 'pdf'
   startExportProgress()
@@ -401,6 +483,7 @@ onMounted(loadSummary)
 
 onUnmounted(() => {
   stopExportProgress()
+  revokePreviewUrl()
 })
 </script>
 
