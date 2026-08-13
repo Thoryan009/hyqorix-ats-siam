@@ -34,7 +34,7 @@
         </router-link>
         <router-link to="/finance/bills-and-purchases" v-can="'bill_generation.create'">
           <BaseButton v-can="'transaction.view'" class="bg-primary text-white hover:opacity-90">
-            <i class="fa fa-plus mr-1"></i> Bills & Purchases
+            <i class="fa fa-plus mr-1"></i> Bills & Purchases Authorization
           </BaseButton>
         </router-link>
       </div>

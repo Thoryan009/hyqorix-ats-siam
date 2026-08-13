@@ -848,13 +848,13 @@ const emptyTitle = computed(() => {
 
 const emptyHint = computed(() => {
   if (props.statusScope === 'submitted' && props.entryType === 'asset_purchase') {
-    return 'Submit an Asset Purchase from Bills & Purchases to see it here.'
+    return 'Submit an Asset Purchase from Bills & Purchases Authorization to see it here.'
   }
   if (props.statusScope === 'submitted' && props.entryType === 'expense_bill') {
-    return 'New expense bills appear here after staff submit from Bills & Purchases.'
+    return 'New expense bills appear here after staff submit from Bills & Purchases Authorization.'
   }
   if (props.statusScope === 'submitted') {
-    return 'New bills appear here after staff submit from Bills & Purchases.'
+    return 'New bills appear here after staff submit from Bills & Purchases Authorization.'
   }
   if (props.statusScope === 'pending') {
     return 'Bills appear here after a manager approves them from Submitted Bills.'

@@ -14,7 +14,7 @@
             v-can="'bill_generation.create'"
             :className="'w-full border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 sm:w-auto'"
           >
-            <i class="fa fa-file-text-o mr-1"></i> Bills & Purchases
+            <i class="fa fa-file-text-o mr-1"></i> Bills & Purchases Authorization
           </BaseButton>
         </router-link>
         <router-link
