@@ -67,7 +67,7 @@
     </div>
 
     <div class="title">
-        <h2>Gross Profit Report</h2>
+        <h2>Gross Profit</h2>
         <p>
             Generated {{ now()->format('d M Y h:i A') }}
             @if(!empty($filters['from_date']) || !empty($filters['to_date']))

@@ -2,7 +2,7 @@
   <SectionHeader>
     <PageHeader>
       <div>
-        <PageTitle>Gross Profit Report</PageTitle>
+        <PageTitle>Gross Profit</PageTitle>
         <p class="mt-1 text-sm text-gray-500">Candidate-wise sale price vs direct expenses</p>
       </div>
     </PageHeader>

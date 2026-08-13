@@ -19,7 +19,7 @@
                 Finance Report
               </p>
               <h2 id="gross-profit-preview-title" class="truncate text-lg font-semibold sm:text-xl">
-                Gross Profit Report
+                Gross Profit
               </h2>
               <p class="mt-0.5 truncate text-xs text-slate-300">
                 {{ filename || 'Backend PDF preview' }}
@@ -114,7 +114,7 @@
               v-if="pdfUrl"
               :src="iframeSrc"
               class="h-full w-full border-0 bg-slate-200"
-              title="Gross Profit Report PDF"
+              title="Gross Profit PDF"
               @load="$emit('ready')"
             ></iframe>
           </div>
