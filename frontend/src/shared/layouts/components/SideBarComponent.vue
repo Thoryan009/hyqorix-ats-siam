@@ -134,10 +134,10 @@
               </p>
 
               <router-link
-                :to="item.path"
+                :to="navItemTo(item)"
                 :class="[
                   'flex items-center ms-2 gap-3 rounded-xl px-3 py-2 text-base font-medium transition-all duration-200',
-                  isNavItemActive(item.path)
+                  isNavItemActive(item)
                     ? 'bg-primary text-white shadow-[0_2px_8px_rgba(0,0,0,0.2)]'
                     : 'text-white hover:bg-white/10',
                   isSidebarCollapsed ? 'justify-center' : '',
@@ -160,10 +160,10 @@
               <router-link
                 v-for="child in item.children"
                 :key="child.name"
-                :to="child.path"
+                :to="navItemTo(child)"
                 :class="[
                   'flex items-center ms-6 gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200',
-                  isNavItemActive(child.path)
+                  isNavItemActive(child)
                     ? 'bg-primary text-white shadow-[0_2px_8px_rgba(0,0,0,0.2)]'
                     : 'text-white/90 hover:bg-white/10',
                   isSidebarCollapsed ? 'justify-center ms-2' : '',
@@ -244,7 +244,54 @@ const filteredGroups = computed(() => {
     .filter((group) => group.items.length > 0)
 })
 
-const isNavItemActive = (path) => route.path === path
+function navItemTo(item) {
+  if (item?.query && Object.keys(item.query).length) {
+    return { path: item.path, query: item.query }
+  }
+
+  return item?.path || '/'
+}
+
+function getNavItemQuery(item) {
+  if (item?.query && Object.keys(item.query).length) {
+    return item.query
+  }
+
+  const queryString = String(item?.path || '').split('?')[1]
+  if (!queryString) return {}
+
+  return Object.fromEntries(new URLSearchParams(queryString).entries())
+}
+
+const isNavItemActive = (item) => {
+  const fullPath = route.fullPath
+  const pathname = String(item?.path || '').split('?')[0]
+  const query = getNavItemQuery(item)
+  const queryKeys = Object.keys(query)
+
+  if (Array.isArray(item?.matchPrefixes)) {
+    if (item.matchPrefixes.some((prefix) => route.path === prefix || route.path.startsWith(`${prefix}/`))) {
+      return true
+    }
+  }
+
+  if (route.path !== pathname) return false
+
+  if (queryKeys.length) {
+    return queryKeys.every((key) => String(route.query[key] ?? '') === String(query[key]))
+  }
+
+  const reservedTabs = filteredGroups.value
+    .flatMap((group) => group.items)
+    .map((navItem) => getNavItemQuery(navItem).tab)
+    .filter(Boolean)
+
+  if (pathname === '/finance/accounts' && reservedTabs.includes(String(route.query.tab || ''))) {
+    return false
+  }
+
+  return Boolean(fullPath)
+}
 
 /* ------------------------------------------
    Accordion State
@@ -256,12 +303,11 @@ const toggleGroup = (label) => {
 }
 
 watch(
-  () => route.path,
-  (newPath) => {
+  () => route.fullPath,
+  () => {
     const matchingGroup = filteredGroups.value.find((group) =>
       group.items.some(
-        (item) =>
-          item.path === newPath || item.children?.some((child) => child.path === newPath),
+        (item) => isNavItemActive(item) || item.children?.some((child) => isNavItemActive(child)),
       ),
     )
     if (matchingGroup) {

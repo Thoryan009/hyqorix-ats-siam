@@ -229,6 +229,8 @@ export default {
     transactions: 'Transactions',
     expense_setup: 'Expense Setup',
     gross_profit_report: 'Gross Profit',
+    agent_ledger: 'Agent Ledger',
+    vendor_ledger: 'Vendor Ledger',
 
     hr_access_control: 'HR & Access Control',
     employee_management: 'Employee Management',
