@@ -132,41 +132,7 @@
         </div>
       </div>
 
-      <!-- Tab Navigation -->
-      <div
-        v-can="'demand_letter.view_jobs'"
-        class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-2 shadow-sm mb-4"
-      >
-        <div class="flex gap-2">
-          <!-- Job Details Tab -->
-          <button
-            @click="activeTab = 'jobs'"
-            :class="[
-              activeTab === 'jobs'
-                ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-md scale-105'
-                : 'bg-white text-gray-600 hover:bg-green-50 hover:text-green-600',
-              'flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all duration-200 whitespace-nowrap',
-            ]"
-          >
-            <i class="fa fa-briefcase text-lg"></i>
-            <span>{{t('shared.labels.job_lists')}}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Tab Content -->
-      <div>
-        <!-- Job Details Section -->
-        <div v-can="'demand_letter.view_jobs'" v-show="activeTab === 'jobs'" class="animate-fadeIn">
-          <h2 class="text-base sm:text-lg font-semibold py-3 sm:py-4 flex items-center gap-2">
-            <i class="fa fa-list-alt text-green-600"></i>
-            {{ store.item.work_order_id }} {{t('shared.labels.job_lists')}}
-          </h2>
-          <div class="overflow-x-auto -mx-2 sm:mx-0">
-            <BaseTable v-if="!isLoading" :columns="columns" :rows="store.item.job_list" />
-          </div>
-        </div>
-      </div>
+     
     </ViewModalLayout>
   </BaseModal>
 </template>

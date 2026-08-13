@@ -203,16 +203,6 @@
           </div>
         </div>
       </div>
-      <!-- Applications -->
-      <div class="pb-5!">
-        <h2 class="text-lg font-semibold py-5">{{ store.item.name }} {{ t('shared.labels.applications') }}</h2>
-        <BaseTable
-          v-can="'agent.view_applications'"
-          v-if="!isLoading"
-          :columns="columns"
-          :rows="store.item.applications"
-        />
-      </div>
     </ViewModalLayout>
   </BaseModal>
 </template>

@@ -148,50 +148,7 @@ class ApplicationResource extends JsonResource
                 'date_of_submission' => $this->embassySubmission->date_of_submission ?? null,
             ],
 
-            'transactions' => $this->when(
-                auth()->user()?->type !== 'client' && auth()->user()?->type !== 'agent',
-                $this->transactions->map(function ($transaction) {
-                    return [
-
-                        // Transaction-specific
-                        'bill_no' => $transaction->bill_no,
-                        'transaction_id' => $transaction->transaction_id,
-                        'total_amount' => $transaction->total_amount,
-                        'total_paid_amount' => $transaction->application->totalPaidAmount(),
-                        'paid_amount' => $transaction->paid_amount,
-                        'discount_amount' => $transaction->application->discount_amount ?? 0,
-                        'due_amount' => $transaction->total_amount - $transaction->application->totalPaidAmount() - $transaction->application->discount_amount,
-                        'payment_method' => $transaction->payment_method,
-                        'status' => $transaction->status,
-                        'payment_date' => $transaction->payment_date,
-                        'payment_date_formatted' => DateTimeFormatter::formatDate($transaction->payment_date),
-                        'payment_time' => $transaction->payment_time,
-                        'payment_time_formatted' => DateTimeFormatter::formatTime($transaction->payment_time),
-                        'payment_date_time_formatted' => DateTimeFormatter::formatDate($transaction->payment_date) . ' ' . DateTimeFormatter::formatTime($transaction->payment_time),
-
-                        'remarks' => $transaction->remarks,
-
-                        // Related application
-                        'application_id' => $transaction->application_id,
-                        'applied_job' => $transaction->application->jobList->name ?? null,
-                        'payer' => JobListPayerHelper::resolveForApplication($transaction->application),
-                        'payer_label' => JobListPayerHelper::label(
-                            JobListPayerHelper::resolveForApplication($transaction->application)
-                        ),
-                        'payer_name' => ApplicationPresenter::fullName($transaction->application->sur_name, $transaction->application->given_name),
-                        'payer_mobile' => $transaction->application->mobile,
-                        'payer_email' => $transaction->application->email,
-                        'payer_application_id' => $transaction->application->application_id,
-
-                        'created_at' => DateTimeFormatter::formatDateTime($transaction->created_at),
-                        'updated_at' => DateTimeFormatter::formatDateTime($transaction->updated_at),
-                        'created_by' => $transaction->createdBy ? $transaction->createdBy->name : null,
-                        'updated_by' => $transaction->updatedBy ? $transaction->updatedBy->name : null,
-
-                    ];
-                }),
-
-            ),
+          
 
             'created_at' => DateTimeFormatter::formatDateTime($this->created_at),
             'updated_at' => DateTimeFormatter::formatDateTime($this->updated_at),

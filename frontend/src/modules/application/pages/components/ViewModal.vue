@@ -195,11 +195,7 @@
         </div>
       </div>
 
-      <!-- Application Transaction History -->
-      <div class="mb-8" v-can="'application.view_transaction_history'">
-        <h1 class="text-xl font-bold my-4">{{ store.item.sur_name }} {{ t('application.transaction_history') }}</h1>
-        <BaseTable v-if="!isLoading" :columns="columns" :rows="store.item.transactions" />
-      </div>
+   
     </ViewModalLayout>
   </BaseModal>
 </template>

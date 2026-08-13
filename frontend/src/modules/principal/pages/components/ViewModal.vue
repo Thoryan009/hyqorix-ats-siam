@@ -151,17 +151,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Job Lists -->
-      <div class="pb-5!">
-        <h2 class="text-lg font-semibold py-5">{{ t('principal.module') }} {{ t('shared.labels.job_lists') }}</h2>
-        <BaseTable
-          v-can="'principal.view_job_lists'"
-          v-if="!isLoading"
-          :columns="columns"
-          :rows="store.item.job_lists"
-        />
-      </div>
     </ViewModalLayout>
   </BaseModal>
 </template>

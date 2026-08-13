@@ -146,9 +146,6 @@
         </div>
       </div>
 
-      <!-- Work Order Details -->
-      <h2 class="text-lg font-semibold py-5">{{ store.item.name }} {{ t('shared.labels.demand_letters') }}</h2>
-      <BaseTable v-can="'client.view_work_orders'" v-if="!isLoading" :columns="columns" :rows="store.item.work_orders" />
     </ViewModalLayout>
   </BaseModal>
 </template>

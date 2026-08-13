@@ -80,7 +80,7 @@
       <!-- Tabs Section -->
       <div class="bg-white rounded-xl border-2 border-gray-200 shadow-md overflow-hidden">
         <!-- Tab Headers -->
-        <div class="flex bg-gray-50">
+        <!-- <div class="flex bg-gray-50">
           <button
             v-for="tab in tabs"
             :key="tab.id"
@@ -95,7 +95,7 @@
             <i :class="['fa', tab.icon, 'text-lg']"></i>
             <span>{{ tab.label }}</span>
           </button>
-        </div>
+        </div> -->
 
         <!-- Tab Content -->
         <div class="p-6">
@@ -312,61 +312,9 @@
         </div>
       </div>
 
-      <!-- Tab Navigation -->
-      <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-2 shadow-sm mb-4">
-        <div class="flex gap-2">
-          <button
-          v-can="'job.view_applicants'"
-            @click="activeTab2 = 'applicants'"
-            :class="[
-              activeTab2 === 'applicants'
-                ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-md scale-105'
-                : 'bg-white text-gray-600 hover:bg-green-50 hover:text-green-600',
-              'flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all duration-200 whitespace-nowrap',
-            ]"
-          >
-            <i class="fa fa-briefcase text-lg"></i>
-            <span>{{ t('shared.labels.applicants') }}</span>
-          </button>
+    
 
-          <button
-            v-can="'job.price_details'"
-            @click="activeTab2 = 'price'"
-            :class="[
-              activeTab2 === 'price'
-                ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md scale-105'
-                : 'bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600',
-              'flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all duration-200 whitespace-nowrap',
-            ]"
-          >
-            <i class="fa fa-dollar text-lg"></i>
-            <span>{{ t('job_price.price_details') }}</span>
-          </button>
-        </div>
-      </div>
 
-      <!-- Tab Content -->
-      <div>
-        <!-- Price Details Section -->
-        <div v-show="activeTab2 === 'price'" class="animate-fadeIn">
-          <JobListDetailsTables v-can="'job.price_details'" :store="store.item" />
-        </div>
-
-        <!-- Job Details Section -->
-        <div
-          v-can="'job.view_applicants'"
-          v-show="activeTab2 === 'applicants'"
-          class="animate-fadeIn"
-        >
-          <h2 class="text-base sm:text-lg font-semibold py-3 sm:py-4 flex items-center gap-2">
-            <i class="fa fa-list-alt text-green-600"></i>
-            {{ store.item.name }} {{ t('shared.labels.applicants') }}
-          </h2>
-          <div class="overflow-x-auto -mx-2 sm:mx-0">
-            <BaseTable v-if="!isLoading" :columns="columns" :rows="store.item.applications" />
-          </div>
-        </div>
-      </div>
 
       <!-- Application Details -->
       <!-- <h2 class="text-lg font-semibold py-5">{{ store.item.name }} {{ t('shared.labels.applicants') }}</h2>

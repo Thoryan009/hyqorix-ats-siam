@@ -91,9 +91,7 @@
         </div>
       </div>
 
-      <!-- Clients Details -->
-      <h2 class="text-lg font-semibold py-5">{{ store.item.name }} {{t('shared.labels.client')}}</h2>
-      <BaseTable  v-can="'country.view_clients'" v-if="store.item" :columns="columns" :rows="store.item.clients" />
+    
     </ViewModalLayout>
   </BaseModal>
 </template>

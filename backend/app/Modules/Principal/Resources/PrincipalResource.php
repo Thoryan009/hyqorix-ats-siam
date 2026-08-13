@@ -29,37 +29,6 @@ class PrincipalResource extends JsonResource
             'contact_person_no' => $this->contact_person_no,
 
             'user_id' => $this->user_id,
-
-            'job_lists_count' => $this->jobLists()->count(),
-            'job_lists' => $this?->jobLists()
-                ->get()
-                ->map(function ($jobList) {
-                    return [
-                        'id' => $jobList->id,
-                        'name' => $jobList->name,
-                        'job_code' => $jobList->job_code,
-                        'vacancy' => $jobList->vacancy,
-                        'experience' => $jobList->experience,
-                        'min_age' => $jobList->min_age,
-                        'max_age' => $jobList->max_age,
-                        'price' => $jobList->price,
-                        'client_commission_per_candidate' => $jobList->client_commission_per_candidate,
-                        'contract_length' => $jobList->contract_length,
-                        'description' => $jobList->description,
-                        'qualification' => $jobList->qualification,
-                        'language' => $jobList->language,
-                        'salary' => $jobList->salary,
-                        'deadline' => $jobList->deadline,
-                        'interview_date' => $jobList->interview_date,
-                        'status' => $jobList->status,
-                        'work_order_id' => $jobList->work_order_id,
-                        'work_order' => $jobList->workOrder->work_order_id ?? null,
-                        'principal_id' => $jobList->principal_id,
-                        'principal_name' => $jobList->principal->user?->name ?? null,
-
-                    ];
-                }),
-
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
 
