@@ -190,10 +190,13 @@
       :error="previewError"
       :pdf-url="previewUrl"
       :filename="previewFilename"
+      :progress="exportProgress"
+      :status-text="previewStatusText"
       @close="closePreview"
       @download="downloadPreviewPdf"
       @print="printPreviewPdf"
       @retry="viewGrossProfit"
+      @ready="onPreviewReady"
     />
   </SectionHeader>
 </template>
@@ -240,8 +243,16 @@ const exportStatusText = computed(() => {
   if (exportProgress.value >= 35) return 'Building report from server…'
   return 'Collecting report data…'
 })
+const previewStatusText = computed(() => {
+  if (previewError.value) return 'Failed to load preview'
+  if (exportProgress.value >= 100) return 'Opening PDF preview…'
+  if (exportProgress.value >= 70) return 'Preparing your preview…'
+  if (exportProgress.value >= 35) return 'Building report from server…'
+  return 'Collecting report data…'
+})
 
 let progressTimer = null
+let previewReadyTimer = null
 
 function startExportProgress() {
   exportProgress.value = 6
@@ -383,26 +394,47 @@ function revokePreviewUrl() {
 }
 
 function closePreview() {
+  stopExportProgress()
+  clearTimeout(previewReadyTimer)
+  previewReadyTimer = null
   previewOpen.value = false
   previewing.value = false
   previewError.value = ''
+  exportProgress.value = 0
   revokePreviewUrl()
   previewFilename.value = ''
 }
 
+function onPreviewReady() {
+  if (!previewUrl.value || previewError.value) return
+  clearTimeout(previewReadyTimer)
+  previewReadyTimer = null
+  stopExportProgress()
+  exportProgress.value = 100
+  previewing.value = false
+}
+
 async function viewGrossProfit() {
+  clearTimeout(previewReadyTimer)
+  previewReadyTimer = null
   previewOpen.value = true
   previewing.value = true
   previewError.value = ''
   revokePreviewUrl()
+  startExportProgress()
 
   try {
     const { blob, filename } = await fetchGrossProfitPdf(activeFilters())
     previewFilename.value = filename
     previewUrl.value = window.URL.createObjectURL(blob)
+    await finishExportProgress()
+    previewReadyTimer = window.setTimeout(() => {
+      onPreviewReady()
+    }, 1200)
   } catch (error) {
+    stopExportProgress()
+    exportProgress.value = 0
     previewError.value = exportErrorMessage(error, 'Failed to load gross profit PDF.')
-  } finally {
     previewing.value = false
   }
 }
@@ -483,6 +515,8 @@ onMounted(loadSummary)
 
 onUnmounted(() => {
   stopExportProgress()
+  clearTimeout(previewReadyTimer)
+  previewReadyTimer = null
   revokePreviewUrl()
 })
 </script>
