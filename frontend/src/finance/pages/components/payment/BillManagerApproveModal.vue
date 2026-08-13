@@ -2,13 +2,15 @@
   <BaseModal
     :isVisible="isVisible"
     :title="modalTitle"
-    :className="'!mx-auto w-[90vw] max-w-[90vw] max-h-[92vh] overflow-hidden'"
+    :className="'!mx-0 !max-h-[100dvh] !rounded-none !p-3 !overflow-hidden h-[100dvh] w-full sm:!mx-4 sm:!max-h-[92vh] sm:!rounded-lg sm:!p-6 sm:h-auto sm:w-[90vw] sm:max-w-[90vw]'"
     @close="closeModal"
   >
-    <div class="flex max-h-[calc(92vh-5.5rem)] flex-col">
-      <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-12">
+    <div
+      class="flex h-[calc(100dvh-4.75rem)] flex-col pb-[env(safe-area-inset-bottom)] sm:h-auto sm:max-h-[calc(92vh-5.5rem)] sm:pb-0"
+    >
+      <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-12">
         <!-- Left: Receipt viewer -->
-        <div class="flex min-h-[280px] flex-col lg:col-span-5">
+        <div class="flex min-h-[200px] flex-col sm:min-h-[280px] lg:col-span-5">
           <div
             class="relative flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-950"
           >
@@ -28,13 +30,13 @@
                 :href="activeReceiptUrl"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="flex h-full max-h-[420px] w-full items-center justify-center"
+                class="flex h-full max-h-[220px] w-full items-center justify-center sm:max-h-[420px]"
                 title="Open full size"
               >
                 <img
                   :src="activeReceiptUrl"
                   :alt="`Bill receipt ${activeReceiptIndex + 1}`"
-                  class="max-h-[420px] max-w-full rounded-lg object-contain shadow-lg"
+                  class="max-h-[220px] max-w-full rounded-lg object-contain shadow-lg sm:max-h-[420px]"
                 />
               </a>
 
@@ -60,7 +62,7 @@
 
             <div
               v-else
-              class="flex min-h-[280px] flex-1 flex-col items-center justify-center gap-2 px-4 text-center"
+              class="flex min-h-[200px] flex-1 flex-col items-center justify-center gap-2 px-4 text-center sm:min-h-[280px]"
             >
               <div
                 class="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-white/50"
@@ -94,12 +96,12 @@
 
         <!-- Right: Bill details -->
         <div class="flex min-h-0 flex-col lg:col-span-7">
-          <div class="min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5">
+          <div class="min-h-0 flex-1 space-y-3 pr-0.5 lg:overflow-y-auto">
             <div class="rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white px-4 py-3.5">
               <p class="text-[11px] font-semibold uppercase tracking-wide text-emerald-700/80">
                 {{ isBatchReview ? 'Batch Total' : 'Amount' }}
               </p>
-              <p class="mt-1 text-2xl font-bold tabular-nums text-emerald-800">
+              <p class="mt-1 text-xl font-bold tabular-nums text-emerald-800 sm:text-2xl">
                 {{ formatCurrency(totalAmount) }}
               </p>
               <p v-if="isBatchReview" class="mt-1 text-xs font-medium text-emerald-700/80">
@@ -230,10 +232,12 @@
         </div>
       </div>
 
-      <div class="mt-4 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
+      <div
+        class="mt-4 flex flex-col-reverse gap-2 border-t border-slate-100 pt-3 sm:flex-row sm:flex-wrap sm:justify-end sm:pt-4"
+      >
         <BaseButton
           type="button"
-          :className="'cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50'"
+          :className="'w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-slate-700 hover:bg-slate-50 sm:w-auto sm:py-2'"
           @click="closeModal"
         >
           Close
@@ -242,7 +246,7 @@
           <BaseButton
             type="button"
             v-can="'submitted_bills.approve'"
-            :className="'cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700'"
+            :className="'w-full cursor-pointer rounded-lg bg-red-600 px-4 py-2.5 text-white hover:bg-red-700 sm:w-auto sm:py-2'"
             :disabled="!!loading || isBatchReview"
             :title="isBatchReview ? 'Reject bills one at a time' : 'Reject bill'"
             @click="handleReject"
@@ -252,17 +256,19 @@
           <BaseButton
             type="button"
             v-can="'submitted_bills.approve'"
-            :className="'cursor-pointer rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700'"
+            :className="'w-full cursor-pointer rounded-lg bg-emerald-600 px-4 py-2.5 text-white hover:bg-emerald-700 sm:w-auto sm:py-2'"
             :disabled="!!loading"
             @click="handleApprove"
           >
-            {{
-              loading === 'approve'
-                ? 'Approving...'
-                : isBatchReview
-                  ? `Approve Batch (${reviewEntries.length}) → Bills To Pay`
-                  : 'Approve → Bills To Pay'
-            }}
+            <template v-if="loading === 'approve'">Approving...</template>
+            <template v-else-if="isBatchReview">
+              Approve Batch ({{ reviewEntries.length }})
+              <span class="hidden sm:inline"> → Bills To Pay</span>
+            </template>
+            <template v-else>
+              Approve
+              <span class="hidden sm:inline"> → Bills To Pay</span>
+            </template>
           </BaseButton>
         </template>
       </div>

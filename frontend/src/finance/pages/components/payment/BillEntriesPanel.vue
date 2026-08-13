@@ -1,13 +1,13 @@
 <template>
   <div>
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-      <div class="flex flex-1 flex-wrap gap-3">
-        <div class="flex min-w-[220px] flex-1 flex-col">
+      <div class="grid w-full grid-cols-1 gap-3 sm:flex sm:flex-1 sm:flex-wrap">
+        <div class="flex w-full flex-col sm:min-w-[220px] sm:flex-1">
           <label class="mb-1 text-sm text-gray-700">Search</label>
           <BaseInput v-model="filters.search" placeholder="Search bill entries..." />
         </div>
 
-        <div v-if="showCategoryFilter" class="flex min-w-[200px] flex-col">
+        <div v-if="showCategoryFilter" class="flex w-full flex-col sm:min-w-[200px]">
           <label class="mb-1 text-sm text-gray-700">
             {{ entryType === 'asset_purchase' ? 'Type' : 'Expense Category' }}
           </label>
@@ -18,7 +18,7 @@
           />
         </div>
 
-        <div v-if="showStatusFilter" class="flex min-w-[160px] flex-col">
+        <div v-if="showStatusFilter" class="flex w-full flex-col sm:min-w-[160px]">
           <label class="mb-1 text-sm text-gray-700">Status</label>
           <BaseSelect
             v-model="filters.status"
@@ -29,7 +29,7 @@
 
         <BaseButton
           v-if="hasActiveFilters"
-          class="bg-gray-600 text-white hover:bg-gray-700"
+          class="w-full bg-gray-600 text-white hover:bg-gray-700 sm:w-auto"
           @click="resetFilters"
         >
           Reset
@@ -66,14 +66,14 @@
 
     <div
       v-if="isBatchSelectableScope && selectedEntryIds.length"
-      class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"
+      class="mb-3 flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
     >
       <p class="text-sm text-emerald-800">
         <span class="font-semibold">{{ selectedEntryIds.length }}</span>
         bill{{ selectedEntryIds.length === 1 ? '' : 's' }} selected from batch
         <span class="font-semibold">{{ selectedBatchLabel }}</span>
       </p>
-      <div class="flex flex-wrap gap-2">
+      <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <BaseButton
           :className="'border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-100 cursor-pointer'"
           @click="clearSelection"
@@ -86,7 +86,7 @@
           class="bg-emerald-600 text-white hover:bg-emerald-700"
           @click="openBulkApprove"
         >
-          Bulk Approve Batch
+          Bulk Approve
         </BaseButton>
         <BaseButton
           v-else-if="statusScope === 'pending'"
@@ -99,7 +99,194 @@
       </div>
     </div>
 
-    <div class="overflow-x-auto rounded-lg border border-gray-200">
+    <div class="space-y-3 lg:hidden">
+      <div
+        v-if="!hasTableRows"
+        class="rounded-xl border border-gray-200 px-4 py-8 text-center text-gray-500"
+      >
+        <p>{{ emptyTitle }}</p>
+        <p class="mt-1 text-xs">{{ emptyHint }}</p>
+      </div>
+
+      <template v-else-if="isBatchGroupedScope">
+        <article
+          v-for="batch in paginatedBatches"
+          :key="`mobile-${batch.key}`"
+          class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+        >
+          <div class="p-3" :class="batchHeaderClass">
+            <div class="flex items-start gap-2">
+              <input
+                v-if="isBatchSelectableScope"
+                type="checkbox"
+                class="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                :checked="isBatchFullySelected(batch)"
+                :indeterminate.prop="isBatchPartiallySelected(batch)"
+                @change="toggleBatchSelection(batch, $event.target.checked)"
+              />
+              <div class="min-w-0 flex-1">
+                <button
+                  type="button"
+                  class="flex w-full items-start justify-between gap-2 text-left"
+                  @click="toggleBatchExpanded(batch.key)"
+                >
+                  <span class="text-sm font-semibold" :class="batchTitleClass">
+                    Batch: {{ batch.label }}
+                  </span>
+                  <i
+                    class="fa mt-1 shrink-0 text-xs"
+                    :class="[
+                      expandedBatchKeys.has(batch.key) ? 'fa-chevron-down' : 'fa-chevron-right',
+                      batchIconClass,
+                    ]"
+                  ></i>
+                </button>
+                <p class="mt-1 text-xs" :class="batchMetaClass">
+                  {{ batch.entries.length }} bill{{ batch.entries.length === 1 ? '' : 's' }}
+                  · {{ batch.payment_date || '—' }}
+                  · {{ batch.category_name || '—' }}
+                </p>
+                <p class="mt-2 text-base font-bold tabular-nums" :class="batchTitleClass">
+                  {{ formatCurrency(batch.totalAmount) }}
+                </p>
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                  <BaseButton
+                    v-if="statusScope === 'submitted'"
+                    v-can="'submitted_bills.print'"
+                    :className="'!w-full border border-sky-200 bg-white text-sky-800 hover:bg-sky-50'"
+                    @click="printEntry(batch.entries[0])"
+                  >
+                    <i class="fa fa-print mr-1"></i> Print
+                  </BaseButton>
+                  <BaseButton
+                    v-if="statusScope === 'submitted'"
+                    v-can="'submitted_bills.approve'"
+                    :className="'!w-full bg-emerald-600 text-white hover:bg-emerald-700'"
+                    @click="openBatchReview(batch)"
+                  >
+                    <i class="fa fa-check-square-o mr-1"></i>
+                    {{ batch.entries.length > 1 ? 'Approve' : 'Review' }}
+                  </BaseButton>
+                  <BaseButton
+                    v-else-if="statusScope === 'pending'"
+                    v-can="'receive_payment.create'"
+                    :className="'!w-full bg-emerald-600 text-white hover:bg-emerald-700'"
+                    @click="openBatchReview(batch)"
+                  >
+                    <i class="fa fa-check-square-o mr-1"></i>
+                    {{ batch.entries.length > 1 ? 'Bulk Pay' : 'Pay' }}
+                  </BaseButton>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="expandedBatchKeys.has(batch.key)" class="divide-y divide-gray-100">
+            <div
+              v-for="entry in batch.entries"
+              :key="`mobile-entry-${entry.id}`"
+              class="p-3"
+            >
+              <div class="flex items-start gap-2">
+                <input
+                  v-if="isBatchSelectableScope"
+                  type="checkbox"
+                  class="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                  :checked="selectedEntryIds.includes(entry.id)"
+                  @change="toggleEntrySelection(entry, $event.target.checked)"
+                />
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="text-sm font-semibold text-gray-900">
+                      {{ entry.head_name || '—' }}
+                    </p>
+                    <span
+                      class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                      :class="statusClass(entry.status)"
+                    >
+                      {{ statusLabel(entry.status) }}
+                    </span>
+                  </div>
+                  <p class="mt-1 text-xs text-gray-500">
+                    {{ entry.payment_date }} · {{ entry.voucher_no || entry.reference_no || '—' }}
+                  </p>
+                  <p v-if="entry.candidate_name" class="mt-1 truncate text-xs text-gray-600">
+                    {{ entry.candidate_name }}
+                  </p>
+                  <p v-else-if="entry.demand_letter" class="mt-1 truncate text-xs text-gray-600">
+                    {{ entry.demand_letter }}
+                  </p>
+                  <p class="mt-2 text-sm font-semibold tabular-nums text-red-600">
+                    {{ formatCurrency(displayEntryAmount(entry)) }}
+                  </p>
+                  <div class="mt-3 grid grid-cols-2 gap-2">
+                    <BaseButton
+                      v-if="statusScope === 'submitted'"
+                      v-can="'submitted_bills.print'"
+                      :className="'!w-full border border-sky-200 bg-white text-sky-800 hover:bg-sky-50'"
+                      @click="printEntry(entry)"
+                    >
+                      <i class="fa fa-print mr-1"></i> Print
+                    </BaseButton>
+                    <BaseButton
+                      v-can="'receive_payment.create'"
+                      :className="
+                        statusScope === 'submitted'
+                          ? '!w-full bg-emerald-600 text-white hover:bg-emerald-700'
+                          : '!w-full border border-gray-200 bg-white text-gray-800 hover:bg-gray-50'
+                      "
+                      @click="openReview(entry)"
+                    >
+                      <i :class="[reviewIcon(entry), 'mr-1']"></i>
+                      {{ statusScope === 'submitted' ? 'Review' : reviewTitle(entry) }}
+                    </BaseButton>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </template>
+
+      <template v-else>
+        <article
+          v-for="entry in paginatedRows"
+          :key="`mobile-row-${entry.id}`"
+          class="rounded-xl border border-gray-200 bg-white p-3 shadow-sm"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <p class="text-sm font-semibold text-gray-900">{{ entry.head_name || '—' }}</p>
+            <span
+              class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+              :class="statusClass(entry.status)"
+            >
+              {{ statusLabel(entry.status) }}
+            </span>
+          </div>
+          <p class="mt-1 text-xs text-gray-500">
+            {{ entry.payment_date }} · {{ entry.category_name || '—' }}
+          </p>
+          <p class="mt-1 text-xs text-gray-500">
+            {{ entry.voucher_no || entry.reference_no || '—' }}
+          </p>
+          <p class="mt-2 text-sm font-semibold tabular-nums text-red-600">
+            {{ formatCurrency(displayEntryAmount(entry)) }}
+          </p>
+          <div class="mt-3">
+            <BaseButton
+              v-can="'receive_payment.create'"
+              class="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+              @click="openReview(entry)"
+            >
+              <i :class="[reviewIcon(entry), 'mr-1']"></i>
+              {{ reviewTitle(entry) }}
+            </BaseButton>
+          </div>
+        </article>
+      </template>
+    </div>
+
+    <div class="hidden overflow-x-auto rounded-lg border border-gray-200 lg:block">
       <table class="w-full border-collapse text-sm">
         <thead class="bg-gray-50">
           <tr>

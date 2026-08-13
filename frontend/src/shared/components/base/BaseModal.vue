@@ -7,9 +7,13 @@
       <div
         :class="`bg-white rounded-lg shadow-lg p-6 w-full custom-scrollbar mx-4 overflow-y-auto ${className}`"
       >
-        <div class="flex justify-between items-center">
-          <h3 class="text-lg font-semibold">{{ title }} </h3>
-          <button @click="close" class="text-gray-900 cursor-pointer text-3xl hover:text-primary">
+        <div class="flex items-start justify-between gap-3">
+          <h3 class="min-w-0 flex-1 text-base font-semibold leading-snug sm:text-lg">{{ title }}</h3>
+          <button
+            type="button"
+            class="shrink-0 text-3xl leading-none text-gray-900 cursor-pointer hover:text-primary"
+            @click="close"
+          >
             &times;
           </button>
         </div>

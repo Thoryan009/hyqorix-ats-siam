@@ -1,23 +1,24 @@
 <template>
   <SectionHeader>
     <PageHeader>
-      <div>
+      <div class="min-w-0">
         <PageTitle>Submitted Bills</PageTitle>
         <p class="mt-1 text-sm text-gray-500">
           Manager review queue — approve to move bills into Bills To Pay
         </p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
-        <router-link to="/finance/bills-and-purchases">
+      <div class="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
+        <router-link to="/finance/bills-and-purchases" class="block">
           <BaseButton
             v-can="'bill_generation.create'"
-            :className="'border border-gray-300 bg-white text-gray-800 hover:bg-gray-50'"
+            :className="'w-full border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 sm:w-auto'"
           >
             <i class="fa fa-file-text-o mr-1"></i> Bills & Purchases
           </BaseButton>
         </router-link>
         <router-link
+          class="block"
           :to="{
             path: '/finance/payment-received',
             query: { tab: 'transaction_entry', payment_mode: 'bills_to_pay' },
@@ -25,7 +26,7 @@
         >
           <BaseButton
             v-can="'make_payment.create'"
-            :className="'border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'"
+            :className="'w-full border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 sm:w-auto'"
           >
             <i class="fa fa-credit-card mr-1"></i> Bills To Pay
           </BaseButton>
@@ -33,27 +34,27 @@
       </div>
     </PageHeader>
 
-    <div class="rounded-lg bg-white p-4 shadow-sm">
-      <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
+    <div class="rounded-lg bg-white p-3 shadow-sm sm:p-4">
+      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
           <h3 class="text-base font-semibold text-gray-900">Awaiting Manager Approval</h3>
           <p class="mt-1 text-sm text-gray-500">
             Print anytime. Approve moves the bill to Bills To Pay for payment processing.
           </p>
         </div>
         <span
-          class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700"
+          class="w-fit rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700"
         >
           {{ paymentStore.submittedBillCount }} submitted
         </span>
       </div>
 
-      <div class="mb-4 flex flex-wrap gap-2 border-b border-gray-100 pb-3">
+      <div class="-mx-1 mb-4 flex gap-2 overflow-x-auto border-b border-gray-100 px-1 pb-3">
         <button
           v-for="tab in submittedTabs"
           :key="tab.id"
           type="button"
-          class="rounded-lg border px-4 py-2 text-sm font-semibold transition-all"
+          class="shrink-0 rounded-lg border px-3 py-2 text-sm font-semibold transition-all sm:px-4"
           :class="
             activeSubmittedTab === tab.id
               ? tab.activeClass
