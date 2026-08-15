@@ -336,7 +336,11 @@ class FinanceTrialBalanceService
         }
 
         $code = trim((string) ($account->code ?? ''));
-        if ($code !== '' && !in_array($category, ['main', 'capital', 'sale', 'bills_receivable', 'income_receivable', 'expense_payable'], true)) {
+        if (
+            $code !== ''
+            && !str_starts_with($code, 'PAY-AST-')
+            && !in_array($category, ['main', 'capital', 'sale', 'bills_receivable', 'income_receivable', 'expense_payable', 'liabilities'], true)
+        ) {
             return "{$name} ({$code})";
         }
 
