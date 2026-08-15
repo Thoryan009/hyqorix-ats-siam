@@ -36,8 +36,11 @@ class FinanceIncomeStatementService
             ->select('income_heads.*')
             ->get();
 
+        // Accrual: recognize income when earned (cash/bank/expense_link or due).
+        // Later receipts that settle a due bill must not be counted again.
         $collectionQuery = FinanceIncomeCollection::query()
-            ->where('status', 'collected');
+            ->whereIn('status', ['collected', 'due'])
+            ->whereNull('settles_income_collection_id');
 
         if (!empty($filters['from_date'])) {
             $collectionQuery->whereDate('collection_date', '>=', $filters['from_date']);
