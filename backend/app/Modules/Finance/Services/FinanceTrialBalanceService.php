@@ -151,9 +151,11 @@ class FinanceTrialBalanceService
             $totalCr = round((float) ($account->total_cr ?? 0), 2);
             $category = (string) ($account->category ?? 'main');
 
-            // Asset purchase settlement CRs are ledger-only (like expense payment CRs)
+            // Purchase-linked asset settlement CRs are ledger-only (like expense payment CRs)
             // and must not wipe the asset cost on Trial Balance / Balance Sheet.
-            if ($category === 'asset') {
+            // Manual assets (e.g. Advanced Given, link_to_purchase=false) keep bill CRs
+            // so advance adjustments reduce the outstanding balance like the ledger.
+            if ($category === 'asset' && (bool) ($account->link_to_purchase ?? false)) {
                 $totalCr = round(max($totalCr - (float) ($account->bill_payment_cr ?? 0), 0), 2);
             }
 
