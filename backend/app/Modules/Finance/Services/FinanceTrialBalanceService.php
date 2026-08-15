@@ -96,6 +96,7 @@ class FinanceTrialBalanceService
         // Older bill payments often hit cash/bank only (no expense accounts existed).
         // Ensure expense-head accounts + missing DR rows before building the statement.
         $this->billEntryService->backfillApprovedBillExpenseLedgers($toDate);
+        $this->billEntryService->backfillApprovedAssetPurchaseLedgers($toDate);
 
         // Ensure Sale income ledger exists and includes prior recognized sale collections.
         $this->accountService->ensureSaleAccount(true);
@@ -108,6 +109,9 @@ class FinanceTrialBalanceService
 
         // Backfill per-head expense payable ledgers for approved due bills.
         $this->accountService->backfillMissingExpensePayableEntries();
+
+        // Backfill {Asset} Payable for due / settled asset-purchase bills.
+        $this->accountService->backfillMissingAssetPurchasePayableEntries();
 
         // Ensure due bills missing linked expense account ids are repaired for payable queues.
         $this->billEntryService->backfillMissingBillExpenseAccountLinks();
@@ -126,6 +130,14 @@ class FinanceTrialBalanceService
                     $query->whereDate('entry_date', '<=', $toDate);
                 },
             ], 'cr_amount')
+            ->withSum([
+                'ledgerEntries as bill_payment_cr' => function ($query) use ($toDate) {
+                    $query
+                        ->whereDate('entry_date', '<=', $toDate)
+                        ->whereNotNull('finance_bill_entry_id')
+                        ->where('cr_amount', '>', 0);
+                },
+            ], 'cr_amount')
             ->orderBy('account_name')
             ->orderBy('id')
             ->get();
@@ -138,6 +150,12 @@ class FinanceTrialBalanceService
             $totalDr = round((float) ($account->total_dr ?? 0), 2);
             $totalCr = round((float) ($account->total_cr ?? 0), 2);
             $category = (string) ($account->category ?? 'main');
+
+            // Asset purchase settlement CRs are ledger-only (like expense payment CRs)
+            // and must not wipe the asset cost on Trial Balance / Balance Sheet.
+            if ($category === 'asset') {
+                $totalCr = round(max($totalCr - (float) ($account->bill_payment_cr ?? 0), 0), 2);
+            }
 
             // Party AR/AP is consolidated / represented elsewhere:
             // - applicants → Bills Receivable

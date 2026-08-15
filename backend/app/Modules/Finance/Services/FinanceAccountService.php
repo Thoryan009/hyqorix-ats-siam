@@ -729,6 +729,110 @@ class FinanceAccountService extends BaseCachedService
     }
 
     /**
+     * Backfill {Asset} Payable CR/DR for approved asset-purchase due bills.
+     * Previously skipped when a vendor account was linked.
+     */
+    public function backfillMissingAssetPurchasePayableEntries(): void
+    {
+        $bills = FinanceBillEntry::query()
+            ->with('assetAccount')
+            ->where('status', 'approved')
+            ->where('entry_type', 'asset_purchase')
+            ->where(function ($query) {
+                $query
+                    ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
+                    ->orWhereRaw('COALESCE(paid_amount, 0) > 0');
+            })
+            ->orderBy('approved_at')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($bills as $bill) {
+            $assetAccount = $bill->assetAccount;
+            if (!$assetAccount || (string) $assetAccount->category !== 'asset') {
+                continue;
+            }
+
+            $amount = round((float) ($bill->amount ?? 0), 2);
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $voucherNo = trim((string) ($bill->voucher_no ?? $bill->reference_no ?? ''));
+            $voucherPrefix = $voucherNo !== '' ? $voucherNo : 'BILL-DUE-'.$bill->id;
+            $entryDate = $bill->approved_at?->format('Y-m-d')
+                ?: ($bill->payment_date?->format('Y-m-d') ?? now()->toDateString());
+            $isStillDue = strtolower(trim((string) ($bill->payment_method ?? ''))) === 'due';
+            $paidAmount = round((float) ($bill->paid_amount ?? 0), 2);
+            if (!$isStillDue && $paidAmount <= 0) {
+                continue;
+            }
+
+            $payableAccount = $this->ensureAssetPurchasePayableAccount($assetAccount);
+
+            if ($isStillDue) {
+                $this->recordAssetPurchasePayableEntry(
+                    $assetAccount,
+                    $amount,
+                    'cr',
+                    $entryDate,
+                    $voucherPrefix,
+                    null,
+                    trim((string) ($bill->particular ?? '')) ?: 'Due payable',
+                    'Due',
+                    (string) ($bill->remarks ?? $bill->approval_remarks ?? ''),
+                    (string) ($bill->client_name ?? $bill->linked_account_name ?? ''),
+                    (int) $bill->id
+                );
+            } else {
+                $existingCr = round((float) FinanceAccountLedgerEntry::query()
+                    ->where('finance_account_id', $payableAccount->id)
+                    ->where('voucher_no', $voucherPrefix)
+                    ->where('cr_amount', '>', 0)
+                    ->sum('cr_amount'), 2);
+                if ($existingCr <= 0.005) {
+                    continue;
+                }
+                $paidAmount = max($paidAmount, $amount);
+            }
+
+            if ($paidAmount <= 0) {
+                continue;
+            }
+
+            $existingClearing = round((float) FinanceAccountLedgerEntry::query()
+                ->where('finance_account_id', $payableAccount->id)
+                ->where('dr_amount', '>', 0)
+                ->where(function ($query) use ($voucherPrefix) {
+                    $query
+                        ->where('voucher_no', 'like', $voucherPrefix.'-P%')
+                        ->orWhere('voucher_no', $voucherPrefix.'-PAID')
+                        ->orWhere('voucher_no', 'like', $voucherPrefix.'-PAID%');
+                })
+                ->sum('dr_amount'), 2);
+
+            $shortfall = round($paidAmount - $existingClearing, 2);
+            if ($shortfall <= 0.005) {
+                continue;
+            }
+
+            $this->recordAssetPurchasePayableEntry(
+                $assetAccount,
+                $shortfall,
+                'dr',
+                $entryDate,
+                $voucherPrefix.'-PAID',
+                null,
+                trim((string) ($bill->particular ?? '')) ?: 'Partial payable payment',
+                'Partial',
+                (string) ($bill->remarks ?? $bill->approval_remarks ?? ''),
+                (string) ($bill->client_name ?? $bill->linked_account_name ?? ''),
+                (int) $bill->id
+            );
+        }
+    }
+
+    /**
      * Drop legacy `{voucher}-PAID` backfill rows when live `{voucher}-P{txn}`
      * settlements already cover paid_amount (prevents TB payable going to zero early).
      */

@@ -449,7 +449,7 @@ class FinanceBillEntryService extends BaseCachedService
                 );
 
                 if ($assetAccount) {
-                    // Asset ledger: DR full purchase amount.
+                    // Asset ledger: DR full purchase amount (like expense head charge).
                     $this->postBillLedgerEntry(
                         $assetAccount,
                         $billEntry->id,
@@ -463,6 +463,25 @@ class FinanceBillEntryService extends BaseCachedService
                         $typeTransactionId,
                         false
                     );
+
+                    // Settle cash/bank portion on asset ledger (CR), same as expense bills.
+                    if ($hasCashPayment) {
+                        $this->postBillLedgerEntry(
+                            $assetAccount,
+                            $billEntry->id,
+                            $payAmount,
+                            $paymentDate,
+                            $expenseBillParticular,
+                            $voucherNo,
+                            $billEntry->client_name ?? '',
+                            $paymentMethodLabel,
+                            $approvalRemarks ?: ($hasDueRemaining
+                                ? 'Partial asset purchase payment approved'
+                                : 'Asset purchase payment approved'),
+                            $typeTransactionId,
+                            true
+                        );
+                    }
 
                     if ($vendorAccount) {
                         // Vendor ledger: DR full purchase amount (charge).
@@ -498,7 +517,11 @@ class FinanceBillEntryService extends BaseCachedService
                                 true
                             );
                         }
-                    } elseif ($hasDueRemaining) {
+                    }
+
+                    // Due remaining (or full due): CR {Asset} Payable liability — always,
+                    // even when a vendor account is linked (vendor is party ledger only).
+                    if ($hasDueRemaining) {
                         $this->accountService->recordAssetPurchasePayableEntry(
                             $assetAccount,
                             $billTotal,
@@ -836,6 +859,21 @@ class FinanceBillEntryService extends BaseCachedService
                     : sprintf('BILL-PAY-%d', $billEntry->id);
 
                 if ($isAssetPurchase) {
+                    // Asset ledger: CR for the payment / settle amount (like expense heads).
+                    $this->postBillLedgerEntry(
+                        $assetAccount,
+                        $billEntry->id,
+                        $payAmount,
+                        $paymentDate,
+                        $ledgerParticular,
+                        $voucherNo,
+                        $billEntry->client_name ?? '',
+                        $paymentMethodLabel,
+                        $ledgerRemarks,
+                        $typeTransactionId,
+                        true
+                    );
+
                     // Vendor ledger: CR payment when settling due payable.
                     $this->postBillLedgerEntry(
                         $vendorAccount,
@@ -849,6 +887,30 @@ class FinanceBillEntryService extends BaseCachedService
                         $ledgerRemarks,
                         $typeTransactionId,
                         true
+                    );
+
+                    $payableVoucherBase = trim((string) ($billEntry->voucher_no ?? ''));
+                    if ($payableVoucherBase === '') {
+                        $payableVoucherBase = $voucherNo !== '' ? $voucherNo : 'BILL-DUE-'.$billEntry->id;
+                    }
+                    $payableSettleVoucherNo = sprintf(
+                        '%s-P%s',
+                        $payableVoucherBase,
+                        $typeTransactionId ?: now()->timestamp
+                    );
+
+                    $this->accountService->recordAssetPurchasePayableEntry(
+                        $assetAccount,
+                        $payAmount,
+                        'dr',
+                        $paymentDate,
+                        $payableSettleVoucherNo,
+                        $typeTransactionId,
+                        $ledgerParticular,
+                        $paymentMethodLabel,
+                        $ledgerRemarks,
+                        (string) ($billEntry->client_name ?? ''),
+                        $billEntry->id
                     );
                 } else {
                     // Expense head ledger: CR for the payment / settle amount.
@@ -1585,6 +1647,107 @@ class FinanceBillEntryService extends BaseCachedService
                         $billEntry->client_name ?? '',
                         $paymentMethodLabel,
                         'Backfilled expense payment settlement',
+                        null,
+                        true
+                    );
+                    $posted++;
+                }
+            }
+        }
+
+        if ($posted > 0) {
+            $this->accountService->flushCache();
+        }
+
+        return $posted;
+    }
+
+    /**
+     * Ensure approved asset purchases have asset-ledger DR (+ CR when paid by cash/bank).
+     */
+    public function backfillApprovedAssetPurchaseLedgers(?string $toDate = null): int
+    {
+        $query = FinanceBillEntry::query()
+            ->where('status', 'approved')
+            ->where('entry_type', 'asset_purchase');
+
+        if ($toDate) {
+            $query->whereDate('payment_date', '<=', $toDate);
+        }
+
+        $posted = 0;
+
+        foreach ($query->get() as $billEntry) {
+            $assetAccount = $this->resolveAssetAccountForBill($billEntry);
+            if (!$assetAccount) {
+                continue;
+            }
+
+            $amount = round((float) $billEntry->amount, 2);
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $paidAmount = round((float) ($billEntry->paid_amount ?? 0), 2);
+            $paymentDate = $billEntry->payment_date?->format('Y-m-d') ?? now()->toDateString();
+            $particular = trim((string) ($billEntry->particular ?? '')) ?: 'Asset purchase approved';
+            $voucherNo = trim((string) ($billEntry->voucher_no ?? ''))
+                ?: trim((string) ($billEntry->reference_no ?? ''))
+                ?: sprintf('BILL-%03d', $billEntry->id);
+            $paymentMethod = strtolower((string) ($billEntry->payment_method ?? ''));
+            $isDuePayment = $paymentMethod === 'due';
+            $paymentMethodLabel = !$isDuePayment && $paymentMethod !== ''
+                ? ucfirst($paymentMethod)
+                : null;
+
+            $assetAccount = FinanceAccount::query()->find($assetAccount->id);
+            if (!$assetAccount) {
+                continue;
+            }
+
+            $hasAssetDebit = FinanceAccountLedgerEntry::query()
+                ->where('finance_bill_entry_id', $billEntry->id)
+                ->where('finance_account_id', $assetAccount->id)
+                ->where('dr_amount', '>', 0)
+                ->exists();
+
+            if (!$hasAssetDebit) {
+                $this->postBillLedgerEntry(
+                    $assetAccount,
+                    $billEntry->id,
+                    $amount,
+                    $paymentDate,
+                    $particular,
+                    $voucherNo,
+                    $billEntry->client_name ?? '',
+                    $paymentMethodLabel,
+                    'Backfilled asset purchase charge',
+                    null,
+                    false
+                );
+                $posted++;
+            }
+
+            $settleAmount = $isDuePayment ? $paidAmount : max($paidAmount, $amount);
+            if ($settleAmount > 0.005) {
+                $existingCredit = round((float) FinanceAccountLedgerEntry::query()
+                    ->where('finance_bill_entry_id', $billEntry->id)
+                    ->where('finance_account_id', $assetAccount->id)
+                    ->where('cr_amount', '>', 0)
+                    ->sum('cr_amount'), 2);
+
+                $creditShortfall = round($settleAmount - $existingCredit, 2);
+                if ($creditShortfall > 0.005) {
+                    $this->postBillLedgerEntry(
+                        $assetAccount,
+                        $billEntry->id,
+                        $creditShortfall,
+                        $paymentDate,
+                        $particular,
+                        $voucherNo,
+                        $billEntry->client_name ?? '',
+                        $paymentMethodLabel,
+                        'Backfilled asset purchase payment settlement',
                         null,
                         true
                     );
