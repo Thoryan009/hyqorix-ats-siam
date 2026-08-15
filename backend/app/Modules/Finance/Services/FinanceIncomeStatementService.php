@@ -6,14 +6,14 @@ use App\Modules\Finance\Models\ExpenseCategory;
 use App\Modules\Finance\Models\ExpenseHead;
 use App\Modules\Finance\Models\FinanceAccountLedgerEntry;
 use App\Modules\Finance\Models\FinanceBillEntry;
-use App\Modules\Finance\Models\FinanceIncomeCollection;
 use App\Modules\Finance\Models\IncomeHead;
 use Illuminate\Support\Facades\DB;
 
 class FinanceIncomeStatementService
 {
     public function __construct(
-        private readonly FinanceGrossProfitReportService $grossProfitReportService
+        private readonly FinanceGrossProfitReportService $grossProfitReportService,
+        private readonly FinanceIncomeCollectionService $incomeCollectionService
     ) {}
 
     public function getStatement(array $filters = []): array
@@ -37,26 +37,11 @@ class FinanceIncomeStatementService
             ->get();
 
         // Accrual: recognize income when earned (cash/bank/expense_link or due).
-        // Later receipts that settle a due bill must not be counted again.
-        $collectionQuery = FinanceIncomeCollection::query()
-            ->whereIn('status', ['collected', 'due'])
-            ->whereNull('settles_income_collection_id');
-
-        if (!empty($filters['from_date'])) {
-            $collectionQuery->whereDate('collection_date', '>=', $filters['from_date']);
-        }
-
-        if (!empty($filters['to_date'])) {
-            $collectionQuery->whereDate('collection_date', '<=', $filters['to_date']);
-        }
-
-        $amountsByIncomeHead = $collectionQuery
-            ->select([
-                'income_head_id',
-                DB::raw('SUM(amount) as total_amount'),
-            ])
-            ->groupBy('income_head_id')
-            ->pluck('total_amount', 'income_head_id');
+        // Later receipts that settle a due receivable must not be counted again.
+        $amountsByIncomeHead = $this->incomeCollectionService->getEarnedAmountsByIncomeHead(
+            $filters['from_date'] ?? null,
+            $filters['to_date'] ?? null
+        );
 
         // Bills payable settled via linked Operating Income head
         // (e.g. Liability Written Back) post ledger CRs, not income collections.

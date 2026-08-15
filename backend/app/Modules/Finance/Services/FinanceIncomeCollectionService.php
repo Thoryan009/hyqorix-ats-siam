@@ -40,6 +40,56 @@ class FinanceIncomeCollectionService extends BaseCachedService
         );
     }
 
+    /**
+     * Income recognized when earned. Cash/bank receipts that settle a prior due
+     * are excluded so the income statement does not double-count.
+     *
+     * @return array<int, float>
+     */
+    public function getEarnedAmountsByIncomeHead(?string $fromDate = null, ?string $toDate = null): array
+    {
+        $query = FinanceIncomeCollection::query()
+            ->whereIn('status', ['collected', 'due']);
+
+        if (!empty($fromDate)) {
+            $query->whereDate('collection_date', '>=', $fromDate);
+        }
+
+        if (!empty($toDate)) {
+            $query->whereDate('collection_date', '<=', $toDate);
+        }
+
+        $rows = $query->get([
+            'id',
+            'income_head_id',
+            'amount',
+            'payment_method',
+            'settles_income_collection_id',
+            'candidates',
+            'linked_account_id',
+        ]);
+
+        $dueRows = FinanceIncomeCollection::query()
+            ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
+            ->get(['id', 'income_head_id', 'candidates', 'linked_account_id']);
+
+        $totals = [];
+        foreach ($rows as $row) {
+            if ($this->collectionSettlesPriorDue($row, $dueRows)) {
+                continue;
+            }
+
+            $headId = (int) $row->income_head_id;
+            if ($headId <= 0) {
+                continue;
+            }
+
+            $totals[$headId] = round(($totals[$headId] ?? 0) + (float) $row->amount, 2);
+        }
+
+        return $totals;
+    }
+
     public function collect(array $data): FinanceIncomeCollection
     {
         return $this->mutate(function () use ($data) {
@@ -257,6 +307,14 @@ class FinanceIncomeCollectionService extends BaseCachedService
                             : $this->hasPriorDueIncomeForHead((int) $head->id, $linkedAccount?->id)
                     )
                 );
+
+                if ($settlingPriorDue && $settlesCollectionId <= 0) {
+                    $settlesCollectionId = $this->resolvePriorDueCollectionId(
+                        (int) $head->id,
+                        $normalizedCandidates,
+                        $linkedAccount?->id
+                    );
+                }
 
                 $billParticular = trim((string) $head->name).' Bill';
                 $jobCode = trim((string) ($data['job_code'] ?? '')) ?: null;
@@ -957,8 +1015,121 @@ class FinanceIncomeCollectionService extends BaseCachedService
      */
     private function hasPriorDueIncomeForCandidates(?array $candidates, int $incomeHeadId): bool
     {
-        if (!is_array($candidates) || $candidates === [] || $incomeHeadId <= 0) {
+        return $this->resolvePriorDueCollectionId($incomeHeadId, $candidates, null) > 0;
+    }
+
+    private function hasPriorDueIncomeForHead(int $incomeHeadId, ?int $linkedAccountId): bool
+    {
+        return $this->resolvePriorDueCollectionId($incomeHeadId, null, $linkedAccountId) > 0;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>|null  $candidates
+     */
+    private function resolvePriorDueCollectionId(
+        int $incomeHeadId,
+        ?array $candidates,
+        ?int $linkedAccountId
+    ): int {
+        if ($incomeHeadId <= 0) {
+            return 0;
+        }
+
+        $applicationIds = $this->candidateApplicationIds($candidates);
+
+        $query = FinanceIncomeCollection::query()
+            ->where('income_head_id', $incomeHeadId)
+            ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
+            ->orderByDesc('id');
+
+        if ($applicationIds !== []) {
+            $dueRows = $query->whereNotNull('candidates')->get(['id', 'candidates']);
+            foreach ($dueRows as $row) {
+                $dueAppIds = $this->candidateApplicationIds(
+                    is_array($row->candidates) ? $row->candidates : []
+                );
+                if (array_intersect($applicationIds, $dueAppIds) !== []) {
+                    return (int) $row->id;
+                }
+            }
+
+            return 0;
+        }
+
+        $query->whereNull('candidates');
+        if ($linkedAccountId) {
+            $query->where('linked_account_id', $linkedAccountId);
+        }
+
+        return (int) ($query->value('id') ?? 0);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, FinanceIncomeCollection>  $dueRows
+     */
+    private function collectionSettlesPriorDue(FinanceIncomeCollection $row, $dueRows): bool
+    {
+        if ((int) ($row->settles_income_collection_id ?? 0) > 0) {
+            return true;
+        }
+
+        $method = strtolower((string) ($row->payment_method ?? ''));
+        if (!in_array($method, ['cash', 'bank', 'expense_link'], true)) {
             return false;
+        }
+
+        $headId = (int) $row->income_head_id;
+        $rowId = (int) $row->id;
+        $applicationIds = $this->candidateApplicationIds(
+            is_array($row->candidates) ? $row->candidates : []
+        );
+        $linkedAccountId = $row->linked_account_id ? (int) $row->linked_account_id : null;
+
+        foreach ($dueRows as $due) {
+            if ((int) $due->id >= $rowId) {
+                continue;
+            }
+            if ((int) $due->income_head_id !== $headId) {
+                continue;
+            }
+
+            $dueAppIds = $this->candidateApplicationIds(
+                is_array($due->candidates) ? $due->candidates : []
+            );
+
+            if ($applicationIds !== []) {
+                if (array_intersect($applicationIds, $dueAppIds) !== []) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if ($dueAppIds !== []) {
+                continue;
+            }
+
+            $dueLinkedId = $due->linked_account_id ? (int) $due->linked_account_id : null;
+            if ($linkedAccountId) {
+                if ($dueLinkedId === $linkedAccountId) {
+                    return true;
+                }
+            } else {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>|null  $candidates
+     * @return list<int>
+     */
+    private function candidateApplicationIds(?array $candidates): array
+    {
+        if (!is_array($candidates) || $candidates === []) {
+            return [];
         }
 
         $applicationIds = [];
@@ -971,52 +1142,8 @@ class FinanceIncomeCollectionService extends BaseCachedService
                 $applicationIds[] = $applicationId;
             }
         }
-        $applicationIds = array_values(array_unique($applicationIds));
-        if ($applicationIds === []) {
-            return false;
-        }
 
-        $dueRows = FinanceIncomeCollection::query()
-            ->where('income_head_id', $incomeHeadId)
-            ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
-            ->whereNotNull('candidates')
-            ->get(['candidates']);
-
-        foreach ($dueRows as $row) {
-            $dueCandidates = $row->candidates;
-            if (!is_array($dueCandidates)) {
-                continue;
-            }
-            foreach ($dueCandidates as $dueCandidate) {
-                if (!is_array($dueCandidate)) {
-                    continue;
-                }
-                $applicationId = (int) ($dueCandidate['application_id'] ?? $dueCandidate['candidate_id'] ?? 0);
-                if ($applicationId > 0 && in_array($applicationId, $applicationIds, true)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private function hasPriorDueIncomeForHead(int $incomeHeadId, ?int $linkedAccountId): bool
-    {
-        if ($incomeHeadId <= 0) {
-            return false;
-        }
-
-        $query = FinanceIncomeCollection::query()
-            ->where('income_head_id', $incomeHeadId)
-            ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
-            ->whereNull('candidates');
-
-        if ($linkedAccountId) {
-            $query->where('linked_account_id', $linkedAccountId);
-        }
-
-        return $query->exists();
+        return array_values(array_unique($applicationIds));
     }
 
     private function postDebitExpenseLinkLedger(
@@ -1602,6 +1729,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                 $items[] = [
                     'id' => $applicationId,
                     'application_id' => $applicationId,
+                    'collection_id' => (int) $dueRow->id,
                     'source' => 'pl_income',
                     'income_category_id' => (int) $dueRow->income_category_id,
                     'income_category_name' => $dueRow->incomeCategory?->name,
