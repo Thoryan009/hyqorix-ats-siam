@@ -840,7 +840,7 @@ const purchaseAssetAccountOptions = computed(() =>
     .filter((account) => account.status === 'Active' && account.link_to_purchase)
     .map((account) => ({
       id: account.id,
-      name: `${account.account_name} — ${formatCurrency(account.balance ?? account.current_balance ?? 0)}`,
+      name: `${account.account_name} — ${formatCurrency(Math.abs(Number(account.balance ?? account.current_balance ?? 0)))}`,
     }))
 )
 

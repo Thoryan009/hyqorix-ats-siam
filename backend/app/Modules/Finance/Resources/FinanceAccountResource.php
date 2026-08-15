@@ -2,6 +2,7 @@
 
 namespace App\Modules\Finance\Resources;
 
+use App\Modules\Application\Helpers\ApplicationPresenter;
 use App\Modules\Shared\Helpers\DateTimeFormatter;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -67,7 +68,7 @@ class FinanceAccountResource extends JsonResource
             'staff_name' => $this->category === 'staff' ? $this->account_name : null,
             'applicant_id' => $this->category === 'applicant' ? $this->entity_id : null,
             'applicant_code' => $this->category === 'applicant' ? $this->code : null,
-            'applicant_name' => $this->category === 'applicant' ? $this->account_name : null,
+            'applicant_name' => $this->applicantDisplayName(),
             'banks_id' => $this->category === 'banks' ? $this->bank_id : null,
             'banks_code' => $this->category === 'banks' ? $this->code : null,
             'banks_name' => $this->category === 'banks' ? $this->account_name : null,
@@ -125,5 +126,26 @@ class FinanceAccountResource extends JsonResource
         $cr = (float) ($this->ledger_cr_amount ?? 0);
 
         return round($cr - $dr, 2);
+    }
+
+    private function applicantDisplayName(): ?string
+    {
+        if ($this->category !== 'applicant') {
+            return null;
+        }
+
+        $application = $this->applicantApplication;
+        if ($application) {
+            $name = ApplicationPresenter::fullName(
+                $application->given_name,
+                $application->sur_name
+            );
+
+            if ($name !== '') {
+                return $name;
+            }
+        }
+
+        return $this->account_name;
     }
 }

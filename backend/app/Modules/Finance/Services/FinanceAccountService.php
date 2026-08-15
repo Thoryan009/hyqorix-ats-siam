@@ -1709,8 +1709,8 @@ class FinanceAccountService extends BaseCachedService
         }
 
         $accountName = ApplicationPresenter::fullName(
-            $application->sur_name,
-            $application->given_name
+            $application->given_name,
+            $application->sur_name
         ) ?: ('Applicant #' . $application->id);
 
         return $this->mutate(function () use ($application, $accountName) {

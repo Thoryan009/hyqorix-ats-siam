@@ -667,7 +667,10 @@ const particularPlaceholder = computed(() => `${activeTypeLabel.value} transacti
 const submitButtonLabel = computed(() => `Submit ${activeTypeLabel.value}`)
 
 function mapAccountOption(account) {
-  const balance = Number(account.balance ?? account.current_balance ?? 0).toLocaleString('en-BD', {
+  const rawBalance = Number(account.balance ?? account.current_balance ?? 0)
+  const displayBalance =
+    account.category === ACCOUNT_CATEGORIES.ASSET ? Math.abs(rawBalance) : rawBalance
+  const balance = displayBalance.toLocaleString('en-BD', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
