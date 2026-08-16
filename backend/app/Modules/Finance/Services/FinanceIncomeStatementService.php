@@ -28,7 +28,7 @@ class FinanceIncomeStatementService
         $incomeHeads = IncomeHead::query()
             ->with('incomeCategory')
             ->where('income_heads.status', 'active')
-            ->whereHas('incomeCategory', fn ($q) => $q->where('status', 'active'))
+            ->whereHas('incomeCategory', fn($q) => $q->where('status', 'active'))
             ->join('income_categories', 'income_heads.income_category_id', '=', 'income_categories.id')
             ->orderBy('income_categories.sort_order')
             ->orderBy('income_heads.sort_order')
@@ -86,9 +86,9 @@ class FinanceIncomeStatementService
 
         $expenseHeads = $operatingCategory
             ? ExpenseHead::query()
-                ->where('expense_category_id', $operatingCategory->id)
-                ->orderBy('id')
-                ->get(['id', 'name'])
+            ->where('expense_category_id', $operatingCategory->id)
+            ->orderBy('id')
+            ->get(['id', 'name'])
             : collect();
 
         $amountsByExpenseHead = collect();
@@ -150,8 +150,7 @@ class FinanceIncomeStatementService
                     2
                 );
             }
-
-
+        }
 
         $debitLines = [];
         $totalExpenses = 0.0;
