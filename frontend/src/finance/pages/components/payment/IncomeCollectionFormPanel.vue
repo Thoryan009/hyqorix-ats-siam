@@ -225,6 +225,23 @@
                         {{ formatCurrency(selectedHead.base_price) }}
                       </dd>
                     </div>
+                    <div class="space-y-2 py-3">
+                      <dt class="text-slate-500">Income Amount (BDT)</dt>
+                      <dd>
+                        <BaseInput
+                          id="operating_billed_amount"
+                          v-model="form.billed_amount"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="Billed income amount"
+                          :required="true"
+                        />
+                        <p class="mt-1 text-xs text-slate-500">
+                          If receive is less than this amount, the remainder moves to Bills Receivable.
+                        </p>
+                      </dd>
+                    </div>
                     <div v-if="selectedLinkedAccount" class="flex justify-between gap-3 py-3">
                       <dt class="text-slate-500">Linked Account</dt>
                       <dd class="max-w-[60%] text-right font-medium text-slate-900">
@@ -371,6 +388,7 @@ const createDefaultForm = () => ({
   category_id: '',
   head_id: '',
   amount: '',
+  billed_amount: '',
   payment_method: 'cash',
   particular: '',
   reference_no: '',
@@ -983,6 +1001,7 @@ watch(
 
     if (!isClientIncomeCategory.value) {
       form.amount = head.base_price ? String(head.base_price) : ''
+      form.billed_amount = head.base_price ? String(head.base_price) : ''
     }
 
     syncParticular()
@@ -1080,6 +1099,9 @@ async function handleSubmit() {
       category_id: Number(form.category_id),
       head_id: Number(form.head_id),
       amount: Number(form.amount),
+      billed_amount: isClientIncomeCategory.value
+        ? undefined
+        : Number(form.billed_amount || form.amount) || undefined,
       collection_date: form.collection_date,
       payment_method: form.payment_method || 'cash',
       particular: form.particular?.trim() || undefined,
@@ -1105,12 +1127,10 @@ async function handleSubmit() {
     toast.success(
       isDueReceiveMethod.value
         ? 'PL Income due recorded. Settle it from Bills Receivable with cash or bank.'
-        : 'PL Income collected successfully.'
+        : 'PL Income collected successfully. Any remaining amount was moved to Bills Receivable.'
     )
 
-    if (isDueReceiveMethod.value) {
-      await saleEntryStore.fetchReceivableBills(true)
-    }
+    await saleEntryStore.fetchReceivableBills(true)
 
     resetForm()
     emit('saved')

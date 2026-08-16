@@ -297,6 +297,21 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     && is_array($normalizedCandidates)
                     && $normalizedCandidates !== [];
 
+                $billedAmount = round((float) ($data['billed_amount'] ?? 0), 2);
+                if ($billedAmount <= 0 && is_array($normalizedCandidates) && $normalizedCandidates !== []) {
+                    foreach ($normalizedCandidates as $candidate) {
+                        if (!is_array($candidate)) {
+                            continue;
+                        }
+                        $salePrice = round((float) ($candidate['sale_price'] ?? 0), 2);
+                        $payAmount = round((float) ($candidate['amount'] ?? 0), 2);
+                        $billedAmount = round($billedAmount + ($salePrice > 0 ? $salePrice : $payAmount), 2);
+                    }
+                }
+                if ($billedAmount <= 0) {
+                    $billedAmount = $amount;
+                }
+
                 $counterpartyAccount = $receiveAccount ?? $expenseAccount;
                 // Candidate bills settle by application overlap; simple PL income by head + party.
                 $settlingPriorDue = $postPaymentCredit && (
@@ -405,7 +420,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                         $this->postDebitReceivableLedger(
                             $linkedAccount,
                             $typeTransaction->id,
-                            $amount,
+                            $billedAmount,
                             $collectionDate,
                             $billParticular,
                             $voucherNo,
@@ -532,11 +547,11 @@ class FinanceIncomeCollectionService extends BaseCachedService
                             $billParticular
                         );
                     } elseif ($postPaymentCredit) {
-                        // Cash/bank without candidates: DR (bill) + CR (receive).
+                        // Cash/bank without candidates: DR billed amount (bill) + CR receive.
                         $this->postDebitReceivableLedger(
                             $incomeAccount,
                             $typeTransaction->id,
-                            $amount,
+                            $billedAmount,
                             $collectionDate,
                             $billParticular,
                             $voucherNo,
@@ -621,6 +636,21 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     'collected_by_id' => $data['collected_by_id'] ?? auth()->id(),
                     'collected_by_name' => $data['collected_by_name'] ?? (auth()->user()?->name),
                 ]);
+
+                if (
+                    !$isDue
+                    && !$settlingPriorDue
+                    && in_array($paymentMethod, ['cash', 'bank', 'expense_link'], true)
+                ) {
+                    $this->createDueRemainderIncomeCollection(
+                        $collection,
+                        $head,
+                        $billedAmount,
+                        $amount,
+                        $normalizedCandidates,
+                        $linkedAccount
+                    );
+                }
 
                 $this->accountService->flushCache();
                 $this->typeTransactionService->flushCache();
@@ -1577,6 +1607,122 @@ class FinanceIncomeCollectionService extends BaseCachedService
         }
 
         return $name !== '' ? $name : ($code !== '' ? $code : "Account #{$account->id}");
+    }
+
+    /**
+     * After a partial cash/bank receive, raise the leftover billed amount as due
+     * so it appears on Bills Receivable (client candidates or operating income).
+     *
+     * @param  list<array<string, mixed>>|null  $candidates
+     */
+    private function createDueRemainderIncomeCollection(
+        FinanceIncomeCollection $cashCollection,
+        IncomeHead $head,
+        float $billedAmount,
+        float $receivedAmount,
+        ?array $candidates,
+        ?FinanceAccount $linkedAccount
+    ): void {
+        $collectionDate = (string) ($cashCollection->collection_date ?? now()->toDateString());
+        $voucherNo = trim((string) ($cashCollection->voucher_no ?? $cashCollection->reference_no ?? ''));
+        $remainderVoucher = $voucherNo !== ''
+            ? sprintf('%s-R', $voucherNo)
+            : sprintf('INC-R-%d', $cashCollection->id);
+        $dueRemarks = trim((string) ($cashCollection->remarks ?? ''))
+            ?: 'Partial receive — remaining moved to Bills Receivable';
+        $typeTransactionId = (int) ($cashCollection->finance_account_type_transaction_id ?? 0) ?: null;
+
+        $remainderCandidates = [];
+        $remaining = 0.0;
+
+        if (is_array($candidates) && $candidates !== []) {
+            $applicationIds = $this->candidateApplicationIds($candidates);
+            $summaryById = [];
+            foreach ($this->getIncomeCollectionSummary($applicationIds) as $row) {
+                $summaryById[(int) $row['application_id']] = $row;
+            }
+
+            foreach ($candidates as $candidate) {
+                if (!is_array($candidate)) {
+                    continue;
+                }
+                $applicationId = (int) ($candidate['application_id'] ?? $candidate['candidate_id'] ?? 0);
+                if ($applicationId <= 0) {
+                    continue;
+                }
+
+                $summary = $summaryById[$applicationId] ?? null;
+                if ((bool) ($summary['has_due'] ?? false)) {
+                    continue;
+                }
+
+                $salePrice = round((float) ($candidate['sale_price'] ?? $summary['sale_price'] ?? 0), 2);
+                $collected = round((float) ($summary['collected_amount'] ?? 0), 2);
+                $candidateRemaining = round(max($salePrice - $collected, 0), 2);
+                if ($candidateRemaining <= 0.005) {
+                    continue;
+                }
+
+                $remainderCandidates[] = [
+                    ...$candidate,
+                    'sale_price' => $salePrice,
+                    'amount' => $candidateRemaining,
+                ];
+                $remaining = round($remaining + $candidateRemaining, 2);
+            }
+        } else {
+            $remaining = round(max($billedAmount - $receivedAmount, 0), 2);
+            if ($remaining > 0.005 && $this->hasPriorDueIncomeForHead((int) $head->id, $linkedAccount?->id)) {
+                $remaining = 0.0;
+            }
+        }
+
+        if ($remaining <= 0.005) {
+            return;
+        }
+
+        FinanceIncomeCollection::query()->create([
+            'income_category_id' => $cashCollection->income_category_id,
+            'income_head_id' => $cashCollection->income_head_id,
+            'job_list_id' => $cashCollection->job_list_id,
+            'job_code' => $cashCollection->job_code,
+            'job_title' => $cashCollection->job_title,
+            'client_name' => $cashCollection->client_name,
+            'candidates' => $remainderCandidates !== [] ? $remainderCandidates : null,
+            'amount' => $remaining,
+            'payment_method' => 'due',
+            'collection_date' => $collectionDate,
+            'particular' => $cashCollection->particular,
+            'reference_no' => $cashCollection->reference_no,
+            'voucher_no' => $remainderVoucher,
+            'remarks' => $dueRemarks,
+            'status' => 'due',
+            'linked_account_category' => $cashCollection->linked_account_category,
+            'linked_account_id' => $cashCollection->linked_account_id,
+            'linked_account_name' => $cashCollection->linked_account_name,
+            'linked_account_type' => $cashCollection->linked_account_type,
+            'receive_account_category' => null,
+            'receive_account_type' => null,
+            'receive_account_id' => null,
+            'receive_account_name' => null,
+            'finance_account_type_transaction_id' => $typeTransactionId,
+            'settles_income_collection_id' => null,
+            'collected_by_id' => $cashCollection->collected_by_id,
+            'collected_by_name' => $cashCollection->collected_by_name,
+        ]);
+
+        $this->accountService->recordIncomeReceivableEntry(
+            $head,
+            $remaining,
+            'dr',
+            $collectionDate,
+            $remainderVoucher,
+            $typeTransactionId,
+            trim((string) $head->name).' Bill',
+            'Due',
+            $dueRemarks,
+            (string) ($cashCollection->linked_account_name ?: $cashCollection->client_name ?: $head->name)
+        );
     }
 
     /**

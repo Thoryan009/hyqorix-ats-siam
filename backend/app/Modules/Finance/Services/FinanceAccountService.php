@@ -906,8 +906,87 @@ class FinanceAccountService extends BaseCachedService
     /**
      * Backfill Bills Receivable from historical Sale due collections / settlements.
      */
+    /**
+     * Partial cash/bank sale collections with leftover sale_price must have a due
+     * row so Bills Receivable lists the remainder.
+     */
+    private function backfillMissingPartialSaleDueRemainders(): void
+    {
+        $rows = FinanceSaleCollection::query()
+            ->orderByDesc('id')
+            ->get();
+
+        $summaryByApp = [];
+        foreach ($rows as $row) {
+            $applicationId = (int) ($row->application_id ?? 0);
+            if ($applicationId <= 0) {
+                continue;
+            }
+
+            $method = strtolower((string) ($row->payment_method ?? 'cash'));
+            if (!isset($summaryByApp[$applicationId])) {
+                $summaryByApp[$applicationId] = [
+                    'sale_price' => round((float) ($row->sale_price ?? 0), 2),
+                    'collected' => 0.0,
+                    'has_due' => false,
+                    'sample' => $row,
+                ];
+            }
+
+            $salePrice = round((float) ($row->sale_price ?? 0), 2);
+            if ($salePrice > 0) {
+                $summaryByApp[$applicationId]['sale_price'] = $salePrice;
+            }
+
+            if ($method === 'due') {
+                $summaryByApp[$applicationId]['has_due'] = true;
+                continue;
+            }
+
+            $summaryByApp[$applicationId]['collected'] = round(
+                (float) $summaryByApp[$applicationId]['collected'] + (float) $row->amount,
+                2
+            );
+        }
+
+        foreach ($summaryByApp as $applicationId => $summary) {
+            if ((bool) ($summary['has_due'] ?? false)) {
+                continue;
+            }
+
+            $remaining = round(max((float) $summary['sale_price'] - (float) $summary['collected'], 0), 2);
+            if ($remaining <= 0.005) {
+                continue;
+            }
+
+            /** @var FinanceSaleCollection $sample */
+            $sample = $summary['sample'];
+            $voucherNo = trim((string) ($sample->voucher_no ?? $sample->entry_no ?? ''));
+
+            FinanceSaleCollection::query()->create([
+                'application_id' => $applicationId,
+                'job_list_id' => $sample->job_list_id,
+                'candidate_name' => $sample->candidate_name,
+                'passport_no' => $sample->passport_no,
+                'sale_price' => round((float) $summary['sale_price'], 2),
+                'amount' => $remaining,
+                'payer_type' => $sample->payer_type,
+                'payment_method' => 'due',
+                'collection_date' => $sample->collection_date,
+                'entry_no' => $sample->entry_no,
+                'voucher_no' => $voucherNo !== '' ? sprintf('%s-R%d', $voucherNo, $applicationId) : "BR-{$applicationId}",
+                'finance_account_type_transaction_id' => $sample->finance_account_type_transaction_id,
+                'job_code' => $sample->job_code,
+                'job_title' => $sample->job_title,
+                'remarks' => 'Partial receive — remaining moved to Bills Receivable',
+            ]);
+        }
+    }
+
     private function backfillMissingBillsReceivableEntries(): void
     {
+        $this->backfillMissingPartialSaleDueRemainders();
+
         $dueRows = FinanceSaleCollection::query()
             ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
             ->orderBy('collection_date')
@@ -1192,6 +1271,14 @@ class FinanceAccountService extends BaseCachedService
                 ]);
             }
 
+            $existingCr = round((float) ($existingEntry->cr_amount ?? 0), 2);
+            $shortfall = round($amount - $existingCr, 2);
+            if ($shortfall > 0.005) {
+                $existingEntry->update(['cr_amount' => $amount]);
+                $saleAccount->balance = round((float) $saleAccount->balance + $shortfall, 2);
+                $saleAccount->save();
+            }
+
             return;
         }
 
@@ -1225,13 +1312,11 @@ class FinanceAccountService extends BaseCachedService
     }
 
     /**
-     * Agent/client accrual: credit Sale on due raise, or on cash/bank/balance/expense_link
-     * when there is no prior due for that application (avoids double-count on settle).
+     * Agent/client accrual: credit billed sale_price once per application
+     * (due raise or first cash), never the later settle amount.
      */
     private function backfillAgentClientSaleEntries(): void
     {
-        $cashMethods = ['cash', 'bank', 'balance', 'expense_link'];
-
         $collections = FinanceSaleCollection::query()
             ->where(function ($query) {
                 $query
@@ -1242,61 +1327,47 @@ class FinanceAccountService extends BaseCachedService
             ->orderBy('id')
             ->get();
 
-        $appsWithDue = [];
-        $appsWithCash = [];
+        $byApplication = [];
         foreach ($collections as $row) {
             $applicationId = (int) ($row->application_id ?? 0);
-            if ($applicationId <= 0) {
+            if ($applicationId <= 0 || isset($byApplication[$applicationId])) {
                 continue;
             }
 
-            $method = strtolower(trim((string) ($row->payment_method ?? '')));
-            if ($method === 'due') {
-                $appsWithDue[$applicationId] = true;
-            } elseif (in_array($method, $cashMethods, true)) {
-                $appsWithCash[$applicationId] = true;
+            $salePrice = round((float) ($row->sale_price ?? 0), 2);
+            if ($salePrice <= 0) {
+                $salePrice = round((float) ($row->amount ?? 0), 2);
             }
+            if ($salePrice <= 0) {
+                continue;
+            }
+
+            $byApplication[$applicationId] = [
+                'amount' => $salePrice,
+                'entry_date' => (string) ($row->collection_date ?? now()->toDateString()),
+                'voucher_no' => trim((string) ($row->voucher_no ?? $row->entry_no ?? '')),
+                'type_transaction_id' => (int) ($row->finance_account_type_transaction_id ?? 0) ?: null,
+                'payment_method' => (string) ($row->payment_method ?? ''),
+                'remarks' => (string) ($row->remarks ?? ''),
+                'job' => (string) ($row->job_title ?? ''),
+            ];
         }
 
         $grouped = [];
-        foreach ($collections as $row) {
-            $method = strtolower(trim((string) ($row->payment_method ?? '')));
-            $applicationId = (int) ($row->application_id ?? 0);
-
-            if (in_array($method, $cashMethods, true)) {
-                // Settling a prior due: Sale was (or will be) recognized on the due row.
-                if ($applicationId > 0 && isset($appsWithDue[$applicationId])) {
-                    continue;
-                }
-            } elseif ($method === 'due') {
-                // Historical cash-basis already credited Sale on settle — skip due.
-                if ($applicationId > 0 && isset($appsWithCash[$applicationId])) {
-                    continue;
-                }
-            } else {
-                continue;
-            }
-
-            $typeTxnId = (int) ($row->finance_account_type_transaction_id ?? 0);
-            $voucherNo = trim((string) ($row->voucher_no ?? $row->entry_no ?? ''));
+        foreach ($byApplication as $applicationId => $item) {
+            $typeTxnId = (int) ($item['type_transaction_id'] ?? 0);
+            $voucherNo = trim((string) ($item['voucher_no'] ?? ''));
             $groupKey = $typeTxnId > 0
                 ? "txn:{$typeTxnId}"
-                : ($voucherNo !== '' ? "voucher:{$voucherNo}" : "row:{$row->id}");
+                : ($voucherNo !== '' ? "voucher:{$voucherNo}" : "app:{$applicationId}");
 
             if (!isset($grouped[$groupKey])) {
-                $grouped[$groupKey] = [
-                    'amount' => 0.0,
-                    'entry_date' => (string) ($row->collection_date ?? now()->toDateString()),
-                    'voucher_no' => $voucherNo,
-                    'type_transaction_id' => $typeTxnId > 0 ? $typeTxnId : null,
-                    'payment_method' => (string) ($row->payment_method ?? ''),
-                    'remarks' => (string) ($row->remarks ?? ''),
-                    'job' => (string) ($row->job_title ?? ''),
-                ];
+                $grouped[$groupKey] = $item;
+                $grouped[$groupKey]['amount'] = 0.0;
             }
 
             $grouped[$groupKey]['amount'] = round(
-                $grouped[$groupKey]['amount'] + (float) $row->amount,
+                $grouped[$groupKey]['amount'] + $item['amount'],
                 2
             );
         }

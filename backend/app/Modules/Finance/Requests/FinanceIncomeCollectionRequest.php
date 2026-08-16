@@ -43,6 +43,7 @@ class FinanceIncomeCollectionRequest extends FormRequest
             'head_id' => ['nullable', 'integer'],
             'income_head_id' => ['required', 'integer', 'exists:income_heads,id'],
             'amount' => ['required', 'numeric', 'min:0.01'],
+            'billed_amount' => ['nullable', 'numeric', 'min:0'],
             'collection_date' => ['required', 'date'],
             'payment_method' => ['required', 'string', Rule::in(['cash', 'bank', 'due', 'expense_link'])],
             'particular' => ['nullable', 'string', 'max:255'],

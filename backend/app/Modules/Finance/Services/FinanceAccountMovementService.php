@@ -417,6 +417,9 @@ class FinanceAccountMovementService
                 ]);
             }
 
+            // Capture billed sale prices before cash rows are stored (already-billed lookup).
+            $newlyBilledSale = $this->sumNewlyBilledSalePrices($data);
+
             $this->storeSaleCollections(
                 $data,
                 $payerType,
@@ -427,21 +430,20 @@ class FinanceAccountMovementService
                 $remarks
             );
 
-            // Sale income ledger (accrual):
-            // - Candidate: credit when Deployment Charge is first raised (due or first cash).
-            // - Agent/client due: credit when receivable is raised (pairs Bills Receivable DR).
-            // - Agent/client cash/bank/balance/expense_link: credit collected amount only when
-            //   not settling a prior due (Sale already recognized at due raise).
+            // Sale income ledger (accrual): credit the billed sale price, not the cash received.
+            // Partial cash (sale 100 / receive 50) must still show Sale 100 on Trial Balance.
             $saleIncomeAmount = 0.0;
             if ($payerType === 'candidate') {
-                $saleIncomeAmount = $newlyBilledCandidateSale;
+                $saleIncomeAmount = $newlyBilledCandidateSale > 0
+                    ? $newlyBilledCandidateSale
+                    : $newlyBilledSale;
             } elseif ($paymentMethod === 'due' && in_array($payerType, ['agent', 'client'], true)) {
-                $saleIncomeAmount = $amount;
+                $saleIncomeAmount = $newlyBilledSale > 0 ? $newlyBilledSale : $amount;
             } elseif (
                 in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link'], true)
                 && $billsReceivableSettleAmount <= 0
             ) {
-                $saleIncomeAmount = $amount;
+                $saleIncomeAmount = $newlyBilledSale > 0 ? $newlyBilledSale : $amount;
             }
 
             if ($saleIncomeAmount > 0) {
@@ -849,6 +851,8 @@ class FinanceAccountMovementService
      */
     public function listBillsReceivable(): array
     {
+        $this->accountService->ensureBillsReceivableAccount(true);
+
         $dueRows = FinanceSaleCollection::query()
             ->whereRaw('LOWER(COALESCE(payment_method, "")) = ?', ['due'])
             ->orderByDesc('id')
@@ -989,6 +993,61 @@ class FinanceAccountMovementService
         return null;
     }
 
+    /**
+     * Billed sale price for candidates that do not yet have a sale-collection row.
+     * Must run before storeSaleCollections().
+     */
+    private function sumNewlyBilledSalePrices(array $data): float
+    {
+        $candidates = $data['candidates'] ?? [];
+        if (!is_array($candidates) || $candidates === []) {
+            return 0.0;
+        }
+
+        $applicationIds = [];
+        foreach ($candidates as $candidate) {
+            if (!is_array($candidate)) {
+                continue;
+            }
+            $applicationId = (int) ($candidate['application_id'] ?? $candidate['candidate_id'] ?? 0);
+            if ($applicationId > 0) {
+                $applicationIds[] = $applicationId;
+            }
+        }
+        $applicationIds = array_values(array_unique($applicationIds));
+
+        $alreadyBilledIds = $applicationIds === []
+            ? []
+            : FinanceSaleCollection::query()
+                ->whereIn('application_id', $applicationIds)
+                ->distinct()
+                ->pluck('application_id')
+                ->map(static fn ($id) => (int) $id)
+                ->all();
+        $alreadyBilledLookup = array_fill_keys($alreadyBilledIds, true);
+
+        $total = 0.0;
+        foreach ($candidates as $candidate) {
+            if (!is_array($candidate)) {
+                continue;
+            }
+
+            $applicationId = (int) ($candidate['application_id'] ?? $candidate['candidate_id'] ?? 0);
+            $payAmount = round((float) ($candidate['amount'] ?? 0), 2);
+            if ($applicationId <= 0 || $payAmount <= 0) {
+                continue;
+            }
+            if (isset($alreadyBilledLookup[$applicationId])) {
+                continue;
+            }
+
+            $salePrice = round((float) ($candidate['sale_price'] ?? 0), 2);
+            $total = round($total + ($salePrice > 0 ? $salePrice : $payAmount), 2);
+        }
+
+        return $total;
+    }
+
     private function storeSaleCollections(
         array $data,
         string $payerType,
@@ -1103,7 +1162,12 @@ class FinanceAccountMovementService
             }
 
             $summary = $summaryById[$applicationId] ?? null;
-            $remaining = round((float) ($summary['receivable_remaining'] ?? 0), 2);
+            $salePrice = round((float) ($candidate['sale_price'] ?? 0), 2);
+            if ($salePrice <= 0) {
+                $salePrice = round((float) ($summary['sale_price'] ?? 0), 2);
+            }
+            $collected = round((float) ($summary['collected_amount'] ?? 0), 2);
+            $remaining = round(max($salePrice - $collected, 0), 2);
             if ($remaining <= 0) {
                 continue;
             }
@@ -1125,10 +1189,7 @@ class FinanceAccountMovementService
                 'job_list_id' => $jobListId ?: null,
                 'candidate_name' => trim((string) ($candidate['candidate_name'] ?? '')) ?: null,
                 'passport_no' => trim((string) ($candidate['passport_no'] ?? '')) ?: null,
-                'sale_price' => round(
-                    (float) ($summary['sale_price'] ?? $candidate['sale_price'] ?? 0),
-                    2
-                ),
+                'sale_price' => $salePrice,
                 'amount' => $remaining,
                 'payer_type' => $payerType,
                 'payment_method' => 'due',
