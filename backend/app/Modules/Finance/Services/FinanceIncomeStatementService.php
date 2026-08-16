@@ -150,6 +150,44 @@ class FinanceIncomeStatementService
                     2
                 );
             }
+
+            // Bills payable settled via Liability Written Back post expense-head CRs
+            // (payment_method Income Link). Those amounts are other income, not expense.
+            $writtenBackQuery = FinanceAccountLedgerEntry::query()
+                ->join(
+                    'finance_accounts',
+                    'finance_account_ledger_entries.finance_account_id',
+                    '=',
+                    'finance_accounts.id'
+                )
+                ->where('finance_accounts.expense_category_id', $operatingCategory->id)
+                ->whereNotNull('finance_accounts.expense_head_id')
+                ->whereRaw('LOWER(COALESCE(finance_account_ledger_entries.payment_method, "")) = ?', [
+                    'income link',
+                ]);
+
+            if (!empty($filters['from_date'])) {
+                $writtenBackQuery->whereDate('finance_account_ledger_entries.entry_date', '>=', $filters['from_date']);
+            }
+
+            if (!empty($filters['to_date'])) {
+                $writtenBackQuery->whereDate('finance_account_ledger_entries.entry_date', '<=', $filters['to_date']);
+            }
+
+            $writtenBackByExpenseHead = $writtenBackQuery
+                ->select([
+                    'finance_accounts.expense_head_id',
+                    DB::raw('SUM(finance_account_ledger_entries.cr_amount) as total_amount'),
+                ])
+                ->groupBy('finance_accounts.expense_head_id')
+                ->pluck('total_amount', 'expense_head_id');
+
+            foreach ($writtenBackByExpenseHead as $headId => $writtenBack) {
+                $amountsByExpenseHead[$headId] = round(
+                    max((float) ($amountsByExpenseHead[$headId] ?? 0) - (float) $writtenBack, 0),
+                    2
+                );
+            }
         }
 
         $debitLines = [];
