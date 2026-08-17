@@ -33,7 +33,7 @@ class ApplicationReportResource extends JsonResource
             'job_code'          => $this->jobList->job_code,
             'name'              => ApplicationPresenter::fullName($this->given_name, $this->sur_name),
             'passport_no'       => $this->passport_no,
-            'mobile'            => $this->mobile,
+            'mobile'            => ApplicationPresenter::localMobile($this->mobile),
             'sex'               => strtolower($this->sex),
             'email'             => $this->email,
             'payer'             => JobListPayerHelper::resolveForApplication($this),

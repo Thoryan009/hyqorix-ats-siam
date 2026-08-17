@@ -7,6 +7,7 @@ use App\Modules\Reports\Application\Reports\{
 };
 use App\Modules\Reports\Application\Repositories\ApplicationReportRepository;
 use App\Modules\Reports\Application\Resources\ApplicationReportResource;
+use App\Modules\Application\Helpers\ApplicationPresenter;
 use InvalidArgumentException;
 use App\Modules\Application\Models\ApplicationProcess;
 use Illuminate\Support\Facades\Response;
@@ -113,7 +114,7 @@ class ApplicationReportService
                 ),
 
                 $row->passport_no,
-                $row->mobile,
+                $this->csvText(ApplicationPresenter::localMobile($row->mobile)),
                 $row->sex,
 
                 $row->jobList?->workOrder?->client?->country?->name,
@@ -160,6 +161,19 @@ class ApplicationReportService
             $status = $row->application_status ?? 'hiring_list';
         }
         return $status;
+    }
+
+    /**
+     * Keep leading zeros (01…) intact when Excel opens the CSV.
+     */
+    private function csvText(?string $value): string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        return "\t".$value;
     }
 }
 
