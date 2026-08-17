@@ -471,7 +471,7 @@ const mainAccountOptions = computed(() => {
     .filter((account) => account.status === 'Active' && account.account_type === accountType)
     .map((account) => ({
       id: account.id,
-      name: `${account.account_type} — ${account.account_name} (${account.account_label})`,
+      name: account.account_name,
     }))
 })
 
