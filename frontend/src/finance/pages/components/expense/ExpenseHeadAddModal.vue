@@ -34,6 +34,7 @@ const defaultFormData = () => ({
   status: 'Active',
   linked_accounts: [],
   is_bills_receivable_link: '0',
+  is_depreciation_expense: '0',
 })
 
 const formData = ref(defaultFormData())

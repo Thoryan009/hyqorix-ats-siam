@@ -60,6 +60,10 @@ export const useExpenseHeadStore = defineStore('expenseHead', () => {
         payload.is_bills_receivable_link === true ||
         payload.is_bills_receivable_link === 1 ||
         payload.is_bills_receivable_link === '1',
+      is_depreciation_expense:
+        payload.is_depreciation_expense === true ||
+        payload.is_depreciation_expense === 1 ||
+        payload.is_depreciation_expense === '1',
     }
   }
 

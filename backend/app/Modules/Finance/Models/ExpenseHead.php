@@ -19,6 +19,7 @@ class ExpenseHead extends Model
         'base_price' => 'decimal:2',
         'linked_accounts' => 'array',
         'is_bills_receivable_link' => 'boolean',
+        'is_depreciation_expense' => 'boolean',
     ];
 
     public function expenseCategory(): BelongsTo

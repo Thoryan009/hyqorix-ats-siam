@@ -93,7 +93,10 @@
                   class="hover:bg-gray-50"
                 >
                   <td class="border border-gray-200 px-4 py-2.5 pl-8 text-gray-900">{{ row.label }}</td>
-                  <td class="border border-gray-200 px-4 py-2.5 text-right tabular-nums text-gray-900">
+                  <td
+                    class="border border-gray-200 px-4 py-2.5 text-right tabular-nums"
+                    :class="row.amount < 0 ? 'text-red-700' : 'text-gray-900'"
+                  >
                     {{ formatAmount(row.amount) }}
                   </td>
                 </tr>

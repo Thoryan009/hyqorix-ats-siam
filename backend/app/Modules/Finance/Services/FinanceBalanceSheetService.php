@@ -39,6 +39,7 @@ class FinanceBalanceSheetService
         'direct_expense',
         'client_recruitment',
         'operating_expense',
+        'depreciation_expense',
     ];
 
     /** P&L / party categories excluded from line items (profit closes to equity). */
@@ -46,6 +47,7 @@ class FinanceBalanceSheetService
         'direct_expense',
         'client_recruitment',
         'operating_expense',
+        'depreciation_expense',
         'sale',
         'recruitment_income',
         'client_income',
@@ -86,15 +88,25 @@ class FinanceBalanceSheetService
 
         foreach ($trialBalance['rows'] ?? [] as $row) {
             $category = (string) ($row['category'] ?? '');
-
-            if (in_array($category, self::EXCLUDED_CATEGORIES, true)) {
-                continue;
-            }
-
             $debit = round((float) ($row['debit_balance'] ?? 0), 2);
             $credit = round((float) ($row['credit_balance'] ?? 0), 2);
             $label = (string) ($row['account_name'] ?? 'Account');
             $accountId = (int) ($row['account_id'] ?? 0);
+
+            if ($category === 'depreciation_expense' && $debit >= 0.005) {
+                $assets[] = $this->lineItem(
+                    'Less: Accumulated Depreciation',
+                    round(-$debit, 2),
+                    'depreciation_expense',
+                    $accountId,
+                    true
+                );
+                continue;
+            }
+
+            if (in_array($category, self::EXCLUDED_CATEGORIES, true)) {
+                continue;
+            }
 
             if (in_array($category, self::ASSET_CATEGORIES, true)) {
                 $net = round($debit - $credit, 2);
@@ -157,7 +169,9 @@ class FinanceBalanceSheetService
             array_values(array_filter(
                 $assets,
                 fn (array $line) => !empty($line['is_non_current_asset'])
-            ))
+            )),
+            false,
+            true
         );
         $assets = $this->sortLines($assets);
         $liabilities = $this->sortLines($liabilities);
@@ -243,14 +257,22 @@ class FinanceBalanceSheetService
      * @param  array<int, array{label: string, amount: float, category: string, account_id: int}>  $lines
      * @return array<int, array{label: string, amount: float, category: string, account_id: int}>
      */
-    private function sortLines(array $lines, bool $profitLast = false): array
+    private function sortLines(array $lines, bool $profitLast = false, bool $depreciationLast = false): array
     {
-        usort($lines, function (array $a, array $b) use ($profitLast) {
+        usort($lines, function (array $a, array $b) use ($profitLast, $depreciationLast) {
             if ($profitLast) {
                 $aRank = $this->equityClosingSortRank((string) ($a['category'] ?? ''));
                 $bRank = $this->equityClosingSortRank((string) ($b['category'] ?? ''));
                 if ($aRank !== $bRank) {
                     return $aRank <=> $bRank;
+                }
+            }
+
+            if ($depreciationLast) {
+                $aDep = (string) ($a['category'] ?? '') === 'depreciation_expense' ? 1 : 0;
+                $bDep = (string) ($b['category'] ?? '') === 'depreciation_expense' ? 1 : 0;
+                if ($aDep !== $bDep) {
+                    return $aDep <=> $bDep;
                 }
             }
 

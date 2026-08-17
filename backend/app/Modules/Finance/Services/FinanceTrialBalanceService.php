@@ -26,6 +26,7 @@ class FinanceTrialBalanceService
         'direct_expense' => 'Direct Expense Accounts',
         'client_recruitment' => 'Client Recruitment Accounts',
         'operating_expense' => 'Operating Expense Accounts',
+        'depreciation_expense' => 'Depreciation Expense',
         'recruitment_income' => 'Recruitment Income Accounts',
         'client_income' => 'Client Income Accounts',
         'other_income' => 'Operating Income Accounts',
@@ -53,6 +54,7 @@ class FinanceTrialBalanceService
         'direct_expense',
         'client_recruitment',
         'operating_expense',
+        'depreciation_expense',
         'capital',
         'owners_equity',
         'liabilities',
@@ -78,6 +80,7 @@ class FinanceTrialBalanceService
         'direct_expense',
         'client_recruitment',
         'operating_expense',
+        'depreciation_expense',
     ];
 
     /** Income heads: TB Credit = gross income credits. */
@@ -120,6 +123,7 @@ class FinanceTrialBalanceService
         $this->incomeCollectionService->backfillMissingIncomeHeadCredits();
 
         $accounts = FinanceAccount::query()
+            ->with(['expenseHead:id,is_depreciation_expense'])
             ->withSum([
                 'ledgerEntries as total_dr' => function ($query) use ($toDate) {
                     $query->whereDate('entry_date', '<=', $toDate);
@@ -150,6 +154,11 @@ class FinanceTrialBalanceService
             $totalDr = round((float) ($account->total_dr ?? 0), 2);
             $totalCr = round((float) ($account->total_cr ?? 0), 2);
             $category = (string) ($account->category ?? 'main');
+            $isDepreciationExpense = $category === 'operating_expense'
+                && (bool) ($account->expenseHead?->is_depreciation_expense ?? false);
+            if ($isDepreciationExpense) {
+                $category = 'depreciation_expense';
+            }
 
             // Purchase-linked asset settlement CRs are ledger-only (like expense payment CRs)
             // and must not wipe the asset cost on Trial Balance / Balance Sheet.
@@ -180,7 +189,9 @@ class FinanceTrialBalanceService
 
             $rows[] = [
                 'account_id' => $account->id,
-                'account_name' => $this->accountDisplayName($account),
+                'account_name' => $isDepreciationExpense
+                    ? $this->depreciationAccountDisplayName($account)
+                    : $this->accountDisplayName($account),
                 'account_code' => trim((string) ($account->code ?? '')),
                 'account_type' => (string) ($account->account_type ?? ''),
                 'category' => $category,
@@ -188,6 +199,7 @@ class FinanceTrialBalanceService
                     ?? ucwords(str_replace('_', ' ', $category)),
                 'is_non_current_asset' => $category === 'asset'
                     && (bool) ($account->is_non_current_asset ?? false),
+                'is_depreciation_expense' => $isDepreciationExpense,
                 'total_dr' => $totalDr,
                 'total_cr' => $totalCr,
                 'debit_balance' => $debitBalance,
@@ -349,6 +361,20 @@ class FinanceTrialBalanceService
         }
 
         return $name;
+    }
+
+    private function depreciationAccountDisplayName(FinanceAccount $account): string
+    {
+        $name = $this->accountDisplayName($account);
+        if ($name === '') {
+            return 'Depreciation Expense';
+        }
+
+        if (preg_match('/depreciation/i', $name)) {
+            return $name;
+        }
+
+        return "Depreciation Expense — {$name}";
     }
 
     private function normalizeDate(mixed $value): ?string

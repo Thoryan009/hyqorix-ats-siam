@@ -53,6 +53,12 @@
           >
             Bills receivable link
           </p>
+          <p
+            v-if="row.is_depreciation_expense"
+            class="mt-0.5 text-xs font-medium text-indigo-700"
+          >
+            Depreciation Expense
+          </p>
         </div>
       </template>
 

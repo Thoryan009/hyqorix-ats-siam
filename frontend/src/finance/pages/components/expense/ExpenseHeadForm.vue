@@ -92,6 +92,53 @@
       </p>
     </div>
 
+    <div
+      v-if="isOperatingExpenseCategory"
+      class="space-y-3 rounded-xl border border-gray-200 bg-gray-50/80 p-4"
+    >
+      <div>
+        <h4 class="text-sm font-semibold text-gray-900">Depreciation Expense</h4>
+        <p class="mt-1 text-xs text-gray-500">
+          Mark this Operating Expense head as Depreciation Expense. Only one expense head can be
+          marked. Trial Balance shows it under Depreciation Expense; Balance Sheet deducts it from
+          Non-Current Assets as Accumulated Depreciation.
+        </p>
+      </div>
+
+      <div class="space-y-2">
+        <BaseLabel for="head_depreciation_expense">Mark status</BaseLabel>
+        <BaseSelect
+          id="head_depreciation_expense"
+          v-model="localForm.is_depreciation_expense"
+          :options="depreciationExpenseOptions"
+        />
+      </div>
+
+      <p
+        class="rounded-lg px-3 py-2 text-sm"
+        :class="
+          localForm.is_depreciation_expense === '1' || localForm.is_depreciation_expense === true
+            ? 'bg-emerald-50 text-emerald-700'
+            : 'bg-amber-50 text-amber-700'
+        "
+      >
+        <template
+          v-if="localForm.is_depreciation_expense === '1' || localForm.is_depreciation_expense === true"
+        >
+          This head is marked as Depreciation Expense.
+          <span v-if="otherDepreciationHeadName">
+            Saving will unmark “{{ otherDepreciationHeadName }}”.
+          </span>
+        </template>
+        <template v-else-if="otherDepreciationHeadName">
+          Not marked on this head. Currently marked: “{{ otherDepreciationHeadName }}”.
+        </template>
+        <template v-else>
+          No Depreciation Expense head is marked yet.
+        </template>
+      </p>
+    </div>
+
     <ExpenseHeadAccountLinks v-model="localForm.linked_accounts" />
 
     <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
@@ -136,6 +183,7 @@ const localForm = reactive({
   linked_accounts: [],
   ...props.formData,
   is_bills_receivable_link: normalizeLinkValue(props.formData?.is_bills_receivable_link),
+  is_depreciation_expense: normalizeLinkValue(props.formData?.is_depreciation_expense),
 })
 
 const categoryOptions = computed(() =>
@@ -166,6 +214,15 @@ const otherLinkedHeadName = computed(() => {
   return linked?.name ?? ''
 })
 
+const otherDepreciationHeadName = computed(() => {
+  const marked = headStore.heads.find(
+    (head) =>
+      head.is_depreciation_expense &&
+      Number(head.id) !== Number(localForm.id || 0)
+  )
+  return marked?.name ?? ''
+})
+
 const statusOptions = [
   { id: 'Active', name: 'Active' },
   { id: 'Inactive', name: 'Inactive' },
@@ -174,6 +231,11 @@ const statusOptions = [
 const billsReceivableLinkOptions = [
   { id: '1', name: 'Link this expense head' },
   { id: '0', name: 'Not linked' },
+]
+
+const depreciationExpenseOptions = [
+  { id: '1', name: 'Mark as Depreciation Expense' },
+  { id: '0', name: 'Not marked' },
 ]
 
 function normalizeLinkValue(value) {
@@ -186,6 +248,7 @@ watch(
     Object.assign(localForm, {
       ...value,
       is_bills_receivable_link: normalizeLinkValue(value?.is_bills_receivable_link),
+      is_depreciation_expense: normalizeLinkValue(value?.is_depreciation_expense),
     })
   },
   { deep: true }
@@ -194,6 +257,7 @@ watch(
 watch(isOperatingExpenseCategory, (isOperatingExpense) => {
   if (!isOperatingExpense) {
     localForm.is_bills_receivable_link = '0'
+    localForm.is_depreciation_expense = '0'
   }
 })
 
@@ -203,6 +267,7 @@ watch(
     emit('update:formData', {
       ...value,
       is_bills_receivable_link: normalizeLinkValue(value.is_bills_receivable_link),
+      is_depreciation_expense: normalizeLinkValue(value.is_depreciation_expense),
     })
   },
   { deep: true }

@@ -88,7 +88,7 @@ class FinanceIncomeStatementService
             ? ExpenseHead::query()
             ->where('expense_category_id', $operatingCategory->id)
             ->orderBy('id')
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'is_depreciation_expense'])
             : collect();
 
         $amountsByExpenseHead = collect();
@@ -153,19 +153,33 @@ class FinanceIncomeStatementService
         }
 
         $debitLines = [];
+        $depreciationLines = [];
         $totalExpenses = 0.0;
+        $totalDepreciation = 0.0;
 
         foreach ($expenseHeads as $head) {
             $amount = round((float) ($amountsByExpenseHead[$head->id] ?? 0), 2);
             $totalExpenses += $amount;
-            $debitLines[] = [
+            $line = [
                 'label' => $head->name,
                 'amount' => $amount,
                 'is_balancing' => false,
+                'is_depreciation_expense' => (bool) $head->is_depreciation_expense,
             ];
+            if ($head->is_depreciation_expense) {
+                $totalDepreciation += $amount;
+                $depreciationLines[] = $line;
+            } else {
+                $debitLines[] = $line;
+            }
+        }
+
+        foreach ($depreciationLines as $line) {
+            $debitLines[] = $line;
         }
 
         $totalExpenses = round($totalExpenses, 2);
+        $totalDepreciation = round($totalDepreciation, 2);
 
         $creditLines = [
             [
@@ -220,6 +234,7 @@ class FinanceIncomeStatementService
                 'total_income_collections' => $totalIncomeCollections,
                 'total_income' => $totalIncome,
                 'total_operating_expense' => $totalExpenses,
+                'total_depreciation_expense' => $totalDepreciation,
                 'net_profit' => $netProfit,
                 'is_profit' => $netProfit >= 0,
             ],

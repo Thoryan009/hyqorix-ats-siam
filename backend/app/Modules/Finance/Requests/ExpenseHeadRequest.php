@@ -29,6 +29,10 @@ class ExpenseHeadRequest extends FormRequest
             $merged['is_bills_receivable_link'] = $this->boolean('is_bills_receivable_link');
         }
 
+        if ($this->has('is_depreciation_expense')) {
+            $merged['is_depreciation_expense'] = $this->boolean('is_depreciation_expense');
+        }
+
         if (!empty($merged)) {
             $this->merge($merged);
         }
@@ -63,6 +67,20 @@ class ExpenseHeadRequest extends FormRequest
                     $category = ExpenseCategory::query()->find($categoryId);
                     if (!$category || $category->code !== 'operating_cost') {
                         $fail('Bills receivable link can only be set for Operating Expense heads.');
+                    }
+                },
+            ],
+            'is_depreciation_expense' => [
+                'sometimes',
+                'boolean',
+                function (string $attribute, mixed $value, \Closure $fail) use ($categoryId) {
+                    if (!$value) {
+                        return;
+                    }
+
+                    $category = ExpenseCategory::query()->find($categoryId);
+                    if (!$category || $category->code !== 'operating_cost') {
+                        $fail('Depreciation Expense can only be marked on an Operating Expense head.');
                     }
                 },
             ],

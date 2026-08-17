@@ -43,11 +43,15 @@ class ExpenseHeadService extends BaseCachedService
     public function createExpenseHead(array $data): ExpenseHead
     {
         return $this->mutate(function () use ($data) {
-            $data = $this->normalizeBillsReceivableLink($data);
+            $data = $this->normalizeOperatingExpenseFlags($data);
             $head = $this->model->create($data);
 
             if (!empty($data['is_bills_receivable_link'])) {
                 $this->unlinkOtherBillsReceivableLinks($head->id);
+            }
+
+            if (!empty($data['is_depreciation_expense'])) {
+                $this->unmarkOtherDepreciationExpenses($head->id);
             }
 
             $this->financeAccountService->ensureExpenseHeadAccount($head);
@@ -59,11 +63,15 @@ class ExpenseHeadService extends BaseCachedService
     public function updateExpenseHead(ExpenseHead $expenseHead, array $data): ExpenseHead
     {
         return $this->mutate(function () use ($expenseHead, $data) {
-            $data = $this->normalizeBillsReceivableLink($data, $expenseHead);
+            $data = $this->normalizeOperatingExpenseFlags($data, $expenseHead);
             $expenseHead->update($data);
 
             if (!empty($data['is_bills_receivable_link'])) {
                 $this->unlinkOtherBillsReceivableLinks($expenseHead->id);
+            }
+
+            if (!empty($data['is_depreciation_expense'])) {
+                $this->unmarkOtherDepreciationExpenses($expenseHead->id);
             }
 
             $this->financeAccountService->ensureExpenseHeadAccount($expenseHead->fresh(['expenseCategory']));
@@ -72,15 +80,18 @@ class ExpenseHeadService extends BaseCachedService
         });
     }
 
-    private function normalizeBillsReceivableLink(array $data, ?ExpenseHead $existing = null): array
+    private function normalizeOperatingExpenseFlags(array $data, ?ExpenseHead $existing = null): array
     {
         $categoryId = (int) ($data['expense_category_id'] ?? $existing?->expense_category_id);
         $category = ExpenseCategory::query()->find($categoryId);
+        $isOperatingExpense = $category && $category->code === 'operating_cost';
 
-        if (!$category || $category->code !== 'operating_cost') {
+        if (!$isOperatingExpense) {
             $data['is_bills_receivable_link'] = false;
+            $data['is_depreciation_expense'] = false;
         } else {
             $data['is_bills_receivable_link'] = (bool) ($data['is_bills_receivable_link'] ?? false);
+            $data['is_depreciation_expense'] = (bool) ($data['is_depreciation_expense'] ?? false);
         }
 
         return $data;
@@ -93,5 +104,14 @@ class ExpenseHeadService extends BaseCachedService
             ->where('is_bills_receivable_link', true)
             ->where('id', '!=', $keepHeadId)
             ->update(['is_bills_receivable_link' => false]);
+    }
+
+    private function unmarkOtherDepreciationExpenses(int $keepHeadId): void
+    {
+        $this->model
+            ->newQuery()
+            ->where('is_depreciation_expense', true)
+            ->where('id', '!=', $keepHeadId)
+            ->update(['is_depreciation_expense' => false]);
     }
 }

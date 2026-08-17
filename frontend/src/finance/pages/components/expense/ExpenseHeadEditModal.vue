@@ -28,6 +28,7 @@ const formData = ref({
   status: 'Active',
   linked_accounts: [],
   is_bills_receivable_link: '0',
+  is_depreciation_expense: '0',
 })
 
 watch(
@@ -47,6 +48,7 @@ watch(
           }))
         : [],
       is_bills_receivable_link: item.is_bills_receivable_link ? '1' : '0',
+      is_depreciation_expense: item.is_depreciation_expense ? '1' : '0',
     }
   },
   { immediate: true }

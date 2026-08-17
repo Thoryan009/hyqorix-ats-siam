@@ -25,6 +25,7 @@ class ExpenseHeadResource extends JsonResource
                 ->values()
                 ->all(),
             'is_bills_receivable_link' => (bool) $this->is_bills_receivable_link,
+            'is_depreciation_expense' => (bool) $this->is_depreciation_expense,
             'status' => $this->status === 'active' ? 'Active' : 'Inactive',
             'status_raw' => $this->status,
             'sort_order' => (int) $this->sort_order,
