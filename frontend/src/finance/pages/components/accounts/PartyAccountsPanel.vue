@@ -85,7 +85,7 @@
                   <i :class="[config.rowIcon, 'text-primary']"></i>
                 </div>
                 <div>
-                  <p class="font-medium text-gray-900">{{ row[config.nameKey] }}</p>
+                  <p class="font-medium text-gray-900">{{ row.account_name || row[config.nameKey] }}</p>
                   <p class="text-xs text-gray-500">{{ row[config.codeKey] }}</p>
                 </div>
               </div>
@@ -426,6 +426,9 @@ const filteredRows = computed(() => {
   return accounts.value.filter((account) => {
     const matchesSearch =
       !query ||
+      String(account.account_name ?? '')
+        .toLowerCase()
+        .includes(query) ||
       String(account[nameKey] ?? '')
         .toLowerCase()
         .includes(query) ||

@@ -134,6 +134,11 @@ class FinanceAccountResource extends JsonResource
             return null;
         }
 
+        $stored = trim((string) ($this->account_name ?? ''));
+        if ($stored !== '') {
+            return $stored;
+        }
+
         $application = $this->applicantApplication;
         if ($application) {
             $name = ApplicationPresenter::fullName(
@@ -146,6 +151,6 @@ class FinanceAccountResource extends JsonResource
             }
         }
 
-        return $this->account_name;
+        return null;
     }
 }

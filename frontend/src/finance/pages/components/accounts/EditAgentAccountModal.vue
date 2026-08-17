@@ -6,11 +6,17 @@
     @close="closeModal"
   >
     <BaseForm v-if="account" :onSubmit="handleSubmit">
+      <div class="space-y-2">
+        <BaseLabel for="edit_agent_account_name">Account Name</BaseLabel>
+        <BaseInput
+          id="edit_agent_account_name"
+          v-model="form.account_name"
+          placeholder="Enter agent account name"
+          :required="true"
+        />
+      </div>
+
       <div class="space-y-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 text-sm">
-        <div>
-          <p class="text-xs uppercase tracking-wide text-gray-400">Agent</p>
-          <p class="mt-1 font-medium text-gray-900">{{ account.agent_name }}</p>
-        </div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <p class="text-xs uppercase tracking-wide text-gray-400">Code</p>
@@ -51,8 +57,8 @@
         <BaseButton type="button" class="bg-gray-500 text-white hover:bg-gray-600" @click="closeModal">
           Cancel
         </BaseButton>
-        <BaseButton type="submit" :disabled="loading">
-          {{ loading ? 'Saving...' : 'Save Status' }}
+        <BaseButton type="submit" :disabled="loading || !form.account_name.trim()">
+          {{ loading ? 'Saving...' : 'Save' }}
         </BaseButton>
       </div>
     </BaseForm>
@@ -76,6 +82,7 @@ const loading = ref(false)
 const errorMessage = ref('')
 
 const form = reactive({
+  account_name: '',
   status: 'Active',
 })
 
@@ -90,6 +97,8 @@ watch(
   () => agentStore.isEditModalOpen,
   (isOpen) => {
     if (isOpen && agentStore.editingAccount) {
+      form.account_name =
+        agentStore.editingAccount.account_name || agentStore.editingAccount.agent_name || ''
       form.status = agentStore.editingAccount.status ?? 'Active'
       errorMessage.value = ''
     }
@@ -108,7 +117,10 @@ const handleSubmit = async () => {
   loading.value = true
 
   try {
-    const result = await agentStore.updateAccountStatus(account.value.id, form.status)
+    const result = await agentStore.updateAccount(account.value.id, {
+      account_name: form.account_name,
+      status: form.status,
+    })
 
     if (!result.ok) {
       errorMessage.value = result.message
@@ -116,7 +128,7 @@ const handleSubmit = async () => {
       return
     }
 
-    toast.success('Agent account status updated successfully')
+    toast.success('Agent account updated successfully')
     closeModal()
   } finally {
     loading.value = false

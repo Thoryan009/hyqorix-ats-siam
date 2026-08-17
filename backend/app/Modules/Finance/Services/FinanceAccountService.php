@@ -1894,7 +1894,7 @@ class FinanceAccountService extends BaseCachedService
                 'entity_id' => $application->id,
             ]);
 
-            $account->account_name = $accountName;
+            $this->assignAccountNameIfUnset($account, $accountName);
             $account->code = $application->application_id;
             $account->phone = $application->mobile;
             $account->metadata = array_merge($account->metadata ?? [], [
@@ -1956,7 +1956,7 @@ class FinanceAccountService extends BaseCachedService
                 'expense_head_id' => $expenseHead->id,
             ]);
 
-            $account->account_name = $expenseHead->name;
+            $this->assignAccountNameIfUnset($account, (string) $expenseHead->name);
             $account->expense_category_id = $expenseHead->expense_category_id;
             $account->base_price = $expenseHead->base_price ?? 0;
 
@@ -1993,7 +1993,7 @@ class FinanceAccountService extends BaseCachedService
                 'income_head_id' => $incomeHead->id,
             ]);
 
-            $account->account_name = $incomeHead->name;
+            $this->assignAccountNameIfUnset($account, (string) $incomeHead->name);
             $account->income_category_id = $incomeHead->income_category_id;
             $account->base_price = $incomeHead->base_price ?? 0;
 
@@ -2022,7 +2022,7 @@ class FinanceAccountService extends BaseCachedService
                 'entity_id' => $vendor->id,
             ]);
 
-            $account->account_name = $vendor->organization_name;
+            $this->assignAccountNameIfUnset($account, (string) $vendor->organization_name);
             $account->code = $vendor->vendor_id;
             $account->phone = $vendor->user?->phone;
             $account->metadata = array_merge($account->metadata ?? [], [
@@ -2040,6 +2040,13 @@ class FinanceAccountService extends BaseCachedService
 
             return $account;
         });
+    }
+
+    private function assignAccountNameIfUnset(FinanceAccount $account, string $name): void
+    {
+        if (!$account->exists || trim((string) $account->account_name) === '') {
+            $account->account_name = $name;
+        }
     }
 
     private function normalizeAccountStatus(mixed $status): string

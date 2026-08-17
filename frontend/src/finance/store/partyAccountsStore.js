@@ -223,7 +223,7 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
     })
   }
 
-  async function updateAccountStatus(partyType, accountId, status) {
+  async function updateAccount(partyType, accountId, payload = {}) {
     const config = getPartyConfig(partyType)
     const account = getAccount(partyType, accountId)
 
@@ -231,6 +231,14 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
       return { ok: false, message: `${config?.partyLabel ?? 'Party'} account was not found.` }
     }
 
+    const accountName = String(
+      payload.account_name || account.account_name || account[config.nameKey] || ''
+    ).trim()
+    if (!accountName) {
+      return { ok: false, message: 'Please enter an account name.' }
+    }
+
+    const status = payload.status ?? account.status
     if (!['Active', 'Inactive'].includes(status)) {
       return { ok: false, message: 'Please select a valid status.' }
     }
@@ -238,10 +246,7 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
     return financeAccountStore.updateAccount({
       id: account.id,
       category: config.accountCategory,
-      account_name:
-        partyType === 'banks' || partyType === 'owners'
-          ? account.account_name ?? account[config.nameKey]
-          : account[config.nameKey] ?? account.account_name,
+      account_name: accountName,
       code:
         partyType === 'banks' || partyType === 'owners'
           ? account.code ?? account[config.codeKey]
@@ -281,7 +286,7 @@ export const usePartyAccountsStore = defineStore('partyAccounts', () => {
     openEditModal,
     closeEditModal,
     createAccount,
-    updateAccountStatus,
+    updateAccount,
     deleteAccount,
   }
 })

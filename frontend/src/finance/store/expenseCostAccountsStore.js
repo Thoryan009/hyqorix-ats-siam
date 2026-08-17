@@ -102,11 +102,11 @@ export const useExpenseCostAccountsStore = defineStore('expenseCostAccounts', ()
     return {
       linked_account_category: costType,
       linked_account_id: account.id,
-      linked_account_name: account.head_name,
+      linked_account_name: account.account_name || account.head_name,
       linked_account_type: '',
       expense_cost_type: costType,
       expense_cost_account_id: account.id,
-      expense_cost_account_name: account.head_name,
+      expense_cost_account_name: account.account_name || account.head_name,
       expense_cost_category_name: account.category_name,
     }
   }
@@ -194,7 +194,7 @@ export const useExpenseCostAccountsStore = defineStore('expenseCostAccounts', ()
     return result
   }
 
-  async function updateAccountStatus(costType, accountId, status) {
+  async function updateAccount(costType, accountId, payload = {}) {
     const config = getExpenseCostConfig(costType)
     const account = getAccount(costType, accountId)
 
@@ -202,6 +202,14 @@ export const useExpenseCostAccountsStore = defineStore('expenseCostAccounts', ()
       return { ok: false, message: `${config?.costTypeLabel ?? 'Expense'} account was not found.` }
     }
 
+    const accountName = String(
+      payload.account_name || account.account_name || account.head_name || ''
+    ).trim()
+    if (!accountName) {
+      return { ok: false, message: 'Please enter an account name.' }
+    }
+
+    const status = payload.status ?? account.status
     if (!['Active', 'Inactive'].includes(status)) {
       return { ok: false, message: 'Please select a valid status.' }
     }
@@ -209,7 +217,7 @@ export const useExpenseCostAccountsStore = defineStore('expenseCostAccounts', ()
     return financeAccountStore.updateAccount({
       id: account.id,
       category: config.accountCategory,
-      account_name: account.account_name ?? account.head_name,
+      account_name: accountName,
       expense_head_id: account.head_id,
       expense_category_id: account.category_id,
       base_price: account.base_price,
@@ -248,7 +256,7 @@ export const useExpenseCostAccountsStore = defineStore('expenseCostAccounts', ()
     openEditModal,
     closeEditModal,
     createAccount,
-    updateAccountStatus,
+    updateAccount,
     deleteAccount,
   }
 })

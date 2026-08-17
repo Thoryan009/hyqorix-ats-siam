@@ -71,7 +71,7 @@
             show-actions
             scrollable
           >
-            <template #cell-head_name="{ row }">
+            <template #cell-account_name="{ row }">
               <div class="flex items-center gap-3">
                 <div
                   class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10"
@@ -79,7 +79,7 @@
                   <i :class="[config.rowIcon, 'text-primary']"></i>
                 </div>
                 <div>
-                  <p class="font-medium text-gray-900">{{ row.head_name }}</p>
+                  <p class="font-medium text-gray-900">{{ row.account_name || row.head_name }}</p>
                   <p class="text-xs text-gray-500">{{ row.category_name }}</p>
                 </div>
               </div>
@@ -233,7 +233,7 @@ const filters = reactive({
 
 const columns = [
   { key: 'sl', label: 'SL' },
-  { key: 'head_name', label: 'Expense Head' },
+  { key: 'account_name', label: 'Account Name' },
   { key: 'base_price', label: 'Base Price' },
   { key: 'amount', label: 'Amount' },
   { key: 'status', label: 'Status' },
@@ -324,6 +324,9 @@ const filteredRows = computed(() => {
   return accounts.value.filter((account) => {
     const matchesSearch =
       !query ||
+      String(account.account_name ?? '')
+        .toLowerCase()
+        .includes(query) ||
       String(account.head_name ?? '')
         .toLowerCase()
         .includes(query) ||

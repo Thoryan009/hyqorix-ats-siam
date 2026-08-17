@@ -105,11 +105,11 @@ export const useIncomeAccountsStore = defineStore('incomeAccounts', () => {
     return {
       linked_account_category: incomeType,
       linked_account_id: account.id,
-      linked_account_name: account.head_name,
+      linked_account_name: account.account_name || account.head_name,
       linked_account_type: 'Income',
       income_type: incomeType,
       income_account_id: account.id,
-      income_account_name: account.head_name,
+      income_account_name: account.account_name || account.head_name,
       income_category_name: account.category_name,
     }
   }
@@ -197,7 +197,7 @@ export const useIncomeAccountsStore = defineStore('incomeAccounts', () => {
     return result
   }
 
-  async function updateAccountStatus(incomeType, accountId, status) {
+  async function updateAccount(incomeType, accountId, payload = {}) {
     const config = getIncomeAccountConfig(incomeType)
     const account = getAccount(incomeType, accountId)
 
@@ -205,6 +205,14 @@ export const useIncomeAccountsStore = defineStore('incomeAccounts', () => {
       return { ok: false, message: `${config?.incomeTypeLabel ?? 'Income'} account was not found.` }
     }
 
+    const accountName = String(
+      payload.account_name || account.account_name || account.head_name || ''
+    ).trim()
+    if (!accountName) {
+      return { ok: false, message: 'Please enter an account name.' }
+    }
+
+    const status = payload.status ?? account.status
     if (!['Active', 'Inactive'].includes(status)) {
       return { ok: false, message: 'Please select a valid status.' }
     }
@@ -212,7 +220,7 @@ export const useIncomeAccountsStore = defineStore('incomeAccounts', () => {
     return financeAccountStore.updateAccount({
       id: account.id,
       category: config.accountCategory,
-      account_name: account.account_name ?? account.head_name,
+      account_name: accountName,
       income_head_id: account.head_id,
       income_category_id: account.category_id,
       base_price: account.base_price,
@@ -251,7 +259,7 @@ export const useIncomeAccountsStore = defineStore('incomeAccounts', () => {
     openEditModal,
     closeEditModal,
     createAccount,
-    updateAccountStatus,
+    updateAccount,
     deleteAccount,
   }
 })

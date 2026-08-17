@@ -6,11 +6,17 @@
     @close="closeModal"
   >
     <BaseForm v-if="account" :onSubmit="handleSubmit">
+      <div class="space-y-2">
+        <BaseLabel :for="`edit_${partyType}_account_name`">Account Name</BaseLabel>
+        <BaseInput
+          :id="`edit_${partyType}_account_name`"
+          v-model="form.account_name"
+          :placeholder="`Enter ${config.partyLabel.toLowerCase()} account name`"
+          :required="true"
+        />
+      </div>
+
       <div class="space-y-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 text-sm">
-        <div>
-          <p class="text-xs uppercase tracking-wide text-gray-400">{{ config.partyLabel }}</p>
-          <p class="mt-1 font-medium text-gray-900">{{ account[config.nameKey] }}</p>
-        </div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <p class="text-xs uppercase tracking-wide text-gray-400">Code</p>
@@ -51,7 +57,7 @@
         <BaseButton type="button" class="bg-gray-500 text-white hover:bg-gray-600" @click="closeModal">
           Cancel
         </BaseButton>
-        <BaseButton type="submit" :disabled="loading">
+        <BaseButton type="submit" :disabled="loading || !form.account_name.trim()">
           {{ loading ? 'Saving...' : 'Save' }}
         </BaseButton>
       </div>
@@ -87,6 +93,7 @@ const loading = ref(false)
 const errorMessage = ref('')
 
 const form = reactive({
+  account_name: '',
   status: 'Active',
 })
 
@@ -101,6 +108,10 @@ watch(
   () => partyStore.isEditModalOpen,
   (isOpen) => {
     if (isOpen && partyStore.activePartyType === props.partyType && partyStore.editingAccount) {
+      form.account_name =
+        partyStore.editingAccount.account_name ||
+        partyStore.editingAccount[config.value.nameKey] ||
+        ''
       form.status = partyStore.editingAccount.status ?? 'Active'
       errorMessage.value = ''
     }
@@ -119,10 +130,13 @@ const handleSubmit = async () => {
   loading.value = true
 
   try {
-    const result = await partyStore.updateAccountStatus(
+    const result = await partyStore.updateAccount(
       props.partyType,
       account.value.id,
-      form.status
+      {
+        account_name: form.account_name,
+        status: form.status,
+      }
     )
 
     if (!result.ok) {

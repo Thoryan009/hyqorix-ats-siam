@@ -82,13 +82,21 @@ export const useAgentAccountStore = defineStore('agentAccount', () => {
     editingAccount.value = null
   }
 
-  async function updateAccountStatus(accountId, status) {
+  async function updateAccount(accountId, payload = {}) {
     const account = getAccount(accountId)
 
     if (!account) {
       return { ok: false, message: 'Agent account was not found.' }
     }
 
+    const accountName = String(
+      payload.account_name || account.account_name || account.agent_name || ''
+    ).trim()
+    if (!accountName) {
+      return { ok: false, message: 'Please enter an account name.' }
+    }
+
+    const status = payload.status ?? account.status
     if (!['Active', 'Inactive'].includes(status)) {
       return { ok: false, message: 'Please select a valid status.' }
     }
@@ -96,7 +104,7 @@ export const useAgentAccountStore = defineStore('agentAccount', () => {
     return financeAccountStore.updateAccount({
       id: account.id,
       category: ACCOUNT_CATEGORIES.AGENT,
-      account_name: account.agent_name ?? account.account_name,
+      account_name: accountName,
       code: account.agent_code ?? account.code,
       phone: account.phone,
       entity_id: account.agent_id ?? account.entity_id,
@@ -452,7 +460,7 @@ export const useAgentAccountStore = defineStore('agentAccount', () => {
     openEditModal,
     closeEditModal,
     fetchAccounts,
-    updateAccountStatus,
+    updateAccount,
     getAvailableAgents,
     hasAccountForAgent,
     createAccount,
