@@ -21,6 +21,7 @@ export function mapAccountTypeTransactionFromApi(row) {
     to_main_account_type: row.to_main_account_type ?? '',
     to_account_id: row.to_account_id ?? null,
     to_account_label: row.to_account_label ?? '',
+    voucher_no: row.voucher_no ?? '',
     created_at: row.created_at ?? '',
   }
 }

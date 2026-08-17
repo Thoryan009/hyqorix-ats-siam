@@ -56,7 +56,23 @@
       </button>
     </div>
 
-    <div class="rounded-lg bg-white shadow-sm">
+    <TransactionSubmittedSuccess
+      v-if="activeTab === 'other_transaction' && submittedTransfer"
+      :amount="submittedTransfer.amount"
+      :date="submittedTransfer.date"
+      :particular="submittedTransfer.particular"
+      :voucher-no="submittedTransfer.voucherNo"
+      :reference-no="submittedTransfer.referenceNo"
+      :from-account-label="submittedTransfer.fromAccountLabel"
+      :to-account-label="submittedTransfer.toAccountLabel"
+      :direction-label="submittedTransfer.directionLabel"
+      :extra-account-type="submittedTransfer.extraAccountType"
+      :extra-account-name="submittedTransfer.extraAccountName"
+      @create-another="createAnotherTransfer"
+      @view-transactions="goToTransactions"
+    />
+
+    <div v-else class="rounded-lg bg-white shadow-sm">
       <div class="border-b border-gray-100 px-4 py-4">
         <h3 class="text-base font-semibold text-gray-900">{{ activeTabMeta.title }}</h3>
         <p class="mt-1 text-sm text-gray-500">{{ activeTabMeta.description }}</p>
@@ -73,7 +89,7 @@
           v-else-if="activeTab === 'other_transaction'"
           initial-mode="transaction"
           transaction-only
-          @saved="goToTransactions"
+          @saved="onOtherTransactionSaved"
         />
 
         <template v-else>
@@ -135,6 +151,7 @@ import IncomeCollectionFormPanel from './components/payment/IncomeCollectionForm
 import TransactionEntryPanel from './components/payment/TransactionEntryPanel.vue'
 import SaleEntryFormPanel from './components/payment/SaleEntryFormPanel.vue'
 import BillsReceivablePanel from './components/payment/BillsReceivablePanel.vue'
+import TransactionSubmittedSuccess from './components/payment/TransactionSubmittedSuccess.vue'
 import { useExpensePaymentStore } from '@/finance/store/expensePaymentStore'
 import { useSaleEntryStore } from '@/finance/store/saleEntryStore'
 import { useIncomeCollectionStore } from '@/finance/store/incomeCollectionStore'
@@ -147,6 +164,7 @@ const router = useRouter()
 
 const activeTab = ref('transaction_entry')
 const receiveType = ref('job')
+const submittedTransfer = ref(null)
 
 const pageTabs = [
   { id: 'transaction_entry', label: 'Make Payment', icon: 'fa fa-credit-card' },
@@ -380,6 +398,7 @@ const summaryCards = computed(() => {
 })
 
 const setActiveTab = (tabId) => {
+  submittedTransfer.value = null
   activeTab.value = tabId
   const query = { ...route.query, tab: tabId }
   if (tabId !== 'sale_entry') {
@@ -412,7 +431,18 @@ const setReceiveType = (typeId) => {
 }
 
 function goToTransactions() {
+  submittedTransfer.value = null
   router.push({ path: '/finance/transactions' })
+}
+
+function onOtherTransactionSaved(payload) {
+  submittedTransfer.value = payload
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function createAnotherTransfer() {
+  submittedTransfer.value = null
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function goToPaymentCollections() {

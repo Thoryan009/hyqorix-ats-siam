@@ -840,6 +840,36 @@ function resetForm() {
   Object.assign(form, createDefaultForm())
 }
 
+function resolveAccountName(accountId) {
+  const account = financeAccountStore.getAccount(accountId)
+  return account?.account_name || account?.account_label || ''
+}
+
+function resolveExtraAccountSnapshot() {
+  if (form.owners_equity_account_id) {
+    return {
+      type: "Owner's Equity",
+      name: resolveAccountName(form.owners_equity_account_id),
+    }
+  }
+
+  if (form.asset_account_id) {
+    return {
+      type: 'Asset',
+      name: resolveAccountName(form.asset_account_id),
+    }
+  }
+
+  if (form.liabilities_account_id) {
+    return {
+      type: 'Liabilities',
+      name: resolveAccountName(form.liabilities_account_id),
+    }
+  }
+
+  return { type: '', name: '' }
+}
+
 watch(
   () => form.account_category,
   (category) => {
@@ -948,15 +978,26 @@ async function handleSubmit() {
     return
   }
 
-  await Swal.fire({
-    icon: 'success',
-    title: 'Transaction Saved',
-    text: `${transferLabel} has been recorded successfully.`,
-    confirmButtonColor: '#22C55E',
-  })
+  const extraAccount = resolveExtraAccountSnapshot()
+  const saved = result.transaction || {}
 
-  resetForm()
-  emit('saved')
+  emit('saved', {
+    amount: Number(saved.amount || form.amount) || 0,
+    date: saved.date || form.date,
+    particular: saved.particular || form.particular,
+    voucherNo: saved.voucher_no || '',
+    referenceNo: saved.reference_no || form.reference_no,
+    fromAccountLabel: saved.from_account_label || '',
+    toAccountLabel: saved.to_account_label || '',
+    directionLabel:
+      form.transaction_direction === 'payment'
+        ? 'Payment'
+        : form.transaction_direction === 'receive'
+          ? 'Receive'
+          : '',
+    extraAccountType: extraAccount.type,
+    extraAccountName: extraAccount.name,
+  })
 }
 
 onMounted(async () => {
