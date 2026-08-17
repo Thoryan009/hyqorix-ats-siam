@@ -112,8 +112,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
 
                 $settlesCollectionId = (int) ($data['settles_income_collection_id'] ?? 0);
                 if ($settlesCollectionId > 0 && in_array($paymentMethod, ['cash', 'bank', 'expense_link', 'adjustment'], true)) {
-                    $dueSummary = $this->getSimpleDueCollectionSummary($settlesCollectionId);
-                    $remaining = round((float) ($dueSummary['receivable_remaining'] ?? 0), 2);
+                    $remaining = $this->resolveDueCollectionRemaining($settlesCollectionId, $data);
                     if ($remaining <= 0) {
                         throw ValidationException::withMessages([
                             'settles_income_collection_id' => ['This due receivable is already fully settled.'],
@@ -1957,6 +1956,43 @@ class FinanceIncomeCollectionService extends BaseCachedService
         }
 
         return $items;
+    }
+
+    /**
+     * Remaining due for a prior income collection being settled.
+     * Simple PL income uses collection-level remaining; candidate bills use
+     * application remaining so they are not treated as already settled.
+     */
+    private function resolveDueCollectionRemaining(int $collectionId, array $data = []): float
+    {
+        if ($collectionId <= 0) {
+            return 0.0;
+        }
+
+        $dueRow = FinanceIncomeCollection::query()->find($collectionId);
+        if (!$dueRow || strtolower((string) ($dueRow->payment_method ?? '')) !== 'due') {
+            return 0.0;
+        }
+
+        $dueCandidates = is_array($dueRow->candidates) ? $dueRow->candidates : [];
+        if ($dueCandidates === []) {
+            $summary = $this->getSimpleDueCollectionSummary($collectionId);
+
+            return round((float) ($summary['receivable_remaining'] ?? 0), 2);
+        }
+
+        $payloadCandidates = $this->normalizeCandidates($data['candidates'] ?? []);
+        $applicationIds = $this->candidateApplicationIds($payloadCandidates);
+        if ($applicationIds === []) {
+            $applicationIds = $this->candidateApplicationIds($dueCandidates);
+        }
+
+        $remaining = 0.0;
+        foreach ($this->getIncomeCollectionSummary($applicationIds) as $row) {
+            $remaining = round($remaining + (float) ($row['receivable_remaining'] ?? 0), 2);
+        }
+
+        return $remaining;
     }
 
     /**
