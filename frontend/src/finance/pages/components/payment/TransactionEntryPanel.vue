@@ -135,7 +135,10 @@
           </p>
 
           <div v-if="!isAdjustmentType && hasExtraAccountSelected" class="space-y-2">
-            <BaseLabel>Cash Direction</BaseLabel>
+            <BaseLabel>
+              Cash Direction
+              <span class="text-red-500">*</span>
+            </BaseLabel>
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="option in directionOptions"
@@ -505,7 +508,7 @@ const createDefaultForm = () => ({
   particular: '',
   reference_no: '',
   remarks: '',
-  transaction_direction: 'payment',
+  transaction_direction: '',
   owners_equity_account_id: '',
   asset_account_id: '',
   liabilities_account_id: '',
@@ -552,7 +555,10 @@ const directionHint = computed(() => {
   if (form.transaction_direction === 'payment') {
     return 'Payment: cash goes out — party/staff posts DR, Owner Drawings / similar accounts post DR.'
   }
-  return 'Receive: cash comes in — party/staff posts CR, Owner Capital / similar accounts post CR.'
+  if (form.transaction_direction === 'receive') {
+    return 'Receive: cash comes in — party/staff posts CR, Owner Capital / similar accounts post CR.'
+  }
+  return 'Select Payment or Receive. Cash Direction is required before submitting this transfer.'
 })
 
 const ownersEquityAccountOptions = computed(() => getAccountOptions('owners_equity'))
@@ -890,11 +896,15 @@ async function handleSubmit() {
     return
   }
 
-  if (hasExtraAccountSelected.value && !['payment', 'receive'].includes(form.transaction_direction)) {
+  if (
+    !isAdjustmentType.value &&
+    hasExtraAccountSelected.value &&
+    !['payment', 'receive'].includes(form.transaction_direction)
+  ) {
     await Swal.fire({
       icon: 'warning',
-      title: 'Direction Required',
-      text: 'Please select Payment or Receive.',
+      title: 'Cash Direction Required',
+      text: 'Please select Payment or Receive before submitting this transfer.',
       confirmButtonColor: '#22C55E',
     })
     return
