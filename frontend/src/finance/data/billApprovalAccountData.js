@@ -106,7 +106,8 @@ export function requiresAdvanceAdjustmentAsset(category) {
 }
 
 export function mapAdvanceAdjustmentAssetAccountOption(account, formatCurrency) {
-  const balance = formatCurrency(account.balance ?? account.current_balance ?? 0)
+  const rawBalance = Number(account.balance ?? account.current_balance ?? 0)
+  const balance = formatCurrency(Math.abs(rawBalance))
   const name = account.account_name ?? account.account_label ?? 'Asset'
   const code = account.code ? `${account.code} — ` : ''
 
