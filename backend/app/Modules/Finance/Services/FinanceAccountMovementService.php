@@ -53,7 +53,7 @@ class FinanceAccountMovementService
             $newlyBilledCandidateSale = 0.0;
             $billsReceivableSettleAmount = 0.0;
 
-            if (in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link'], true)) {
+            if (in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link', 'adjustment'], true)) {
                 $billsReceivableSettleAmount = $this->resolveBillsReceivableSettleAmount($data, $amount);
             }
 
@@ -64,18 +64,30 @@ class FinanceAccountMovementService
                 'due' => 'Due',
                 'balance' => 'Adjust from Balance',
                 'expense_link' => 'Expense Link',
+                'adjustment' => 'Adjustment',
                 default => ucfirst($paymentMethod),
             };
 
-            if (in_array($paymentMethod, ['cash', 'bank'], true)) {
-                $mainAccountId = (int) ($data['main_account_id'] ?? 0);
-                $main = $this->resolveActiveAccount($mainAccountId, 'main');
+            if (in_array($paymentMethod, ['cash', 'bank', 'adjustment'], true)) {
+                $isAdjustment = $paymentMethod === 'adjustment';
+                if ($isAdjustment) {
+                    $destinationAccountId = (int) ($data['liability_account_id'] ?? $data['main_account_id'] ?? 0);
+                    if ($destinationAccountId <= 0) {
+                        throw ValidationException::withMessages([
+                            'liability_account_id' => ['Please select a liabilities account for adjustment.'],
+                        ]);
+                    }
+                    $main = $this->resolveActiveAccount($destinationAccountId, 'liabilities');
+                } else {
+                    $mainAccountId = (int) ($data['main_account_id'] ?? 0);
+                    $main = $this->resolveActiveAccount($mainAccountId, 'main');
 
-                $expectedType = $paymentMethod === 'bank' ? 'Bank' : 'Cash';
-                if (strcasecmp((string) $main->account_type, $expectedType) !== 0) {
-                    throw ValidationException::withMessages([
-                        'main_account_id' => ["Please select a {$expectedType} main account for {$methodLabel} receive method."],
-                    ]);
+                    $expectedType = $paymentMethod === 'bank' ? 'Bank' : 'Cash';
+                    if (strcasecmp((string) $main->account_type, $expectedType) !== 0) {
+                        throw ValidationException::withMessages([
+                            'main_account_id' => ["Please select a {$expectedType} main account for {$methodLabel} receive method."],
+                        ]);
+                    }
                 }
 
                 $voucherNo = $referenceNo !== ''
@@ -121,7 +133,11 @@ class FinanceAccountMovementService
                     'balance' => round((float) $main->balance + $amount, 2),
                 ]);
 
-                $result['main_account_id'] = $main->id;
+                if ($isAdjustment) {
+                    $result['liability_account_id'] = $main->id;
+                } else {
+                    $result['main_account_id'] = $main->id;
+                }
                 $result['type_transaction_id'] = $typeTransactionId;
 
                 // Agent cash/bank: per-candidate Deployment Charge (once) + payment.
@@ -440,7 +456,7 @@ class FinanceAccountMovementService
             } elseif ($paymentMethod === 'due' && in_array($payerType, ['agent', 'client'], true)) {
                 $saleIncomeAmount = $newlyBilledSale > 0 ? $newlyBilledSale : $amount;
             } elseif (
-                in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link'], true)
+                in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link', 'adjustment'], true)
                 && $billsReceivableSettleAmount <= 0
             ) {
                 $saleIncomeAmount = $newlyBilledSale > 0 ? $newlyBilledSale : $amount;
@@ -477,7 +493,7 @@ class FinanceAccountMovementService
                     $job
                 );
             } elseif (
-                in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link'], true)
+                in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link', 'adjustment'], true)
                 && $billsReceivableSettleAmount > 0
             ) {
                 $this->accountService->recordBillsReceivableEntry(
@@ -495,10 +511,10 @@ class FinanceAccountMovementService
                 );
             }
 
-            // Partial cash/bank/balance/expense-link leaves remaining on Bills Receivable
+            // Partial cash/bank/balance/expense-link/adjustment leaves remaining on Bills Receivable
             // and removes the candidate from Applicant/Agent Due Bills.
             $movedToReceivable = 0;
-            if (in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link'], true)) {
+            if (in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link', 'adjustment'], true)) {
                 $movedToReceivable = $this->createDueRemainderSaleCollections(
                     $data,
                     $payerType,
@@ -1280,8 +1296,8 @@ class FinanceAccountMovementService
             'voucher_no' => $voucherNo,
         ];
 
-        // Cash/Bank from agent/client → main
-        if (in_array($paymentMethod, ['cash', 'bank'], true) && $mainAccount && $partyAccount) {
+        // Cash/Bank/Adjustment from agent/client → destination account
+        if (in_array($paymentMethod, ['cash', 'bank', 'adjustment'], true) && $mainAccount && $partyAccount) {
             return FinanceAccountTypeTransaction::query()->create([
                 ...$base,
                 'from_account_category' => $partyAccount->category,
@@ -1295,8 +1311,8 @@ class FinanceAccountMovementService
             ]);
         }
 
-        // Cash/Bank from candidate → main only
-        if (in_array($paymentMethod, ['cash', 'bank'], true) && $mainAccount) {
+        // Cash/Bank/Adjustment from candidate → destination account only
+        if (in_array($paymentMethod, ['cash', 'bank', 'adjustment'], true) && $mainAccount) {
             return FinanceAccountTypeTransaction::query()->create([
                 ...$base,
                 'to_account_category' => $mainAccount->category,

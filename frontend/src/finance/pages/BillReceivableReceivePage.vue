@@ -176,7 +176,7 @@
             <div class="mb-3 grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
               <div>
                 <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  {{ isExpenseLinkMethod ? 'Settle Now' : 'Receive Now (Cash / Bank)' }}
+                  {{ isExpenseLinkMethod ? 'Settle Now' : isAdjustmentMode ? 'Adjust Now' : 'Receive Now (Cash / Bank)' }}
                 </p>
                 <BaseInput
                   id="receive_amount"
@@ -220,15 +220,63 @@
             </p>
 
             <div class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-              <div v-if="!isExpenseLinkMethod" class="space-y-1 md:col-span-2">
-                <BaseLabel for="receive_main_account">Receive In Main Account</BaseLabel>
-                <BaseSelect
-                  id="receive_main_account"
-                  v-model="form.main_account_id"
-                  :options="mainAccountOptions"
-                  placeholder="Select main account"
-                  :required="true"
-                />
+              <div v-if="!isExpenseLinkMethod" class="space-y-2 md:col-span-2">
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    class="rounded-lg border px-3 py-2 text-sm font-semibold transition"
+                    :class="
+                      !isAdjustmentMode
+                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                    "
+                    @click="setSettlementMode('main')"
+                  >
+                    Receive In Main Account
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg border px-3 py-2 text-sm font-semibold transition"
+                    :class="
+                      isAdjustmentMode
+                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                    "
+                    @click="setSettlementMode('adjustment')"
+                  >
+                    Adjustment
+                  </button>
+                </div>
+
+                <div v-if="!isAdjustmentMode" class="space-y-1">
+                  <BaseLabel for="receive_main_account">Receive In Main Account</BaseLabel>
+                  <BaseSelect
+                    id="receive_main_account"
+                    v-model="form.main_account_id"
+                    :options="mainAccountOptions"
+                    placeholder="Select main account"
+                    :required="true"
+                  />
+                </div>
+
+                <div v-else class="space-y-1">
+                  <BaseLabel for="receive_liability_account">Liabilities Account</BaseLabel>
+                  <BaseSelect
+                    id="receive_liability_account"
+                    v-model="form.liability_account_id"
+                    :options="liabilityAccountOptions"
+                    placeholder="Select liabilities account"
+                    :required="true"
+                  />
+                  <p class="text-[11px] text-slate-500">
+                    Adjustment posts CR on the selected liabilities account ledger.
+                    Same list as Finance Accounts → Liabilities Accounts.
+                  </p>
+                  <p v-if="!liabilityAccountOptions.length" class="text-xs text-amber-700">
+                    No active liabilities accounts found. Create one under Finance Accounts →
+                    Liabilities Accounts first.
+                  </p>
+                </div>
               </div>
 
               <div class="space-y-1 md:col-span-2">
@@ -265,7 +313,11 @@
               <BaseButton
                 type="submit"
                 :className="'rounded-lg bg-emerald-600 px-4 py-2.5 text-white shadow-sm hover:bg-emerald-700'"
-                :disabled="submitLoading || amountExceedsRemaining"
+                :disabled="
+                  submitLoading ||
+                  amountExceedsRemaining ||
+                  (isAdjustmentMode && !form.liability_account_id)
+                "
                 v-can="'receive_payment.create'"
               >
                 <i class="fa fa-save mr-1"></i>
@@ -276,9 +328,13 @@
                       ? isPartialReceive
                         ? 'Settle Partial via Expense Link'
                         : 'Settle via Expense Link'
-                      : isPartialReceive
-                        ? 'Receive Partial'
-                        : 'Confirm Full Receive'
+                      : isAdjustmentMode
+                        ? isPartialReceive
+                          ? 'Adjust Partial'
+                          : 'Confirm Adjustment'
+                        : isPartialReceive
+                          ? 'Receive Partial'
+                          : 'Confirm Full Receive'
                 }}
               </BaseButton>
               <BaseButton
@@ -315,12 +371,15 @@ import { useAccountStore } from '@/finance/store/accountStore'
 import { useAgentAccountStore } from '@/finance/store/agentAccountStore'
 import { usePartyAccountsStore } from '@/finance/store/partyAccountsStore'
 import { useExpenseHeadStore } from '@/finance/store/expenseHeadStore'
+import { useFinanceAccountStore } from '@/finance/store/financeAccountStore'
 import { formatCurrency } from '@/finance/utils/billUtils'
 import {
   formatPayerTypeLabel,
   getReceivableRemainingAmount,
   isSimplePlIncomeReceivable,
 } from '@/finance/utils/receivableBillUtils'
+import { ACCOUNT_CATEGORIES } from '@/finance/data/accountCategoryCodes'
+import { mapLiabilitiesAccountOption } from '@/finance/data/billApprovalAccountData'
 
 const route = useRoute()
 const router = useRouter()
@@ -330,6 +389,7 @@ const accountStore = useAccountStore()
 const agentAccountStore = useAgentAccountStore()
 const partyAccountsStore = usePartyAccountsStore()
 const expenseHeadStore = useExpenseHeadStore()
+const financeAccountStore = useFinanceAccountStore()
 
 const pageLoading = ref(true)
 const submitLoading = ref(false)
@@ -342,7 +402,9 @@ const form = reactive({
   receive_amount: '',
   payment_method: 'cash',
   entry_date: today,
+  settlement_mode: 'main',
   main_account_id: '',
+  liability_account_id: '',
   particular: '',
   reference_no: '',
   remarks: '',
@@ -353,6 +415,16 @@ const linkedExpenseHead = computed(() => expenseHeadStore.getBillsReceivableLink
 const isExpenseLinkMethod = computed(
   () => String(form.payment_method || '').toLowerCase() === 'expense_link'
 )
+
+const isAdjustmentMode = computed(
+  () => !isExpenseLinkMethod.value && form.settlement_mode === 'adjustment'
+)
+
+const submittedPaymentMethod = computed(() => {
+  if (isExpenseLinkMethod.value) return 'expense_link'
+  if (isAdjustmentMode.value) return 'adjustment'
+  return String(form.payment_method || 'cash').toLowerCase()
+})
 
 const receiveMethodOptions = computed(() => {
   const options = [
@@ -390,7 +462,7 @@ const amountExceedsRemaining = computed(
 
 const mainAccountOptions = computed(() => {
   const method = String(form.payment_method || '').toLowerCase()
-  if (method === 'expense_link') return []
+  if (method === 'expense_link' || isAdjustmentMode.value) return []
 
   const accountType = method === 'bank' ? 'Bank' : 'Cash'
 
@@ -403,8 +475,15 @@ const mainAccountOptions = computed(() => {
     }))
 })
 
+const liabilityAccountOptions = computed(() =>
+  financeAccountStore
+    .getAccountsByCategory(ACCOUNT_CATEGORIES.LIABILITIES)
+    .filter((account) => String(account.status || '').toLowerCase() === 'active')
+    .map((account) => mapLiabilitiesAccountOption(account, formatCurrency))
+)
+
 function ensureDefaultMainAccount() {
-  if (isExpenseLinkMethod.value) {
+  if (isExpenseLinkMethod.value || isAdjustmentMode.value) {
     form.main_account_id = ''
     return
   }
@@ -420,12 +499,46 @@ function ensureDefaultMainAccount() {
   }
 }
 
+function ensureDefaultLiabilityAccount() {
+  if (!isAdjustmentMode.value) {
+    return
+  }
+
+  const options = liabilityAccountOptions.value
+  if (!options.length) {
+    form.liability_account_id = ''
+    return
+  }
+
+  if (!options.some((item) => Number(item.id) === Number(form.liability_account_id))) {
+    form.liability_account_id = options[0].id
+  }
+}
+
+function setSettlementMode(mode) {
+  form.settlement_mode = mode === 'adjustment' ? 'adjustment' : 'main'
+  if (form.settlement_mode === 'adjustment') {
+    form.main_account_id = ''
+    ensureDefaultLiabilityAccount()
+    const subject = isSimplePlIncome.value
+      ? entry.value?.income_head_name || 'PL income'
+      : entry.value?.candidate_name || 'candidate'
+    form.particular = `Receivable settled via Adjustment — ${subject}`
+    return
+  }
+
+  form.liability_account_id = ''
+  form.particular = originalParticular.value || form.particular
+  ensureDefaultMainAccount()
+}
+
 watch(
   () => form.payment_method,
   (method, previousMethod) => {
-    ensureDefaultMainAccount()
-
     if (String(method || '').toLowerCase() === 'expense_link') {
+      form.settlement_mode = 'main'
+      form.liability_account_id = ''
+      ensureDefaultMainAccount()
       const linkedName = linkedExpenseHead.value?.name || 'Expense Link'
       const subject = isSimplePlIncome.value
         ? entry.value?.income_head_name || 'PL income'
@@ -433,6 +546,9 @@ watch(
       form.particular = `Receivable settled via Expense Link (${linkedName}) — ${subject}`
       return
     }
+
+    ensureDefaultMainAccount()
+    ensureDefaultLiabilityAccount()
 
     if (String(previousMethod || '').toLowerCase() === 'expense_link') {
       form.particular = originalParticular.value || form.particular
@@ -442,6 +558,10 @@ watch(
 
 watch(mainAccountOptions, () => {
   ensureDefaultMainAccount()
+})
+
+watch(liabilityAccountOptions, () => {
+  ensureDefaultLiabilityAccount()
 })
 
 watch(receiveMethodOptions, (options) => {
@@ -489,6 +609,7 @@ async function loadEntry() {
   } finally {
     pageLoading.value = false
     ensureDefaultMainAccount()
+    ensureDefaultLiabilityAccount()
   }
 }
 
@@ -516,11 +637,21 @@ async function handleReceive() {
     return
   }
 
-  if (!isExpenseLinkMethod.value && !form.main_account_id) {
+  if (!isExpenseLinkMethod.value && !isAdjustmentMode.value && !form.main_account_id) {
     await Swal.fire({
       icon: 'error',
       title: 'Main Account Required',
       text: 'Please select a main account to receive payment.',
+      confirmButtonColor: '#22C55E',
+    })
+    return
+  }
+
+  if (isAdjustmentMode.value && !form.liability_account_id) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Liabilities Account Required',
+      text: 'Please select a liabilities account for adjustment.',
       confirmButtonColor: '#22C55E',
     })
     return
@@ -616,6 +747,14 @@ async function handleReceive() {
 
   try {
     const isPlIncome = entry.value.source === 'pl_income'
+    const paymentMethod = submittedPaymentMethod.value
+    const receiveAccountId =
+      isExpenseLinkMethod.value || isAdjustmentMode.value
+        ? undefined
+        : Number(form.main_account_id)
+    const liabilityAccountId = isAdjustmentMode.value
+      ? Number(form.liability_account_id)
+      : undefined
     let result
 
     if (isPlIncome && isSimplePlIncome.value) {
@@ -624,13 +763,12 @@ async function handleReceive() {
         head_id: Number(entry.value.income_head_id),
         amount,
         collection_date: form.entry_date,
-        payment_method: form.payment_method,
+        payment_method: paymentMethod,
         particular: form.particular,
         reference_no: form.reference_no || undefined,
         remarks: form.remarks || undefined,
-        receive_account_id: isExpenseLinkMethod.value
-          ? undefined
-          : Number(form.main_account_id),
+        receive_account_id: receiveAccountId,
+        liability_account_id: liabilityAccountId,
         linked_account_category: entry.value.linked_account_category || undefined,
         linked_account_id: Number(entry.value.party_account_id) || undefined,
         linked_account_name: entry.value.party_account_label || undefined,
@@ -642,13 +780,12 @@ async function handleReceive() {
         head_id: Number(entry.value.income_head_id),
         amount,
         collection_date: form.entry_date,
-        payment_method: form.payment_method,
+        payment_method: paymentMethod,
         particular: form.particular,
         reference_no: form.reference_no || undefined,
         remarks: form.remarks || undefined,
-        receive_account_id: isExpenseLinkMethod.value
-          ? undefined
-          : Number(form.main_account_id),
+        receive_account_id: receiveAccountId,
+        liability_account_id: liabilityAccountId,
         linked_account_category: 'client',
         linked_account_id: Number(entry.value.party_account_id) || undefined,
         linked_account_name: entry.value.party_account_label || undefined,
@@ -678,8 +815,9 @@ async function handleReceive() {
         jobTitle: entry.value.job_title,
         clientName: entry.value.party_account_label || entry.value.candidate_name,
         entryDate: form.entry_date,
-        paymentMethod: form.payment_method,
-        mainAccountId: isExpenseLinkMethod.value ? null : form.main_account_id,
+        paymentMethod,
+        mainAccountId: receiveAccountId || null,
+        liabilityAccountId: liabilityAccountId || null,
         referenceNo: form.reference_no,
         particular: form.particular,
         remarks: form.remarks,
@@ -744,6 +882,7 @@ onMounted(async () => {
     partyAccountsStore.fetchAccounts('applicant'),
     partyAccountsStore.fetchAccounts('client'),
     expenseHeadStore.fetchHeads({ force: true, page: 1, perPage: 300 }),
+    financeAccountStore.fetchAccounts(ACCOUNT_CATEGORIES.LIABILITIES, true),
   ])
   await loadEntry()
 })

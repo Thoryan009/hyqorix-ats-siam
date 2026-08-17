@@ -111,7 +111,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                 }
 
                 $settlesCollectionId = (int) ($data['settles_income_collection_id'] ?? 0);
-                if ($settlesCollectionId > 0 && in_array($paymentMethod, ['cash', 'bank', 'expense_link'], true)) {
+                if ($settlesCollectionId > 0 && in_array($paymentMethod, ['cash', 'bank', 'expense_link', 'adjustment'], true)) {
                     $dueSummary = $this->getSimpleDueCollectionSummary($settlesCollectionId);
                     $remaining = round((float) ($dueSummary['receivable_remaining'] ?? 0), 2);
                     if ($remaining <= 0) {
@@ -126,20 +126,22 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     }
                 }
 
-                if (!in_array($paymentMethod, ['cash', 'bank', 'due', 'expense_link'], true)) {
+                if (!in_array($paymentMethod, ['cash', 'bank', 'due', 'expense_link', 'adjustment'], true)) {
                     throw ValidationException::withMessages([
-                        'payment_method' => ['Please select a valid receive method (Cash, Bank, Due, or Expense Link).'],
+                        'payment_method' => ['Please select a valid receive method (Cash, Bank, Due, Expense Link, or Adjustment).'],
                     ]);
                 }
 
                 $isDue = $paymentMethod === 'due';
                 $isExpenseLink = $paymentMethod === 'expense_link';
+                $isAdjustment = $paymentMethod === 'adjustment';
                 $postPaymentCredit = !$isDue;
                 $methodLabel = match ($paymentMethod) {
                     'cash' => 'Cash',
                     'bank' => 'Bank',
                     'due' => 'Due',
                     'expense_link' => 'Expense Link',
+                    'adjustment' => 'Adjustment',
                     default => ucfirst($paymentMethod),
                 };
 
@@ -164,6 +166,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
 
                 $receiveAccount = null;
                 $expenseAccount = null;
+                $liabilityAccount = null;
                 if (in_array($paymentMethod, ['cash', 'bank'], true)) {
                     $receiveAccount = FinanceAccount::query()
                         ->lockForUpdate()
@@ -183,6 +186,17 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     }
                 } elseif ($isExpenseLink) {
                     $expenseAccount = $this->accountService->resolveBillsReceivableLinkedExpenseAccount();
+                } elseif ($isAdjustment) {
+                    $liabilityAccountId = (int) ($data['liability_account_id'] ?? $receiveAccountId);
+                    $liabilityAccount = FinanceAccount::query()
+                        ->lockForUpdate()
+                        ->find($liabilityAccountId);
+
+                    if (!$liabilityAccount || $liabilityAccount->category !== 'liabilities' || $liabilityAccount->status !== 'active') {
+                        throw ValidationException::withMessages([
+                            'liability_account_id' => ['Please select an active liabilities account for adjustment.'],
+                        ]);
+                    }
                 }
 
                 $linkedAccount = null;
@@ -257,6 +271,19 @@ class FinanceIncomeCollectionService extends BaseCachedService
                         'account_id' => $expenseAccount->id,
                         'account_label' => $this->accountLabel($expenseAccount),
                     ]);
+                } elseif ($liabilityAccount) {
+                    $typeTransaction = FinanceAccountTypeTransaction::query()->create([
+                        ...$typeTransactionPayload,
+                        'to_account_category' => $liabilityAccount->category,
+                        'to_account_id' => $liabilityAccount->id,
+                        'to_account_label' => $this->accountLabel($liabilityAccount),
+                        'from_account_category' => $linkedAccount?->category,
+                        'from_account_id' => $linkedAccount?->id,
+                        'from_account_label' => $linkedAccount ? $this->accountLabel($linkedAccount) : null,
+                        'account_category' => $liabilityAccount->category,
+                        'account_id' => $liabilityAccount->id,
+                        'account_label' => $this->accountLabel($liabilityAccount),
+                    ]);
                 } else {
                     throw ValidationException::withMessages([
                         'linked_account_id' => ['A linked account is required for due income collection.'],
@@ -291,6 +318,20 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     );
                 }
 
+                if ($liabilityAccount && $postPaymentCredit) {
+                    $this->postCreditLedger(
+                        $liabilityAccount,
+                        $typeTransaction->id,
+                        $amount,
+                        $collectionDate,
+                        $particular,
+                        $voucherNo,
+                        $linkedAccount ? $this->accountLabel($linkedAccount) : $head->name,
+                        $methodLabel,
+                        $remarks ?: 'Receivable settled via adjustment'
+                    );
+                }
+
                 $normalizedCandidates = $this->normalizeCandidates($data['candidates'] ?? []);
                 $hasClientCandidateBills = $linkedAccount
                     && $linkedAccount->category === 'client'
@@ -312,7 +353,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     $billedAmount = $amount;
                 }
 
-                $counterpartyAccount = $receiveAccount ?? $expenseAccount;
+                $counterpartyAccount = $receiveAccount ?? $expenseAccount ?? $liabilityAccount;
                 // Candidate bills settle by application overlap; simple PL income by head + party.
                 $settlingPriorDue = $postPaymentCredit && (
                     $settlesCollectionId > 0
@@ -625,12 +666,18 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     'linked_account_id' => $linkedAccount?->id,
                     'linked_account_name' => $data['linked_account_name'] ?? ($linkedAccount ? $this->accountLabel($linkedAccount) : null),
                     'linked_account_type' => $data['linked_account_type'] ?? $linkedAccount?->account_type,
-                    'receive_account_category' => $receiveAccount?->category ?? $expenseAccount?->category,
+                    'receive_account_category' => $receiveAccount?->category
+                        ?? $expenseAccount?->category
+                        ?? $liabilityAccount?->category,
                     'receive_account_type' => $receiveAccount?->account_type,
-                    'receive_account_id' => $receiveAccount?->id ?? $expenseAccount?->id,
+                    'receive_account_id' => $receiveAccount?->id
+                        ?? $expenseAccount?->id
+                        ?? $liabilityAccount?->id,
                     'receive_account_name' => $receiveAccount
                         ? $this->accountLabel($receiveAccount)
-                        : ($expenseAccount ? $this->accountLabel($expenseAccount) : null),
+                        : ($expenseAccount
+                            ? $this->accountLabel($expenseAccount)
+                            : ($liabilityAccount ? $this->accountLabel($liabilityAccount) : null)),
                     'finance_account_type_transaction_id' => $typeTransaction->id,
                     'settles_income_collection_id' => $settlesCollectionId > 0 ? $settlesCollectionId : null,
                     'collected_by_id' => $data['collected_by_id'] ?? auth()->id(),
@@ -640,7 +687,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                 if (
                     !$isDue
                     && !$settlingPriorDue
-                    && in_array($paymentMethod, ['cash', 'bank', 'expense_link'], true)
+                    && in_array($paymentMethod, ['cash', 'bank', 'expense_link', 'adjustment'], true)
                 ) {
                     $this->createDueRemainderIncomeCollection(
                         $collection,
@@ -674,7 +721,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
         $collections = FinanceIncomeCollection::query()
             ->with('incomeHead.incomeCategory')
             ->where(function ($query) {
-                foreach (['cash', 'bank', 'expense_link', 'due'] as $method) {
+                foreach (['cash', 'bank', 'expense_link', 'adjustment', 'due'] as $method) {
                     $query->orWhereRaw('LOWER(COALESCE(payment_method, "")) = ?', [$method]);
                 }
             })
@@ -705,7 +752,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
             $linkedAccountId = $collection->linked_account_id ? (int) $collection->linked_account_id : null;
             $hasCandidates = is_array($candidates) && $candidates !== [];
 
-            $settlingPriorDue = in_array($method, ['cash', 'bank', 'expense_link'], true) && (
+            $settlingPriorDue = in_array($method, ['cash', 'bank', 'expense_link', 'adjustment'], true) && (
                 $settlesId > 0
                 || (
                     $hasCandidates
@@ -738,6 +785,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                 'bank' => 'Bank',
                 'due' => 'Due',
                 'expense_link' => 'Expense Link',
+                'adjustment' => 'Adjustment',
                 default => ucfirst((string) ($collection->payment_method ?? '')),
             };
 
@@ -795,7 +843,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
 
             // Cash/bank receive CR only when not settling a prior due.
             if (
-                in_array($method, ['cash', 'bank', 'expense_link'], true)
+                in_array($method, ['cash', 'bank', 'expense_link', 'adjustment'], true)
                 && !$hasCr
                 && $amount > 0
             ) {
@@ -1104,7 +1152,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
         }
 
         $method = strtolower((string) ($row->payment_method ?? ''));
-        if (!in_array($method, ['cash', 'bank', 'expense_link'], true)) {
+        if (!in_array($method, ['cash', 'bank', 'expense_link', 'adjustment'], true)) {
             return false;
         }
 
@@ -1933,7 +1981,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
         $collected = round(
             (float) FinanceIncomeCollection::query()
                 ->where('settles_income_collection_id', $collectionId)
-                ->whereIn('payment_method', ['cash', 'bank', 'expense_link'])
+                ->whereIn('payment_method', ['cash', 'bank', 'expense_link', 'adjustment'])
                 ->sum('amount'),
             2
         );

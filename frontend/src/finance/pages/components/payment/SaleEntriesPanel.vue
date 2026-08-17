@@ -152,6 +152,8 @@ function methodLabel(method) {
   if (method === 'balance') return 'Adjust Balance'
   if (method === 'bank') return 'Bank'
   if (method === 'due') return 'Due'
+  if (method === 'expense_link') return 'Expense Link'
+  if (method === 'adjustment') return 'Adjustment'
   return 'Cash'
 }
 

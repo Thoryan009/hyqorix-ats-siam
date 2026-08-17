@@ -1016,7 +1016,7 @@ class FinanceAccountService extends BaseCachedService
 
         $settleRows = FinanceSaleCollection::query()
             ->where(function ($query) {
-                foreach (['cash', 'bank', 'balance', 'expense_link'] as $method) {
+                foreach (['cash', 'bank', 'balance', 'expense_link', 'adjustment'] as $method) {
                     $query->orWhereRaw('LOWER(COALESCE(payment_method, "")) = ?', [$method]);
                 }
             })
@@ -1050,6 +1050,7 @@ class FinanceAccountService extends BaseCachedService
                 'bank' => 'Bank',
                 'balance' => 'Adjust from Balance',
                 'expense_link' => 'Expense Link',
+                'adjustment' => 'Adjustment',
                 default => ucfirst((string) ($row->payment_method ?? '')),
             };
 
@@ -1136,7 +1137,7 @@ class FinanceAccountService extends BaseCachedService
         $settleRows = FinanceIncomeCollection::query()
             ->with('incomeHead')
             ->where(function ($query) {
-                foreach (['cash', 'bank', 'expense_link'] as $method) {
+                foreach (['cash', 'bank', 'expense_link', 'adjustment'] as $method) {
                     $query->orWhereRaw('LOWER(COALESCE(payment_method, "")) = ?', [$method]);
                 }
             })
@@ -1208,6 +1209,7 @@ class FinanceAccountService extends BaseCachedService
                 'cash' => 'Cash',
                 'bank' => 'Bank',
                 'expense_link' => 'Expense Link',
+                'adjustment' => 'Adjustment',
                 default => ucfirst((string) ($row->payment_method ?? '')),
             };
 
@@ -1383,6 +1385,7 @@ class FinanceAccountService extends BaseCachedService
                 'due' => 'Due',
                 'balance' => 'Adjust from Balance',
                 'expense_link' => 'Expense Link',
+                'adjustment' => 'Adjustment',
                 default => ucfirst((string) $group['payment_method']),
             };
 
@@ -1469,6 +1472,7 @@ class FinanceAccountService extends BaseCachedService
                 'due' => 'Due',
                 'balance' => 'Adjust from Balance',
                 'expense_link' => 'Expense Link',
+                'adjustment' => 'Adjustment',
                 default => ucfirst((string) $group['payment_method']),
             };
 

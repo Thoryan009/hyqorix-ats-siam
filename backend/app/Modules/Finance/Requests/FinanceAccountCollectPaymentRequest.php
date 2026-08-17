@@ -24,6 +24,10 @@ class FinanceAccountCollectPaymentRequest extends FormRequest
             $merged['main_account_id'] = $this->input('mainAccountId');
         }
 
+        if ($this->has('liabilityAccountId') && !$this->has('liability_account_id')) {
+            $merged['liability_account_id'] = $this->input('liabilityAccountId');
+        }
+
         if ($this->has('partyAccountId') && !$this->has('party_account_id')) {
             $merged['party_account_id'] = $this->input('partyAccountId');
         }
@@ -78,7 +82,7 @@ class FinanceAccountCollectPaymentRequest extends FormRequest
         $paymentMethod = (string) $this->input('payment_method');
 
         return [
-            'payment_method' => ['required', Rule::in(['cash', 'bank', 'due', 'balance', 'expense_link'])],
+            'payment_method' => ['required', Rule::in(['cash', 'bank', 'due', 'balance', 'expense_link', 'adjustment'])],
             'payer_type' => ['required', Rule::in(['agent', 'candidate', 'client'])],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'transaction_date' => ['required', 'date'],
@@ -90,6 +94,12 @@ class FinanceAccountCollectPaymentRequest extends FormRequest
             'job' => ['nullable', 'string', 'max:255'],
             'main_account_id' => [
                 Rule::requiredIf(in_array($paymentMethod, ['cash', 'bank'], true)),
+                'nullable',
+                'integer',
+                'exists:finance_accounts,id',
+            ],
+            'liability_account_id' => [
+                Rule::requiredIf($paymentMethod === 'adjustment'),
                 'nullable',
                 'integer',
                 'exists:finance_accounts,id',

@@ -148,6 +148,7 @@ export async function collectPayment(payload = {}) {
     job_code: payload.jobCode?.trim() || undefined,
     entry_no: payload.entryNo?.trim() || undefined,
     main_account_id: payload.mainAccountId ? Number(payload.mainAccountId) : undefined,
+    liability_account_id: payload.liabilityAccountId ? Number(payload.liabilityAccountId) : undefined,
     party_account_id: payload.partyAccountId ? Number(payload.partyAccountId) : undefined,
     candidates: (payload.candidates || []).map((row) => ({
       application_id: Number(row.candidate_id || row.application_id),

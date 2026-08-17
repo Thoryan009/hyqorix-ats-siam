@@ -163,6 +163,7 @@ export const useIncomeCollectionStore = defineStore('incomeCollection', () => {
     const accountIds = new Set(
       [
         payload.receive_account_id,
+        payload.liability_account_id,
         payload.linked_account_id,
         created.receive_account_id,
         created.linked_account_id,

@@ -221,6 +221,11 @@ export const useSaleEntryStore = defineStore('saleEntry', () => {
       })
     }
 
+    if (payload.paymentMethod === 'adjustment' && payload.liabilityAccountId) {
+      categories.add('liabilities')
+      accountLedgerStore.invalidateAccountLedger(Number(payload.liabilityAccountId))
+    }
+
     if (partyAccountId) {
       const category = payload.payerType === 'client' ? 'client' : 'agent'
       categories.add(category)
@@ -320,14 +325,21 @@ export const useSaleEntryStore = defineStore('saleEntry', () => {
     }
 
     const paymentMethod = String(payload.paymentMethod || 'cash').toLowerCase()
-    if (!['cash', 'bank', 'due', 'expense_link'].includes(paymentMethod)) {
-      return { ok: false, message: 'Please select a valid receive method (Cash, Bank, Due, or Expense Link).' }
+    if (!['cash', 'bank', 'due', 'expense_link', 'adjustment'].includes(paymentMethod)) {
+      return { ok: false, message: 'Please select a valid receive method (Cash, Bank, Due, Expense Link, or Adjustment).' }
     }
 
     if (['cash', 'bank'].includes(paymentMethod) && !payload.mainAccountId) {
       return {
         ok: false,
         message: `Please select a main ${paymentMethod} account to receive payment.`,
+      }
+    }
+
+    if (paymentMethod === 'adjustment' && !payload.liabilityAccountId) {
+      return {
+        ok: false,
+        message: 'Please select a liabilities account for adjustment.',
       }
     }
 
@@ -385,6 +397,7 @@ export const useSaleEntryStore = defineStore('saleEntry', () => {
         jobCode: payload.jobCode,
         jobTitle: payload.jobTitle,
         mainAccountId: ['cash', 'bank'].includes(paymentMethod) ? payload.mainAccountId : null,
+        liabilityAccountId: paymentMethod === 'adjustment' ? payload.liabilityAccountId : null,
         partyAccountId:
           payerType === 'agent' || payerType === 'client' ? partyAccountId : null,
         candidates: candidateRows,

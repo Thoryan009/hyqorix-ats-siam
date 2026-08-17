@@ -28,6 +28,10 @@ class FinanceIncomeCollectionRequest extends FormRequest
             $merged['receive_account_id'] = $this->input('main_account_id');
         }
 
+        if ($this->has('liabilityAccountId') && !$this->has('liability_account_id')) {
+            $merged['liability_account_id'] = $this->input('liabilityAccountId');
+        }
+
         if (!empty($merged)) {
             $this->merge($merged);
         }
@@ -45,7 +49,7 @@ class FinanceIncomeCollectionRequest extends FormRequest
             'amount' => ['required', 'numeric', 'min:0.01'],
             'billed_amount' => ['nullable', 'numeric', 'min:0'],
             'collection_date' => ['required', 'date'],
-            'payment_method' => ['required', 'string', Rule::in(['cash', 'bank', 'due', 'expense_link'])],
+            'payment_method' => ['required', 'string', Rule::in(['cash', 'bank', 'due', 'expense_link', 'adjustment'])],
             'particular' => ['nullable', 'string', 'max:255'],
             'reference_no' => ['nullable', 'string', 'max:100'],
             'remarks' => ['nullable', 'string'],
@@ -56,6 +60,12 @@ class FinanceIncomeCollectionRequest extends FormRequest
                 'exists:finance_accounts,id',
             ],
             'main_account_id' => ['nullable', 'integer', 'exists:finance_accounts,id'],
+            'liability_account_id' => [
+                Rule::requiredIf($paymentMethod === 'adjustment'),
+                'nullable',
+                'integer',
+                'exists:finance_accounts,id',
+            ],
             'linked_account_category' => ['nullable', 'string', 'max:100'],
             'linked_account_id' => ['nullable', 'integer', 'exists:finance_accounts,id'],
             'linked_account_name' => ['nullable', 'string', 'max:255'],

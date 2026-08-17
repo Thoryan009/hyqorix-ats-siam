@@ -116,3 +116,15 @@ export function mapAdvanceAdjustmentAssetAccountOption(account, formatCurrency) 
     name: `${code}${name} — ${balance}`,
   }
 }
+
+export function mapLiabilitiesAccountOption(account, formatCurrency) {
+  const rawBalance = Number(account.balance ?? account.current_balance ?? 0)
+  const balance = formatCurrency(Math.abs(rawBalance))
+  const name = account.account_name ?? account.account_label ?? 'Liabilities'
+  const code = account.code ? `${account.code} — ` : ''
+
+  return {
+    id: account.id,
+    name: `${code}${name} — ${balance}`,
+  }
+}
