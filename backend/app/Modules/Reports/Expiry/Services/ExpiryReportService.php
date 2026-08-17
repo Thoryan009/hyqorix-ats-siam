@@ -7,6 +7,7 @@ use App\Modules\Client\Models\Client;
 use App\Modules\JobList\Models\JobList;
 use App\Modules\Reports\Expiry\Repositories\ExpiryReportRepository;
 use App\Modules\Reports\Expiry\Resources\ExpiryReportResource;
+use App\Modules\Application\Helpers\ApplicationPresenter;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -220,9 +221,9 @@ class ExpiryReportService
         return [
             'passport_no'       => $applicationProcess->application?->passport_no,
             'candidate_name'    => trim(($applicationProcess->application?->given_name ?? '') . ' ' . ($applicationProcess->application?->sur_name ?? '')),
-            'mobile'            => $applicationProcess->application?->mobile,
+            'mobile'            => ApplicationPresenter::localMobile($applicationProcess->application?->mobile),
             'agent_name'        => $agent?->user?->name,
-            'agent_mobile_no'   => $agent?->user?->phone,
+            'agent_mobile_no'   => ApplicationPresenter::localMobile($agent?->user?->phone),
             'client_name'       => $client,
             'job_name'          => $job,
             'document'          => $config['document'],
@@ -344,11 +345,11 @@ class ExpiryReportService
                 fputcsv($output, [
                     $row['passport_no'] ?? '',
                     $row['candidate_name'] ?? '',
-                    $row['mobile'] ?? '',
+                    $this->csvText($row['mobile'] ?? ''),
                     $row['agent_name'] ?? '',
                     $row['client_name'] ?? '',
                     $row['job_name'] ?? '',
-                    $row['agent_mobile_no'] ?? '',
+                    $this->csvText($row['agent_mobile_no'] ?? ''),
                     $row['document'] ?? '',
                     $row['expiry_date_formatted'] ?? '',
                     $row['days_left'] ?? '',
@@ -364,4 +365,17 @@ class ExpiryReportService
 
             return $csv;
         }
+
+    /**
+     * Keep leading zeros (01…) intact when Excel opens the CSV.
+     */
+    private function csvText(?string $value): string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        return "\t".$value;
+    }
 }
