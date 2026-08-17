@@ -85,6 +85,9 @@ class FinanceBalanceSheetService
         $assets = [];
         $liabilities = [];
         $equity = [];
+        $legacyDepreciationExpenseDebits = [];
+        $accumulatedDepreciationCredit = 0.0;
+        $accumulatedDepreciationAccountId = 0;
 
         foreach ($trialBalance['rows'] ?? [] as $row) {
             $category = (string) ($row['category'] ?? '');
@@ -93,14 +96,22 @@ class FinanceBalanceSheetService
             $label = (string) ($row['account_name'] ?? 'Account');
             $accountId = (int) ($row['account_id'] ?? 0);
 
+            if (
+                $category === 'accumulated_depreciation'
+                || !empty($row['is_accumulated_depreciation'])
+            ) {
+                if ($credit >= 0.005) {
+                    $accumulatedDepreciationCredit = round($accumulatedDepreciationCredit + $credit, 2);
+                    $accumulatedDepreciationAccountId = $accountId;
+                }
+                continue;
+            }
+
             if ($category === 'depreciation_expense' && $debit >= 0.005) {
-                $assets[] = $this->lineItem(
-                    'Less: Accumulated Depreciation',
-                    round(-$debit, 2),
-                    'depreciation_expense',
-                    $accountId,
-                    true
-                );
+                $legacyDepreciationExpenseDebits[] = [
+                    'amount' => $debit,
+                    'account_id' => $accountId,
+                ];
                 continue;
             }
 
@@ -139,6 +150,26 @@ class FinanceBalanceSheetService
                     // Contra-equity (e.g. Owner Drawings) reduces total equity.
                     $equity[] = $this->lineItem($label, round(-$debit, 2), $category, $accountId);
                 }
+            }
+        }
+
+        if ($accumulatedDepreciationCredit >= 0.005) {
+            $assets[] = $this->lineItem(
+                'Less: Accumulated Depreciation',
+                round(-$accumulatedDepreciationCredit, 2),
+                'accumulated_depreciation',
+                $accumulatedDepreciationAccountId,
+                true
+            );
+        } else {
+            foreach ($legacyDepreciationExpenseDebits as $legacy) {
+                $assets[] = $this->lineItem(
+                    'Less: Accumulated Depreciation',
+                    round(-$legacy['amount'], 2),
+                    'depreciation_expense',
+                    (int) $legacy['account_id'],
+                    true
+                );
             }
         }
 

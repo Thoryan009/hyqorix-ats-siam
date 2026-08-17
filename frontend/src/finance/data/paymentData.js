@@ -2,6 +2,7 @@ export const paymentMethods = [
   { id: 'cash', name: 'Cash' },
   { id: 'bank', name: 'Bank' },
   { id: 'due', name: 'Due' },
+  { id: 'depreciation', name: 'For Depreciation' },
 ]
 
 export const receivedByOptions = [

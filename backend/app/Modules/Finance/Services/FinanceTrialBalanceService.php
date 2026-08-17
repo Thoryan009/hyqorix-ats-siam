@@ -27,6 +27,7 @@ class FinanceTrialBalanceService
         'client_recruitment' => 'Client Recruitment Accounts',
         'operating_expense' => 'Operating Expense Accounts',
         'depreciation_expense' => 'Depreciation Expense',
+        'accumulated_depreciation' => 'Accumulated Depreciation',
         'recruitment_income' => 'Recruitment Income Accounts',
         'client_income' => 'Client Income Accounts',
         'other_income' => 'Operating Income Accounts',
@@ -55,6 +56,7 @@ class FinanceTrialBalanceService
         'client_recruitment',
         'operating_expense',
         'depreciation_expense',
+        'accumulated_depreciation',
         'capital',
         'owners_equity',
         'liabilities',
@@ -197,9 +199,11 @@ class FinanceTrialBalanceService
                 'category' => $category,
                 'category_label' => self::CATEGORY_LABELS[$category]
                     ?? ucwords(str_replace('_', ' ', $category)),
-                'is_non_current_asset' => $category === 'asset'
-                    && (bool) ($account->is_non_current_asset ?? false),
+                'is_non_current_asset' => $category === 'accumulated_depreciation'
+                    || ($category === 'asset' && (bool) ($account->is_non_current_asset ?? false)),
                 'is_depreciation_expense' => $isDepreciationExpense,
+                'is_accumulated_depreciation' => $category === 'accumulated_depreciation'
+                    || (string) ($account->code ?? '') === 'ACCDEP',
                 'total_dr' => $totalDr,
                 'total_cr' => $totalCr,
                 'debit_balance' => $debitBalance,
@@ -355,7 +359,7 @@ class FinanceTrialBalanceService
         if (
             $code !== ''
             && !str_starts_with($code, 'PAY-AST-')
-            && !in_array($category, ['main', 'capital', 'sale', 'bills_receivable', 'income_receivable', 'expense_payable', 'liabilities'], true)
+            && !in_array($category, ['main', 'capital', 'sale', 'bills_receivable', 'income_receivable', 'expense_payable', 'liabilities', 'accumulated_depreciation'], true)
         ) {
             return "{$name} ({$code})";
         }

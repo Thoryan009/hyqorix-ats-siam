@@ -273,7 +273,7 @@ class FinanceBillEntryService extends BaseCachedService
 
         return $this->mutate(function () use ($billEntry, $data) {
             $requestedMethod = strtolower((string) ($data['payment_method'] ?? $billEntry->payment_method ?? 'cash'));
-            if (!in_array($requestedMethod, ['cash', 'bank', 'due'], true)) {
+            if (!in_array($requestedMethod, ['cash', 'bank', 'due', 'depreciation'], true)) {
                 $requestedMethod = 'cash';
             }
 
@@ -285,9 +285,29 @@ class FinanceBillEntryService extends BaseCachedService
                     ]);
                 }
 
+                $isAssetPurchaseBill = ($billEntry->entry_type ?? 'expense_bill') === 'asset_purchase';
+                $isDepreciationSettlement = $requestedMethod === 'depreciation';
+                if ($isDepreciationSettlement) {
+                    if ($isAssetPurchaseBill) {
+                        throw ValidationException::withMessages([
+                            'payment_method' => ['For Depreciation settlement is not available for asset purchase bills.'],
+                        ]);
+                    }
+
+                    $billEntry->loadMissing('expenseHead');
+                    if (!($billEntry->expenseHead?->is_depreciation_expense)) {
+                        throw ValidationException::withMessages([
+                            'payment_method' => ['For Depreciation is only available when this bill’s expense head is marked as Depreciation Expense.'],
+                        ]);
+                    }
+                }
+
                 // pay_amount = cash/bank portion paid now.
                 // Remaining (billTotal − pay_amount) stays Due → Bills Payable.
-                if (array_key_exists('pay_amount', $data) && $data['pay_amount'] !== null && $data['pay_amount'] !== '') {
+                // For Depreciation: fully settled with no cash and no payable.
+                if ($isDepreciationSettlement) {
+                    $payAmount = 0.0;
+                } elseif (array_key_exists('pay_amount', $data) && $data['pay_amount'] !== null && $data['pay_amount'] !== '') {
                     $payAmount = round((float) $data['pay_amount'], 2);
                 } elseif ($requestedMethod === 'due') {
                     $payAmount = 0.0;
@@ -307,14 +327,18 @@ class FinanceBillEntryService extends BaseCachedService
                     ]);
                 }
 
-                $dueRemaining = round($billTotal - $payAmount, 2);
+                $dueRemaining = $isDepreciationSettlement ? 0.0 : round($billTotal - $payAmount, 2);
                 $hasDueRemaining = $dueRemaining >= 0.005;
                 $hasCashPayment = $payAmount >= 0.005;
 
                 // Any unpaid remainder stays as Due so it appears in Bills Payable.
-                $storedPaymentMethod = $hasDueRemaining ? 'due' : ($hasCashPayment ? $requestedMethod : 'due');
-                if ($storedPaymentMethod === 'due' && $hasCashPayment && !in_array($requestedMethod, ['cash', 'bank'], true)) {
-                    $requestedMethod = 'cash';
+                if ($isDepreciationSettlement) {
+                    $storedPaymentMethod = 'depreciation';
+                } else {
+                    $storedPaymentMethod = $hasDueRemaining ? 'due' : ($hasCashPayment ? $requestedMethod : 'due');
+                    if ($storedPaymentMethod === 'due' && $hasCashPayment && !in_array($requestedMethod, ['cash', 'bank'], true)) {
+                        $requestedMethod = 'cash';
+                    }
                 }
 
                 $paymentDate = $billEntry->payment_date?->format('Y-m-d') ?? now()->toDateString();
@@ -346,7 +370,7 @@ class FinanceBillEntryService extends BaseCachedService
                     'remarks' => $remarks,
                     'approval_remarks' => $approvalRemarks,
                     'payment_method' => $storedPaymentMethod,
-                    'paid_amount' => $payAmount,
+                    'paid_amount' => $isDepreciationSettlement ? $billTotal : $payAmount,
                     'status' => 'approved',
                     'approved_at' => now(),
                     'approved_by' => trim((string) ($data['approved_by'] ?? 'Accountant')),
@@ -444,7 +468,9 @@ class FinanceBillEntryService extends BaseCachedService
 
                 $expenseBillParticular = $particular !== '' ? $particular : ($isAssetPurchase ? 'Asset purchase approved' : 'Bill approved');
                 $paymentMethodLabel = $this->resolveBillPaymentMethodLabel(
-                    $hasCashPayment ? $cashMethod : 'due',
+                    $isDepreciationSettlement
+                        ? 'depreciation'
+                        : ($hasCashPayment ? $cashMethod : 'due'),
                     $paymentFields
                 );
 
@@ -565,8 +591,12 @@ class FinanceBillEntryService extends BaseCachedService
                         $expenseBillParticular,
                         $voucherNo,
                         $billEntry->client_name ?? '',
-                        $hasDueRemaining ? null : ($hasCashPayment ? $paymentMethodLabel : null),
-                        $approvalRemarks ?: $remarks ?: 'Bill approved',
+                        $isDepreciationSettlement
+                            ? $paymentMethodLabel
+                            : ($hasDueRemaining ? null : ($hasCashPayment ? $paymentMethodLabel : null)),
+                        $approvalRemarks ?: $remarks ?: (
+                            $isDepreciationSettlement ? 'Bill settled as depreciation' : 'Bill approved'
+                        ),
                         $typeTransactionId,
                         false
                     );
@@ -587,6 +617,21 @@ class FinanceBillEntryService extends BaseCachedService
                                 : 'Bill payment approved'),
                             $typeTransactionId,
                             true
+                        );
+                    }
+
+                    if ($isDepreciationSettlement) {
+                        $this->accountService->recordAccumulatedDepreciationEntry(
+                            $billTotal,
+                            'cr',
+                            $paymentDate,
+                            $voucherNo,
+                            $typeTransactionId,
+                            $expenseBillParticular !== '' ? $expenseBillParticular : 'Depreciation',
+                            'For Depreciation',
+                            $approvalRemarks ?: $remarks ?: 'Bill settled as depreciation',
+                            (string) ($billEntry->client_name ?? ''),
+                            $billEntry->id
                         );
                     }
 
@@ -628,22 +673,24 @@ class FinanceBillEntryService extends BaseCachedService
                         }
                     }
 
-                    $this->postPartyLinkedAccountApprovalLedgers(
-                        $billEntry,
-                        $expenseAccount,
-                        $paymentAccount,
-                        $billTotal,
-                        $payAmount,
-                        $paymentDate,
-                        $expenseBillParticular,
-                        $voucherNo,
-                        $hasDueRemaining,
-                        $hasCashPayment,
-                        $paymentMethodLabel,
-                        $approvalRemarks,
-                        $remarks,
-                        $typeTransactionId
-                    );
+                    if (!$isDepreciationSettlement) {
+                        $this->postPartyLinkedAccountApprovalLedgers(
+                            $billEntry,
+                            $expenseAccount,
+                            $paymentAccount,
+                            $billTotal,
+                            $payAmount,
+                            $paymentDate,
+                            $expenseBillParticular,
+                            $voucherNo,
+                            $hasDueRemaining,
+                            $hasCashPayment,
+                            $paymentMethodLabel,
+                            $approvalRemarks,
+                            $remarks,
+                            $typeTransactionId
+                        );
+                    }
                 }
 
                 if ($paymentAccount) {
@@ -2355,6 +2402,7 @@ class FinanceBillEntryService extends BaseCachedService
             'cash' => 'Cash',
             'bank' => 'Bank',
             'income_link' => 'Income Link',
+            'depreciation' => 'For Depreciation',
             default => ($type = trim((string) ($paymentFields['payment_account_type'] ?? ''))) !== ''
                 ? $type
                 : ucfirst($paymentMethod),

@@ -816,10 +816,12 @@ function handleReceiptFilesChange(event) {
   }
 }
 
-const paymentMethodOptions = paymentMethods.map((method) => ({
-  id: method.id,
-  name: method.name,
-}))
+const paymentMethodOptions = paymentMethods
+  .filter((method) => ['cash', 'bank', 'due'].includes(method.id))
+  .map((method) => ({
+    id: method.id,
+    name: method.name,
+  }))
 
 const selectedPaymentMethodLabel = computed(
   () => paymentMethodOptions.find((method) => method.id === form.payment_method)?.name ?? '—'

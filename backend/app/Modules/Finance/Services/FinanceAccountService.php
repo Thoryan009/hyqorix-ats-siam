@@ -30,6 +30,8 @@ class FinanceAccountService extends BaseCachedService
     public const BILLS_RECEIVABLE_ACCOUNT_CODE = 'BILLS_RECEIVABLE';
     public const INCOME_RECEIVABLE_CATEGORY = 'income_receivable';
     public const EXPENSE_PAYABLE_CATEGORY = 'expense_payable';
+    public const ACCUMULATED_DEPRECIATION_CATEGORY = 'accumulated_depreciation';
+    public const ACCUMULATED_DEPRECIATION_ACCOUNT_CODE = 'ACCDEP';
 
     /** Party accounts are created with zero balance — no opening amount / main account on create. */
     private const PARTY_ZERO_BALANCE_CATEGORIES = [
@@ -220,6 +222,92 @@ class FinanceAccountService extends BaseCachedService
         }
 
         return $account;
+    }
+
+    /**
+     * System Accumulated Depreciation contra-asset — CR when a bill is settled
+     * For Depreciation (no cash / payable account).
+     */
+    public function ensureAccumulatedDepreciationAccount(): FinanceAccount
+    {
+        $account = $this->model->firstOrNew([
+            'category' => self::ACCUMULATED_DEPRECIATION_CATEGORY,
+            'code' => self::ACCUMULATED_DEPRECIATION_ACCOUNT_CODE,
+        ]);
+
+        $account->account_name = 'Accumulated Depreciation';
+        $account->account_type = null;
+        $account->status = 'active';
+        $account->is_non_current_asset = true;
+        $account->metadata = array_merge($account->metadata ?? [], [
+            'is_accumulated_depreciation' => true,
+        ]);
+
+        if (!$account->exists) {
+            $account->balance = 0;
+            $account->opening_balance = 0;
+        }
+
+        $account->save();
+
+        return $account;
+    }
+
+    /**
+     * Contra-asset: CR increases accumulated depreciation (reduces net NCA).
+     */
+    public function recordAccumulatedDepreciationEntry(
+        float $amount,
+        string $side,
+        string $entryDate,
+        string $voucherNo,
+        ?int $typeTransactionId = null,
+        string $particular = '',
+        string $paymentMethod = '',
+        string $remarks = '',
+        string $clientName = '',
+        ?int $billEntryId = null,
+    ): void {
+        if ($amount <= 0) {
+            return;
+        }
+
+        $side = strtolower($side) === 'dr' ? 'dr' : 'cr';
+        $account = $this->ensureAccumulatedDepreciationAccount();
+        $voucherNo = trim($voucherNo);
+        $particular = trim($particular) !== ''
+            ? trim($particular)
+            : 'Accumulated Depreciation';
+        $amount = round($amount, 2);
+
+        if ($this->hasExistingReceivableSideEntry(
+            (int) $account->id,
+            $side,
+            $amount,
+            $typeTransactionId,
+            $voucherNo
+        )) {
+            return;
+        }
+
+        FinanceAccountLedgerEntry::create([
+            'finance_account_id' => $account->id,
+            'finance_bill_entry_id' => $billEntryId,
+            'finance_account_type_transaction_id' => $typeTransactionId,
+            'entry_date' => $entryDate,
+            'particular' => $particular,
+            'voucher_no' => $voucherNo !== '' ? $voucherNo : null,
+            'client_name' => $clientName !== '' ? $clientName : null,
+            'dr_amount' => $side === 'dr' ? $amount : 0,
+            'discount' => 0,
+            'cr_amount' => $side === 'cr' ? $amount : 0,
+            'payment_method' => $paymentMethod,
+            'remarks' => $remarks !== '' ? $remarks : null,
+        ]);
+
+        $delta = $side === 'cr' ? $amount : -$amount;
+        $account->balance = round((float) $account->balance + $delta, 2);
+        $account->save();
     }
 
     /**

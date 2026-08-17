@@ -20,6 +20,7 @@ class FinanceBillEntryResource extends JsonResource
             'head_name' => $this->entry_type === 'asset_purchase'
                 ? ($this->assetAccount?->account_name ?? '')
                 : $this->expenseHead?->name,
+            'is_depreciation_expense' => (bool) ($this->expenseHead?->is_depreciation_expense ?? false),
             'asset_account_id' => $this->asset_account_id,
             'asset_account_name' => $this->assetAccount?->account_name ?? '',
             'vendor_account_id' => $this->vendor_account_id,

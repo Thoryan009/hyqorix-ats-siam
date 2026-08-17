@@ -1,9 +1,9 @@
 <template>
-  <div class="space-y-3 rounded-xl border border-gray-200 bg-gray-50/80 p-4">
-    <div class="flex items-start justify-between gap-3">
-      <div>
-        <h4 class="text-sm font-semibold text-gray-900">Linked Account Types</h4>
-        <p class="mt-1 text-xs text-gray-500">
+  <div class="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
+    <div class="flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <h4 class="text-sm font-semibold text-slate-900">Linked Account Types</h4>
+        <p class="mt-0.5 text-xs text-slate-500">
           Select which account types are linked to this expense head.
         </p>
       </div>
@@ -19,34 +19,36 @@
 
     <div
       v-if="!localLinks.length"
-      class="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-6 text-center text-sm text-gray-500"
+      class="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-3 text-center text-sm text-slate-500"
     >
       No account types linked yet. Click "Add Account Type" to link one.
     </div>
 
-    <div
-      v-for="(link, index) in localLinks"
-      :key="link._key"
-      class="flex items-end gap-3 rounded-lg border border-gray-200 bg-white p-4"
-    >
-      <div class="min-w-0 flex-1 space-y-1">
-        <BaseLabel :for="`link_category_${index}`">Account Type</BaseLabel>
-        <BaseSelect
-          :id="`link_category_${index}`"
-          :model-value="link.account_category"
-          :options="getCategoryOptions(link.account_category)"
-          placeholder="Select account type"
-          @update:modelValue="(value) => setLinkCategory(index, value)"
-        />
-      </div>
-
-      <button
-        type="button"
-        class="mb-2 shrink-0 rounded-lg px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
-        @click="removeLink(index)"
+    <div v-if="localLinks.length" class="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div
+        v-for="(link, index) in localLinks"
+        :key="link._key"
+        class="flex items-end gap-3 rounded-lg border border-slate-200 bg-white p-3"
       >
-        <i class="fa fa-trash"></i>
-      </button>
+        <div class="min-w-0 flex-1 space-y-1">
+          <BaseLabel :for="`link_category_${index}`">Account Type</BaseLabel>
+          <BaseSelect
+            :id="`link_category_${index}`"
+            :model-value="link.account_category"
+            :options="getCategoryOptions(link.account_category)"
+            placeholder="Select account type"
+            @update:modelValue="(value) => setLinkCategory(index, value)"
+          />
+        </div>
+
+        <button
+          type="button"
+          class="mb-2 shrink-0 rounded-lg px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
+          @click="removeLink(index)"
+        >
+          <i class="fa fa-trash"></i>
+        </button>
+      </div>
     </div>
   </div>
 </template>

@@ -1307,11 +1307,13 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
       return { ok: false, message: 'Only Bills To Pay entries can be paid/approved here.' }
     }
 
-    const paymentMethod = payload.payment_method || existing.payment_method
+    const paymentMethod = String(payload.payment_method || existing.payment_method || 'cash').toLowerCase()
+    const isDepreciationSettlement = paymentMethod === 'depreciation'
     const billTotal = Number(payload.amount)
     const payAmountRaw = payload.pay_amount
-    const payAmount =
-      payAmountRaw !== undefined && payAmountRaw !== null && payAmountRaw !== ''
+    const payAmount = isDepreciationSettlement
+      ? 0
+      : payAmountRaw !== undefined && payAmountRaw !== null && payAmountRaw !== ''
         ? Number(payAmountRaw)
         : paymentMethod === 'due'
           ? 0
@@ -1331,7 +1333,14 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
 
     let accountData = {}
 
-    if (payAmount > 0) {
+    if (isDepreciationSettlement) {
+      accountData = {
+        payment_account_category: '',
+        payment_account_type: '',
+        payment_account_id: null,
+        payment_account_name: '',
+      }
+    } else if (payAmount > 0) {
       const accountResult = resolvePaymentAccount({
         ...payload,
         payment_method: paymentMethod === 'due' ? 'cash' : paymentMethod,
@@ -1367,7 +1376,13 @@ export const useExpensePaymentStore = defineStore('expensePayment', () => {
         ...buildBillEntryUpdatePayload({
           ...payload,
           pay_amount: payAmount,
-          payment_method: payAmount <= 0 ? 'due' : paymentMethod === 'due' ? 'cash' : paymentMethod,
+          payment_method: isDepreciationSettlement
+            ? 'depreciation'
+            : payAmount <= 0
+              ? 'due'
+              : paymentMethod === 'due'
+                ? 'cash'
+                : paymentMethod,
         }),
         ...accountData,
       })

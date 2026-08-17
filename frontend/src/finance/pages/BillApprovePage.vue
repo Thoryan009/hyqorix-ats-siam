@@ -440,7 +440,10 @@
                   />
                 </div>
 
-                <div class="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
+                <div
+                  v-if="showBillsToPayPaymentMethod && !isDepreciationMethod"
+                  class="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2"
+                >
                   <div>
                     <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                       Pay Now (Cash / Bank)
@@ -483,7 +486,14 @@
             </div>
 
             <p
-              v-if="!isPayableSettlementMode && !isReadonly && billsToPayDueRemaining > 0 && billsToPayNowAmount <= 0"
+              v-if="isDepreciationMethod && !isReadonly"
+              class="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-800"
+            >
+              Settled as For Depreciation — no payment account. This reduces Non-Current Assets
+              (Less: Accumulated Depreciation) on the Balance Sheet.
+            </p>
+            <p
+              v-else-if="!isPayableSettlementMode && !isReadonly && billsToPayDueRemaining > 0 && billsToPayNowAmount <= 0"
               class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
             >
               Full bill will be Due — no payment account required. It will appear in Bills Payable.
@@ -774,6 +784,7 @@ import {
   getBillPaymentAccountName,
   getBillPaymentAccountTypeLabel,
   isBillPartyPaymentCategory,
+  isDepreciationPaymentMethod,
   isDuePaymentMethod,
   mapAdvanceAdjustmentAssetAccountOption,
   mapBillPaymentAccountOption,
@@ -806,6 +817,7 @@ const form = reactive({
   category_name: '',
   head_id: '',
   head_name: '',
+  is_depreciation_expense: false,
   vendor_account_name: '',
   amount: '',
   pay_amount: '',
@@ -884,9 +896,26 @@ const settlementPaymentMethodOptions = computed(() => {
   return options
 })
 
-const billsToPayPaymentMethodOptions = computed(() =>
-  paymentMethods.filter((method) => ['cash', 'bank', 'due'].includes(method.id))
+const isDepreciationExpenseBill = computed(
+  () =>
+    Boolean(form.is_depreciation_expense || entry.value?.is_depreciation_expense) &&
+    entry.value?.entry_type !== 'asset_purchase'
 )
+
+const isDepreciationMethod = computed(() => isDepreciationPaymentMethod(form.payment_method))
+
+const billsToPayPaymentMethodOptions = computed(() => {
+  const options = paymentMethods.filter((method) => ['cash', 'bank', 'due'].includes(method.id))
+
+  if (isDepreciationExpenseBill.value) {
+    options.push({
+      id: 'depreciation',
+      name: 'For Depreciation',
+    })
+  }
+
+  return options
+})
 
 const billsToPayBillTotal = computed(() => Math.max(Number(form.amount) || 0, 0))
 const billsToPayNowAmount = computed(() => {
@@ -1135,6 +1164,7 @@ function clearMismatchedPaymentAccountForMethod() {
 }
 
 const isDuePayment = computed(() => {
+  if (isDepreciationMethod.value) return false
   if (isPayableSettlementMode.value) return false
   if (!isBatchPayMode.value) {
     return billsToPayNowAmount.value <= 0 || isDuePaymentMethod(form.payment_method)
@@ -1143,6 +1173,7 @@ const isDuePayment = computed(() => {
 })
 
 const showPaymentAccountFields = computed(() => {
+  if (isDepreciationMethod.value) return false
   if (isPayableSettlementMode.value && isIncomeLinkMethod.value) return false
   if (isPayableSettlementMode.value) return true
   if (isBatchPayMode.value) return !isDuePayment.value
@@ -1240,6 +1271,7 @@ function populateForm(bill) {
     category_name: bill.category_name || '',
     head_id: String(bill.head_id || ''),
     head_name: bill.head_name || '',
+    is_depreciation_expense: Boolean(bill.is_depreciation_expense),
     vendor_account_name: bill.vendor_account_name || '',
     amount: bill.amount ?? '',
     pay_amount: '',
@@ -1314,7 +1346,9 @@ function populateForm(bill) {
     !bill.payment_account_category &&
     bill.status === 'pending' &&
     !form.payment_account_category &&
-    !isDuePaymentMethod(submittedMethod)
+    !isDuePaymentMethod(submittedMethod) &&
+    !isDepreciationPaymentMethod(submittedMethod) &&
+    !Boolean(bill.is_depreciation_expense)
   ) {
     form.payment_account_category = 'main'
   }
@@ -1322,6 +1356,21 @@ function populateForm(bill) {
   // Always align Cash/Bank filter with payment method (category watcher must not leave type empty).
   syncBillsToPayMainAccountTypeFromMethod()
   clearMismatchedPaymentAccountForMethod()
+
+  if (
+    route.name !== 'Bill Payable Payment' &&
+    bill.status === 'pending' &&
+    Boolean(bill.is_depreciation_expense) &&
+    bill.entry_type !== 'asset_purchase'
+  ) {
+    form.payment_method = 'depreciation'
+    form.pay_now_amount = 0
+    form.payment_account_category = ''
+    form.main_account_type = ''
+    form.payment_account_type = ''
+    form.payment_account_id = ''
+    form.payment_account_name = ''
+  }
 
   if (route.name === 'Bill Payable Payment' && bill.payment_method === 'due') {
     form.payment_method = 'cash'
@@ -1358,11 +1407,13 @@ const buildPayload = () => ({
       ? {}
       : { pay_amount: form.pay_now_amount }),
   payment_method:
-    !isPayableSettlementMode.value &&
-    !isBatchPayMode.value &&
-    (billsToPayNowAmount.value <= 0 || isDuePaymentMethod(form.payment_method))
-      ? 'due'
-      : form.payment_method,
+    isDepreciationPaymentMethod(form.payment_method)
+      ? 'depreciation'
+      : !isPayableSettlementMode.value &&
+          !isBatchPayMode.value &&
+          (billsToPayNowAmount.value <= 0 || isDuePaymentMethod(form.payment_method))
+        ? 'due'
+        : form.payment_method,
   manual_approval_manager_id: isManualRequestBill.value ? form.manual_approval_manager_id : null,
   manual_approval_path: isManualRequestBill.value ? form.manual_approval_path : null,
 })
@@ -1482,7 +1533,23 @@ watch(
       return
     }
 
-    // Bills To Pay — Cash / Bank / Due for the Pay Now portion.
+    // Bills To Pay — Cash / Bank / Due / For Depreciation.
+    if (isDepreciationPaymentMethod(method)) {
+      form.pay_now_amount = 0
+      form.payment_account_category = ''
+      form.main_account_type = ''
+      form.payment_account_type = ''
+      form.payment_account_id = ''
+      form.payment_account_name = ''
+      const headName = form.head_name || entry.value?.head_name || 'Depreciation Expense'
+      form.particular = `Settled as For Depreciation — ${headName}`
+      return
+    }
+
+    if (isDepreciationPaymentMethod(previousMethod)) {
+      form.particular = originalParticular.value || form.particular
+    }
+
     if (isDuePaymentMethod(method)) {
       form.pay_now_amount = 0
       form.payment_account_category = ''
@@ -1520,6 +1587,7 @@ watch(
     if (isHydratingApprovalForm.value) return
 
     if (billsToPayNowAmount.value <= 0) {
+      if (isDepreciationPaymentMethod(form.payment_method)) return
       form.payment_method = 'due'
       form.payment_account_category = ''
       form.main_account_type = ''
@@ -1617,7 +1685,7 @@ watch(
 
       // Keep payment method / Cash-Bank filter aligned when the user changes account
       // (not during initial load — that is driven by payment method).
-      if (!isHydratingApprovalForm.value && !isIncomeLinkMethod.value && !isDuePayment.value) {
+      if (!isHydratingApprovalForm.value && !isIncomeLinkMethod.value && !isDuePayment.value && !isDepreciationMethod.value) {
         const accountType = String(account?.account_type || '').toLowerCase()
         if (accountType === 'bank') {
           form.payment_method = 'bank'

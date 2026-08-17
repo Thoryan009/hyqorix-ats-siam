@@ -1,5 +1,10 @@
 <template>
-  <BaseModal :isVisible="store.isModal" title="Add Expense Head" className="xl:max-w-3xl" @close="closeModal">
+  <BaseModal
+    :isVisible="store.isModal"
+    title="Add Expense Head"
+    className="w-full max-w-[95vw] xl:max-w-5xl max-h-[85vh]"
+    @close="closeModal"
+  >
     <ExpenseHeadForm
       v-model:formData="formData"
       :onSubmit="handleSubmit"

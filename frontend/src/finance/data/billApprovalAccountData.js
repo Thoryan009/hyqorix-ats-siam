@@ -27,7 +27,11 @@ export function mapPaymentMethodToMainAccountType(paymentMethod) {
 }
 
 export function isDuePaymentMethod(paymentMethod) {
-  return paymentMethod === 'due'
+  return String(paymentMethod || '').toLowerCase() === 'due'
+}
+
+export function isDepreciationPaymentMethod(paymentMethod) {
+  return String(paymentMethod || '').toLowerCase() === 'depreciation'
 }
 
 export function isBillPartyPaymentCategory(category) {

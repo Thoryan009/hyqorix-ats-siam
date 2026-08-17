@@ -494,10 +494,12 @@ const payerTypes = [
   // { id: 'client', label: 'Client', icon: 'fa fa-building' },
 ]
 
-const receiveMethodOptions = paymentMethods.map((method) => ({
-  id: method.id,
-  name: method.name,
-}))
+const receiveMethodOptions = paymentMethods
+  .filter((method) => ['cash', 'bank', 'due'].includes(method.id))
+  .map((method) => ({
+    id: method.id,
+    name: method.name,
+  }))
 
 const isDueReceiveMethod = computed(
   () => String(form.value.payment_method || '').toLowerCase() === 'due'

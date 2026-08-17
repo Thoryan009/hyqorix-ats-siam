@@ -504,10 +504,12 @@ const isJobSelectLoading = computed(
     jobListStore.isLoadingJobs || jobListStore.isLoadingPaymentResponsibilityJobs('client')
 )
 
-const receiveMethodOptions = paymentMethods.map((method) => ({
-  id: method.id,
-  name: method.name,
-}))
+const receiveMethodOptions = paymentMethods
+  .filter((method) => ['cash', 'bank', 'due'].includes(method.id))
+  .map((method) => ({
+    id: method.id,
+    name: method.name,
+  }))
 
 const isDueReceiveMethod = computed(
   () => String(form.payment_method || '').toLowerCase() === 'due'
