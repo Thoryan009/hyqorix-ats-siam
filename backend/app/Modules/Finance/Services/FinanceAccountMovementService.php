@@ -858,110 +858,109 @@ class FinanceAccountMovementService
             ->orderByDesc('id')
             ->get();
 
-        if ($dueRows->isEmpty()) {
-            return [];
-        }
-
-        $applicationIds = $dueRows
-            ->pluck('application_id')
-            ->map(static fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-
-        $summaryById = [];
-        foreach ($this->getSaleCollectionSummary($applicationIds) as $row) {
-            $summaryById[(int) $row['application_id']] = $row;
-        }
-
-        $typeTxnIds = $dueRows
-            ->pluck('finance_account_type_transaction_id')
-            ->filter()
-            ->map(static fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-
-        $typeTxns = $typeTxnIds === []
-            ? collect()
-            : FinanceAccountTypeTransaction::query()
-                ->whereIn('id', $typeTxnIds)
-                ->get()
-                ->keyBy('id');
-
         $items = [];
-        $seen = [];
 
-        foreach ($dueRows as $dueRow) {
-            $applicationId = (int) $dueRow->application_id;
-            if ($applicationId <= 0 || isset($seen[$applicationId])) {
-                continue;
+        if ($dueRows->isNotEmpty()) {
+            $applicationIds = $dueRows
+                ->pluck('application_id')
+                ->map(static fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+
+            $summaryById = [];
+            foreach ($this->getSaleCollectionSummary($applicationIds) as $row) {
+                $summaryById[(int) $row['application_id']] = $row;
             }
 
-            $summary = $summaryById[$applicationId] ?? null;
-            if (!$summary || !(bool) ($summary['has_due'] ?? false)) {
-                continue;
-            }
+            $typeTxnIds = $dueRows
+                ->pluck('finance_account_type_transaction_id')
+                ->filter()
+                ->map(static fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
 
-            $remaining = round((float) ($summary['receivable_remaining'] ?? 0), 2);
-            if ($remaining <= 0) {
-                continue;
-            }
+            $typeTxns = $typeTxnIds === []
+                ? collect()
+                : FinanceAccountTypeTransaction::query()
+                    ->whereIn('id', $typeTxnIds)
+                    ->get()
+                    ->keyBy('id');
 
-            $seen[$applicationId] = true;
-            $typeTxn = $dueRow->finance_account_type_transaction_id
-                ? $typeTxns->get((int) $dueRow->finance_account_type_transaction_id)
-                : null;
+            $seen = [];
 
-            $partyAccountId = (int) (
-                $typeTxn?->from_account_id
-                ?: $typeTxn?->account_id
-                ?: 0
-            );
-            $partyAccountLabel = (string) (
-                $typeTxn?->from_account_label
-                ?: $typeTxn?->account_label
-                ?: ''
-            );
-
-            if ($partyAccountId <= 0 && strtolower((string) ($dueRow->payer_type ?? '')) === 'candidate') {
-                $applicant = FinanceAccount::query()
-                    ->where('category', 'applicant')
-                    ->where('entity_id', $applicationId)
-                    ->where('status', 'Active')
-                    ->first();
-                if ($applicant) {
-                    $partyAccountId = (int) $applicant->id;
-                    $partyAccountLabel = $this->accountLabel($applicant);
+            foreach ($dueRows as $dueRow) {
+                $applicationId = (int) $dueRow->application_id;
+                if ($applicationId <= 0 || isset($seen[$applicationId])) {
+                    continue;
                 }
+
+                $summary = $summaryById[$applicationId] ?? null;
+                if (!$summary || !(bool) ($summary['has_due'] ?? false)) {
+                    continue;
+                }
+
+                $remaining = round((float) ($summary['receivable_remaining'] ?? 0), 2);
+                if ($remaining <= 0) {
+                    continue;
+                }
+
+                $seen[$applicationId] = true;
+                $typeTxn = $dueRow->finance_account_type_transaction_id
+                    ? $typeTxns->get((int) $dueRow->finance_account_type_transaction_id)
+                    : null;
+
+                $partyAccountId = (int) (
+                    $typeTxn?->from_account_id
+                    ?: $typeTxn?->account_id
+                    ?: 0
+                );
+                $partyAccountLabel = (string) (
+                    $typeTxn?->from_account_label
+                    ?: $typeTxn?->account_label
+                    ?: ''
+                );
+
+                if ($partyAccountId <= 0 && strtolower((string) ($dueRow->payer_type ?? '')) === 'candidate') {
+                    $applicant = FinanceAccount::query()
+                        ->where('category', 'applicant')
+                        ->where('entity_id', $applicationId)
+                        ->where('status', 'Active')
+                        ->first();
+                    if ($applicant) {
+                        $partyAccountId = (int) $applicant->id;
+                        $partyAccountLabel = $this->accountLabel($applicant);
+                    }
+                }
+
+                $salePrice = round((float) ($summary['sale_price'] ?? $dueRow->sale_price), 2);
+                $collected = round((float) ($summary['collected_amount'] ?? 0), 2);
+
+                $items[] = [
+                    'id' => $applicationId,
+                    'application_id' => $applicationId,
+                    'source' => 'gross_income',
+                    'candidate_name' => $dueRow->candidate_name,
+                    'passport_no' => $dueRow->passport_no,
+                    'sale_price' => $salePrice,
+                    'collected_amount' => $collected,
+                    'receivable_remaining' => $remaining,
+                    'paid_amount' => $collected,
+                    'amount' => $salePrice,
+                    'payer_type' => $dueRow->payer_type,
+                    'party_account_id' => $partyAccountId > 0 ? $partyAccountId : null,
+                    'party_account_label' => $partyAccountLabel !== '' ? $partyAccountLabel : null,
+                    'job_list_id' => $dueRow->job_list_id ? (int) $dueRow->job_list_id : null,
+                    'job_code' => $dueRow->job_code,
+                    'job_title' => $dueRow->job_title,
+                    'collection_date' => optional($dueRow->collection_date)?->format('Y-m-d'),
+                    'entry_no' => $dueRow->entry_no,
+                    'voucher_no' => $dueRow->voucher_no,
+                    'remarks' => $dueRow->remarks,
+                    'payment_method' => 'due',
+                ];
             }
-
-            $salePrice = round((float) ($summary['sale_price'] ?? $dueRow->sale_price), 2);
-            $collected = round((float) ($summary['collected_amount'] ?? 0), 2);
-
-            $items[] = [
-                'id' => $applicationId,
-                'application_id' => $applicationId,
-                'source' => 'gross_income',
-                'candidate_name' => $dueRow->candidate_name,
-                'passport_no' => $dueRow->passport_no,
-                'sale_price' => $salePrice,
-                'collected_amount' => $collected,
-                'receivable_remaining' => $remaining,
-                'paid_amount' => $collected,
-                'amount' => $salePrice,
-                'payer_type' => $dueRow->payer_type,
-                'party_account_id' => $partyAccountId > 0 ? $partyAccountId : null,
-                'party_account_label' => $partyAccountLabel !== '' ? $partyAccountLabel : null,
-                'job_list_id' => $dueRow->job_list_id ? (int) $dueRow->job_list_id : null,
-                'job_code' => $dueRow->job_code,
-                'job_title' => $dueRow->job_title,
-                'collection_date' => optional($dueRow->collection_date)?->format('Y-m-d'),
-                'entry_no' => $dueRow->entry_no,
-                'voucher_no' => $dueRow->voucher_no,
-                'remarks' => $dueRow->remarks,
-                'payment_method' => 'due',
-            ];
         }
 
         return array_merge(

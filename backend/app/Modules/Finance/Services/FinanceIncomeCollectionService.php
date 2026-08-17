@@ -1776,6 +1776,10 @@ class FinanceIncomeCollectionService extends BaseCachedService
 
                         if ($method === 'due') {
                             $summary[$applicationId]['has_due'] = true;
+                            $dueAmount = round((float) ($candidate['amount'] ?? 0), 2);
+                            if ($dueAmount > 0 && (float) $summary[$applicationId]['sale_price'] <= 0) {
+                                $summary[$applicationId]['sale_price'] = $dueAmount;
+                            }
                             continue;
                         }
 
