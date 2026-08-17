@@ -54,17 +54,56 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="!assets.length">
+                <tr class="bg-slate-100 font-semibold text-gray-900">
+                  <td class="border border-gray-200 px-4 py-2" colspan="2">Current Assets</td>
+                </tr>
+                <tr v-if="!currentAssets.length">
                   <td colspan="2" class="border border-gray-200 px-4 py-3 text-center text-gray-500">
-                    No asset balances
+                    No current asset balances
                   </td>
                 </tr>
-                <tr v-for="row in assets" :key="`asset-${row.account_id}-${row.label}`" class="hover:bg-gray-50">
-                  <td class="border border-gray-200 px-4 py-2.5 text-gray-900">{{ row.label }}</td>
+                <tr
+                  v-for="row in currentAssets"
+                  :key="`current-asset-${row.account_id}-${row.label}`"
+                  class="hover:bg-gray-50"
+                >
+                  <td class="border border-gray-200 px-4 py-2.5 pl-8 text-gray-900">{{ row.label }}</td>
                   <td class="border border-gray-200 px-4 py-2.5 text-right tabular-nums text-gray-900">
                     {{ formatAmount(row.amount) }}
                   </td>
                 </tr>
+                <tr class="bg-slate-50 font-semibold text-gray-900">
+                  <td class="border border-gray-200 px-4 py-2.5">Total Current Assets</td>
+                  <td class="border border-gray-200 px-4 py-2.5 text-right tabular-nums">
+                    {{ formatAmount(summary.total_current_assets) }}
+                  </td>
+                </tr>
+
+                <tr class="bg-slate-100 font-semibold text-gray-900">
+                  <td class="border border-gray-200 px-4 py-2" colspan="2">Non-Current Assets</td>
+                </tr>
+                <tr v-if="!nonCurrentAssets.length">
+                  <td colspan="2" class="border border-gray-200 px-4 py-3 text-center text-gray-500">
+                    No non-current asset balances
+                  </td>
+                </tr>
+                <tr
+                  v-for="row in nonCurrentAssets"
+                  :key="`non-current-asset-${row.account_id}-${row.label}`"
+                  class="hover:bg-gray-50"
+                >
+                  <td class="border border-gray-200 px-4 py-2.5 pl-8 text-gray-900">{{ row.label }}</td>
+                  <td class="border border-gray-200 px-4 py-2.5 text-right tabular-nums text-gray-900">
+                    {{ formatAmount(row.amount) }}
+                  </td>
+                </tr>
+                <tr class="bg-slate-50 font-semibold text-gray-900">
+                  <td class="border border-gray-200 px-4 py-2.5">Total Non-Current Assets</td>
+                  <td class="border border-gray-200 px-4 py-2.5 text-right tabular-nums">
+                    {{ formatAmount(summary.total_non_current_assets) }}
+                  </td>
+                </tr>
+
                 <tr class="bg-primary-light font-bold text-gray-900">
                   <td class="border border-gray-300 px-4 py-3">Total Assets</td>
                   <td class="border border-gray-300 px-4 py-3 text-right tabular-nums">
@@ -163,9 +202,9 @@
               </thead>
               <tbody>
                 <tr class="font-semibold text-gray-900">
-                  <td class="border border-gray-200 px-4 py-2.5">Total Assets</td>
+                  <td class="border border-gray-200 px-4 py-2.5">Current Assets</td>
                   <td class="border border-gray-200 px-4 py-2.5 text-right tabular-nums">
-                    {{ formatAmount(summary.total_assets) }}
+                    {{ formatAmount(summary.total_current_assets) }}
                   </td>
                   <td class="border border-gray-200 px-4 py-2.5">Total Liabilities</td>
                   <td class="border border-gray-200 px-4 py-2.5 text-right tabular-nums">
@@ -173,11 +212,23 @@
                   </td>
                 </tr>
                 <tr class="font-semibold text-gray-900">
-                  <td class="border border-gray-200 px-4 py-2.5"></td>
-                  <td class="border border-gray-200 px-4 py-2.5"></td>
+                  <td class="border border-gray-200 px-4 py-2.5">Non-Current Assets</td>
+                  <td class="border border-gray-200 px-4 py-2.5 text-right tabular-nums">
+                    {{ formatAmount(summary.total_non_current_assets) }}
+                  </td>
                   <td class="border border-gray-200 px-4 py-2.5">Owner's Equity</td>
                   <td class="border border-gray-200 px-4 py-2.5 text-right tabular-nums">
                     {{ formatAmount(summary.total_equity) }}
+                  </td>
+                </tr>
+                <tr class="font-semibold text-gray-900">
+                  <td class="border border-gray-200 px-4 py-2.5">Total Assets</td>
+                  <td class="border border-gray-200 px-4 py-2.5 text-right tabular-nums">
+                    {{ formatAmount(summary.total_assets) }}
+                  </td>
+                  <td class="border border-gray-200 px-4 py-2.5">Total Liabilities &amp; Equity</td>
+                  <td class="border border-gray-200 px-4 py-2.5 text-right tabular-nums">
+                    {{ formatAmount(summary.total_liabilities_and_equity) }}
                   </td>
                 </tr>
                 <tr class="bg-primary-light font-bold text-gray-900">
@@ -231,9 +282,13 @@ const currentYear = new Date().getFullYear()
 const selectedYear = ref(currentYear)
 const loading = ref(false)
 const assets = ref([])
+const currentAssets = ref([])
+const nonCurrentAssets = ref([])
 const liabilities = ref([])
 const equity = ref([])
 const summary = ref({
+  total_current_assets: 0,
+  total_non_current_assets: 0,
   total_assets: 0,
   total_liabilities: 0,
   total_equity: 0,
@@ -296,9 +351,23 @@ async function loadReport() {
     })
     const data = payload?.data ?? payload
     assets.value = Array.isArray(data?.assets) ? data.assets : []
+    currentAssets.value = Array.isArray(data?.current_assets)
+      ? data.current_assets
+      : assets.value.filter((row) => !row.is_non_current_asset)
+    nonCurrentAssets.value = Array.isArray(data?.non_current_assets)
+      ? data.non_current_assets
+      : assets.value.filter((row) => row.is_non_current_asset)
     liabilities.value = Array.isArray(data?.liabilities) ? data.liabilities : []
     equity.value = Array.isArray(data?.equity) ? data.equity : []
     summary.value = {
+      total_current_assets: Number(
+        data?.summary?.total_current_assets ??
+          currentAssets.value.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+      ),
+      total_non_current_assets: Number(
+        data?.summary?.total_non_current_assets ??
+          nonCurrentAssets.value.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+      ),
       total_assets: Number(data?.summary?.total_assets || 0),
       total_liabilities: Number(data?.summary?.total_liabilities || 0),
       total_equity: Number(data?.summary?.total_equity || 0),

@@ -186,6 +186,8 @@ class FinanceTrialBalanceService
                 'category' => $category,
                 'category_label' => self::CATEGORY_LABELS[$category]
                     ?? ucwords(str_replace('_', ' ', $category)),
+                'is_non_current_asset' => $category === 'asset'
+                    && (bool) ($account->is_non_current_asset ?? false),
                 'total_dr' => $totalDr,
                 'total_cr' => $totalCr,
                 'debit_balance' => $debitBalance,

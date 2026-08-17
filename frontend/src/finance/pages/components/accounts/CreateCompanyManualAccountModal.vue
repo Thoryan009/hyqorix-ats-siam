@@ -33,6 +33,28 @@
       </div>
 
       <div v-if="manualType === 'asset'" class="space-y-2">
+        <BaseLabel for="manual_is_non_current_asset">Asset Classification</BaseLabel>
+        <label
+          for="manual_is_non_current_asset"
+          class="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5"
+        >
+          <input
+            id="manual_is_non_current_asset"
+            v-model="form.is_non_current_asset"
+            type="checkbox"
+            class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+          />
+          <span class="text-sm text-slate-700">
+            {{
+              form.is_non_current_asset
+                ? 'Yes — Non-Current Asset (shown under Non-Current Assets on the Balance Sheet)'
+                : 'No — Current Asset (default)'
+            }}
+          </span>
+        </label>
+      </div>
+
+      <div v-if="manualType === 'asset'" class="space-y-2">
         <BaseLabel for="manual_link_to_purchase">Link to Purchase</BaseLabel>
         <label
           for="manual_link_to_purchase"
@@ -89,6 +111,7 @@ const form = reactive({
   account_name: '',
   status: 'Active',
   link_to_purchase: false,
+  is_non_current_asset: false,
 })
 
 const statusOptions = partyAccountStatusOptions.map((option) => ({
@@ -100,6 +123,7 @@ const resetForm = () => {
   form.account_name = ''
   form.status = 'Active'
   form.link_to_purchase = false
+  form.is_non_current_asset = false
   errorMessage.value = ''
 }
 
@@ -125,7 +149,12 @@ const handleSubmit = async () => {
     const result = await manualStore.createAccount(props.manualType, {
       account_name: form.account_name,
       status: form.status,
-      ...(props.manualType === 'asset' ? { link_to_purchase: form.link_to_purchase } : {}),
+      ...(props.manualType === 'asset'
+        ? {
+            link_to_purchase: form.link_to_purchase,
+            is_non_current_asset: form.is_non_current_asset,
+          }
+        : {}),
     })
 
     if (!result.ok) {

@@ -49,6 +49,9 @@ class FinanceAccountResource extends JsonResource
             'link_to_purchase' => $this->category === 'asset'
                 ? (bool) ($this->link_to_purchase ?? false)
                 : false,
+            'is_non_current_asset' => $this->category === 'asset'
+                ? (bool) ($this->is_non_current_asset ?? false)
+                : false,
             'status' => $status,
             'status_raw' => $this->status,
             'agent_id' => $this->category === 'agent' ? $this->entity_id : null,

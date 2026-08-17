@@ -69,6 +69,19 @@
           </div>
         </template>
 
+        <template v-if="manualType === 'asset'" #cell-asset_class="{ row }">
+          <span
+            class="rounded-full px-3 py-1 text-xs font-semibold"
+            :class="
+              row.is_non_current_asset
+                ? 'bg-indigo-100 text-indigo-700'
+                : 'bg-sky-100 text-sky-700'
+            "
+          >
+            {{ row.is_non_current_asset ? 'Non-Current Asset' : 'Current Asset' }}
+          </span>
+        </template>
+
         <template #cell-balance="{ row }">
           <span class="font-semibold" :class="amountColorClass">
             {{
@@ -205,11 +218,17 @@ const perPageOptions = [
   { id: '50', name: '50 / page' },
 ]
 
-const columns = [
-  { key: 'account_name', label: 'Account Name' },
-  { key: 'balance', label: 'Amount' },
-  { key: 'status', label: 'Status' },
-]
+const columns = computed(() => {
+  const cols = [{ key: 'account_name', label: 'Account Name' }]
+
+  if (props.manualType === 'asset') {
+    cols.push({ key: 'asset_class', label: 'Asset Type' })
+  }
+
+  cols.push({ key: 'balance', label: 'Amount' }, { key: 'status', label: 'Status' })
+
+  return cols
+})
 
 const isLoading = computed(() =>
   financeAccountStore.isCategoryLoading(config.value.accountCategory)

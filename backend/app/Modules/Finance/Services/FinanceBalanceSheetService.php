@@ -98,8 +98,10 @@ class FinanceBalanceSheetService
 
             if (in_array($category, self::ASSET_CATEGORIES, true)) {
                 $net = round($debit - $credit, 2);
+                $isNonCurrent = $category === 'asset'
+                    && (bool) ($row['is_non_current_asset'] ?? false);
                 if ($net > 0.005) {
-                    $assets[] = $this->lineItem($label, $net, $category, $accountId);
+                    $assets[] = $this->lineItem($label, $net, $category, $accountId, $isNonCurrent);
                 } elseif ($net < -0.005) {
                     $liabilities[] = $this->lineItem($label, abs($net), $category, $accountId);
                 }
@@ -145,11 +147,25 @@ class FinanceBalanceSheetService
             );
         }
 
+        $currentAssets = $this->sortLines(
+            array_values(array_filter(
+                $assets,
+                fn (array $line) => empty($line['is_non_current_asset'])
+            ))
+        );
+        $nonCurrentAssets = $this->sortLines(
+            array_values(array_filter(
+                $assets,
+                fn (array $line) => !empty($line['is_non_current_asset'])
+            ))
+        );
         $assets = $this->sortLines($assets);
         $liabilities = $this->sortLines($liabilities);
         $equity = $this->sortLines($equity, true);
 
-        $totalAssets = round(array_sum(array_column($assets, 'amount')), 2);
+        $totalCurrentAssets = round(array_sum(array_column($currentAssets, 'amount')), 2);
+        $totalNonCurrentAssets = round(array_sum(array_column($nonCurrentAssets, 'amount')), 2);
+        $totalAssets = round($totalCurrentAssets + $totalNonCurrentAssets, 2);
         $totalLiabilities = round(array_sum(array_column($liabilities, 'amount')), 2);
         $totalEquity = round(array_sum(array_column($equity, 'amount')), 2);
         $totalLiabilitiesAndEquity = round($totalLiabilities + $totalEquity, 2);
@@ -161,9 +177,13 @@ class FinanceBalanceSheetService
             'from_date' => $fromDate,
             'to_date' => $toDate,
             'assets' => $assets,
+            'current_assets' => $currentAssets,
+            'non_current_assets' => $nonCurrentAssets,
             'liabilities' => $liabilities,
             'equity' => $equity,
             'summary' => [
+                'total_current_assets' => $totalCurrentAssets,
+                'total_non_current_assets' => $totalNonCurrentAssets,
                 'total_assets' => $totalAssets,
                 'total_liabilities' => $totalLiabilities,
                 'total_equity' => $totalEquity,
@@ -201,15 +221,21 @@ class FinanceBalanceSheetService
     }
 
     /**
-     * @return array{label: string, amount: float, category: string, account_id: int}
+     * @return array{label: string, amount: float, category: string, account_id: int, is_non_current_asset: bool}
      */
-    private function lineItem(string $label, float $amount, string $category, int $accountId): array
-    {
+    private function lineItem(
+        string $label,
+        float $amount,
+        string $category,
+        int $accountId,
+        bool $isNonCurrentAsset = false,
+    ): array {
         return [
             'label' => $label,
             'amount' => $amount,
             'category' => $category,
             'account_id' => $accountId,
+            'is_non_current_asset' => $isNonCurrentAsset,
         ];
     }
 

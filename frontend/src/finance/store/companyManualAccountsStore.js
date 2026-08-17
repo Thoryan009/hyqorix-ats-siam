@@ -71,7 +71,10 @@ export const useCompanyManualAccountsStore = defineStore('companyManualAccounts'
       opening_balance: 0,
       status: payload.status || 'Active',
       ...(manualType === 'asset'
-        ? { link_to_purchase: Boolean(payload.link_to_purchase) }
+        ? {
+            link_to_purchase: Boolean(payload.link_to_purchase),
+            is_non_current_asset: Boolean(payload.is_non_current_asset),
+          }
         : {}),
     })
   }
@@ -101,7 +104,10 @@ export const useCompanyManualAccountsStore = defineStore('companyManualAccounts'
       opening_balance: account.opening_balance ?? 0,
       status: payload.status,
       ...(manualType === 'asset'
-        ? { link_to_purchase: Boolean(payload.link_to_purchase) }
+        ? {
+            link_to_purchase: Boolean(payload.link_to_purchase),
+            is_non_current_asset: Boolean(payload.is_non_current_asset),
+          }
         : {}),
     })
   }

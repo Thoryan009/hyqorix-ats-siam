@@ -21,6 +21,7 @@ class FinanceAccount extends Model
         'base_price' => 'decimal:2',
         'metadata' => 'array',
         'link_to_purchase' => 'boolean',
+        'is_non_current_asset' => 'boolean',
     ];
 
     public function bank(): BelongsTo
