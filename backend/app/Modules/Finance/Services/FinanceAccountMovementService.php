@@ -123,14 +123,14 @@ class FinanceAccountMovementService
                     'demand_letter' => $demandLetter ?: null,
                     'job' => $job ?: null,
                     'client_name' => $clientName ?: null,
-                    'dr_amount' => 0,
-                    'cr_amount' => $amount,
+                    'dr_amount' => $isAdjustment ? $amount : 0,
+                    'cr_amount' => $isAdjustment ? 0 : $amount,
                     'payment_method' => $methodLabel,
                     'remarks' => $remarks ?: null,
                 ]);
 
                 $main->update([
-                    'balance' => round((float) $main->balance + $amount, 2),
+                    'balance' => round((float) $main->balance + ($isAdjustment ? -$amount : $amount), 2),
                 ]);
 
                 if ($isAdjustment) {

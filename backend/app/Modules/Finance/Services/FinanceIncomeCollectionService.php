@@ -318,7 +318,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                 }
 
                 if ($liabilityAccount && $postPaymentCredit) {
-                    $this->postCreditLedger(
+                    $this->postDebitLedger(
                         $liabilityAccount,
                         $typeTransaction->id,
                         $amount,
@@ -1245,6 +1245,35 @@ class FinanceIncomeCollectionService extends BaseCachedService
             'cr_amount' => 0,
             'payment_method' => $paymentMethod,
             'remarks' => $remarks ?: null,
+        ]);
+    }
+
+    private function postDebitLedger(
+        FinanceAccount $account,
+        int $typeTransactionId,
+        float $amount,
+        string $entryDate,
+        string $particular,
+        string $voucherNo,
+        string $clientName,
+        string $paymentMethod,
+        string $remarks
+    ): void {
+        $this->createLedgerEntry([
+            'finance_account_id' => $account->id,
+            'finance_account_type_transaction_id' => $typeTransactionId,
+            'entry_date' => $entryDate,
+            'particular' => $particular,
+            'voucher_no' => $voucherNo,
+            'client_name' => $clientName ?: null,
+            'dr_amount' => $amount,
+            'cr_amount' => 0,
+            'payment_method' => $paymentMethod,
+            'remarks' => $remarks ?: null,
+        ]);
+
+        $account->update([
+            'balance' => round((float) $account->balance - $amount, 2),
         ]);
     }
 

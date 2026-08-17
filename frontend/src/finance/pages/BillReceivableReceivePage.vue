@@ -269,7 +269,7 @@
                     :required="true"
                   />
                   <p class="text-[11px] text-slate-500">
-                    Adjustment posts CR on the selected liabilities account ledger.
+                    Adjustment posts DR on the selected liabilities account ledger.
                     Same list as Finance Accounts → Liabilities Accounts.
                   </p>
                   <p v-if="!liabilityAccountOptions.length" class="text-xs text-amber-700">
