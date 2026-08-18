@@ -12,6 +12,7 @@ use App\Modules\Finance\Repositories\FinanceIncomeCollectionRepository;
 use App\Services\BaseCachedService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class FinanceIncomeCollectionService extends BaseCachedService
@@ -457,10 +458,15 @@ class FinanceIncomeCollectionService extends BaseCachedService
                             $billParticular
                         );
                     } elseif ($postPaymentCredit) {
+                        // Bills Receivable "adjustment" should not re-post any numeric amount on the payer ledger.
+                        // Keep the ledger rows but write 0 on both DR/CR so UI renders "-" on both columns.
+                        $payerDebitAmount = $isAdjustment ? 0.0 : $billedAmount;
+                        $payerCreditAmount = $isAdjustment ? 0.0 : $amount;
+
                         $this->postDebitReceivableLedger(
                             $linkedAccount,
                             $typeTransaction->id,
-                            $billedAmount,
+                            $payerDebitAmount,
                             $collectionDate,
                             $billParticular,
                             $voucherNo,
@@ -470,7 +476,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                         $this->postCreditLedger(
                             $linkedAccount,
                             $typeTransaction->id,
-                            $amount,
+                            $payerCreditAmount,
                             $collectionDate,
                             $particular,
                             $voucherNo,
@@ -490,7 +496,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     $this->postCreditLedger(
                         $linkedAccount,
                         $typeTransaction->id,
-                        $amount,
+                        $isAdjustment ? 0.0 : $amount,
                         $collectionDate,
                         $particular,
                         $voucherNo,
@@ -679,8 +685,8 @@ class FinanceIncomeCollectionService extends BaseCachedService
                             : ($liabilityAccount ? $this->accountLabel($liabilityAccount) : null)),
                     'finance_account_type_transaction_id' => $typeTransaction->id,
                     'settles_income_collection_id' => $settlesCollectionId > 0 ? $settlesCollectionId : null,
-                    'collected_by_id' => $data['collected_by_id'] ?? auth()->id(),
-                    'collected_by_name' => $data['collected_by_name'] ?? (auth()->user()?->name),
+                    'collected_by_id' => $data['collected_by_id'] ?? (Auth::user()?->getAuthIdentifier()),
+                    'collected_by_name' => $data['collected_by_name'] ?? (Auth::user()?->name),
                 ]);
 
                 if (
@@ -1373,7 +1379,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     'voucher_no' => $candidateVoucherNo,
                     'job' => $jobCode,
                     'client_name' => $candidateLabel !== '' ? $candidateLabel : null,
-                    'dr_amount' => $chargeAmount,
+                    'dr_amount' => $paymentMethodLabel === 'Adjustment' ? 0 : $chargeAmount,
                     'cr_amount' => 0,
                     'payment_method' => null,
                     'remarks' => $billLineParticular,
@@ -1397,7 +1403,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     ? $candidateLabel
                     : $receiveLabel,
                 'dr_amount' => 0,
-                'cr_amount' => $payAmount,
+                'cr_amount' => $paymentMethodLabel === 'Adjustment' ? 0 : $payAmount,
                 'payment_method' => $paymentMethodLabel,
                 'remarks' => $remarks !== ''
                     ? $remarks
