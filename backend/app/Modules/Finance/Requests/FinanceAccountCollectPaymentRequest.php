@@ -82,7 +82,7 @@ class FinanceAccountCollectPaymentRequest extends FormRequest
         $paymentMethod = (string) $this->input('payment_method');
 
         return [
-            'payment_method' => ['required', Rule::in(['cash', 'bank', 'due', 'balance', 'expense_link', 'adjustment'])],
+            'payment_method' => ['required', Rule::in(['cash', 'bank', 'due', 'balance', 'expense_link', 'adjustment', 'refund'])],
             'payer_type' => ['required', Rule::in(['agent', 'candidate', 'client'])],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'transaction_date' => ['required', 'date'],

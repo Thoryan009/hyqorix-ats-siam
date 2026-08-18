@@ -298,6 +298,11 @@ class FinanceTrialBalanceService
             return [round(max($totalDr, 0), 2), 0.0];
         }
 
+        // Sale: refunds post DR against original CR, so TB Sale is net earned income.
+        if ($category === 'sale') {
+            return [0.0, round(max($totalCr - $totalDr, 0), 2)];
+        }
+
         // Income: show earned amount once on Credit.
         // Client Commission uses bill DR + receive CR; max() avoids double-counting on TB.
         if (in_array($category, self::INCOME_CATEGORIES, true)) {

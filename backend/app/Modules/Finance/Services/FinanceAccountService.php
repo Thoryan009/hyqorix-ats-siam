@@ -1393,6 +1393,71 @@ class FinanceAccountService extends BaseCachedService
     }
 
     /**
+     * Debit Sale ledger to reverse recognized sale income (due refund).
+     * Trial Balance sale is net CR − DR, so this reduces Sale.
+     */
+    public function recordSaleRefundEntry(
+        float $amount,
+        string $entryDate,
+        string $voucherNo,
+        ?int $typeTransactionId = null,
+        string $particular = 'Sale Refund',
+        string $paymentMethod = 'Refund',
+        string $remarks = '',
+        string $clientName = '',
+        string $demandLetter = '',
+        string $job = '',
+    ): void {
+        if ($amount <= 0) {
+            return;
+        }
+
+        $saleAccount = $this->ensureSaleAccount();
+        $voucherNo = trim($voucherNo);
+        $particular = trim($particular) !== '' ? trim($particular) : 'Sale Refund';
+        $amount = round($amount, 2);
+
+        $existingEntry = null;
+        if ($typeTransactionId || $voucherNo !== '') {
+            $existingEntry = FinanceAccountLedgerEntry::query()
+                ->where('finance_account_id', $saleAccount->id)
+                ->where('dr_amount', '>', 0)
+                ->where(function ($query) use ($typeTransactionId, $voucherNo) {
+                    if ($typeTransactionId) {
+                        $query->where('finance_account_type_transaction_id', $typeTransactionId);
+                    }
+                    if ($voucherNo !== '') {
+                        $query->orWhere('voucher_no', $voucherNo);
+                    }
+                })
+                ->first();
+        }
+
+        if ($existingEntry) {
+            return;
+        }
+
+        FinanceAccountLedgerEntry::create([
+            'finance_account_id' => $saleAccount->id,
+            'finance_account_type_transaction_id' => $typeTransactionId,
+            'entry_date' => $entryDate,
+            'particular' => $particular,
+            'voucher_no' => $voucherNo !== '' ? $voucherNo : null,
+            'demand_letter' => $demandLetter !== '' ? $demandLetter : null,
+            'job' => $job !== '' ? $job : null,
+            'client_name' => $clientName !== '' ? $clientName : null,
+            'dr_amount' => $amount,
+            'discount' => 0,
+            'cr_amount' => 0,
+            'payment_method' => $paymentMethod,
+            'remarks' => $remarks !== '' ? $remarks : null,
+        ]);
+
+        $saleAccount->balance = round((float) $saleAccount->balance - $amount, 2);
+        $saleAccount->save();
+    }
+
+    /**
      * Backfill Sale ledger CRs from historical sale collections.
      */
     private function backfillMissingSaleEntries(): void
@@ -1413,6 +1478,7 @@ class FinanceAccountService extends BaseCachedService
                     ->whereNull('payer_type')
                     ->orWhereRaw('LOWER(COALESCE(payer_type, "")) != ?', ['candidate']);
             })
+            ->whereRaw('LOWER(COALESCE(payment_method, "")) != ?', ['refund'])
             ->orderBy('collection_date')
             ->orderBy('id')
             ->get();
@@ -1499,6 +1565,7 @@ class FinanceAccountService extends BaseCachedService
     {
         $collections = FinanceSaleCollection::query()
             ->whereRaw('LOWER(COALESCE(payer_type, "")) = ?', ['candidate'])
+            ->whereRaw('LOWER(COALESCE(payment_method, "")) != ?', ['refund'])
             ->orderBy('collection_date')
             ->orderBy('id')
             ->get();

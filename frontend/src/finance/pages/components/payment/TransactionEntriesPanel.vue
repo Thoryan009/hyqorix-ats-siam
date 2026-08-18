@@ -232,6 +232,7 @@ function typeBadgeClass(type) {
     adjust_plus: 'bg-amber-100 text-amber-700',
     bill_payment: 'bg-orange-100 text-orange-700',
     receive_payment: 'bg-emerald-100 text-emerald-800',
+    sale_refund: 'bg-rose-100 text-rose-800',
     opening_balance: 'bg-indigo-100 text-indigo-700',
     deposit: 'bg-cyan-100 text-cyan-700',
     withdraw: 'bg-rose-100 text-rose-700',

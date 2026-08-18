@@ -34,6 +34,7 @@ export const accountTransactionDisplayTypes = [
   { id: 'adjust_plus', label: 'Adjust +', icon: 'fa fa-plus-circle' },
   { id: 'bill_payment', label: 'Bill Payment', icon: 'fa fa-file-text-o' },
   { id: 'receive_payment', label: 'Receive Payment', icon: 'fa fa-money' },
+  { id: 'sale_refund', label: 'Sale Refund', icon: 'fa fa-undo' },
   { id: 'opening_balance', label: 'Opening Balance', icon: 'fa fa-balance-scale' },
   { id: 'deposit', label: 'Deposit', icon: 'fa fa-arrow-down' },
   { id: 'withdraw', label: 'Withdraw', icon: 'fa fa-arrow-up' },

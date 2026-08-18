@@ -112,7 +112,9 @@
 
         <section class="xl:col-span-7">
           <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 class="mb-3 text-base font-semibold text-slate-900">Receive Payment</h3>
+            <h3 class="mb-3 text-base font-semibold text-slate-900">
+              {{ isRefundMode ? 'Refund Receivable' : 'Receive Payment' }}
+            </h3>
 
             <div class="mb-3 grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-3">
               <div>
@@ -141,7 +143,14 @@
               </div>
             </div>
 
-            <div class="mb-3 grid grid-cols-1 gap-2.5 md:grid-cols-2">
+            <div v-if="isRefundMode" class="mb-3">
+              <div class="space-y-1">
+                <BaseLabel for="refund_date">Refund Date</BaseLabel>
+                <BaseInput id="refund_date" v-model="form.entry_date" type="date" :required="true" />
+              </div>
+            </div>
+
+            <div v-else class="mb-3 grid grid-cols-1 gap-2.5 md:grid-cols-2">
               <div class="space-y-1">
                 <BaseLabel for="receive_method">Receive Method</BaseLabel>
                 <BaseSelect
@@ -176,7 +185,15 @@
             <div class="mb-3 grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
               <div>
                 <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  {{ isExpenseLinkMethod ? 'Settle Now' : isAdjustmentMode ? 'Adjust Now' : 'Receive Now (Cash / Bank)' }}
+                  {{
+                    isRefundMode
+                      ? 'Refund Now'
+                      : isExpenseLinkMethod
+                        ? 'Settle Now'
+                        : isAdjustmentMode
+                          ? 'Adjust Now'
+                          : 'Receive Now (Cash / Bank)'
+                  }}
                 </p>
                 <BaseInput
                   id="receive_amount"
@@ -226,7 +243,7 @@
                     type="button"
                     class="rounded-lg border px-3 py-2 text-sm font-semibold transition"
                     :class="
-                      !isAdjustmentMode
+                      isMainReceiveMode
                         ? 'border-emerald-600 bg-emerald-600 text-white'
                         : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                     "
@@ -246,9 +263,27 @@
                   >
                     Adjustment
                   </button>
+                  <button
+                    v-if="canRefund"
+                    type="button"
+                    class="rounded-lg border px-3 py-2 text-sm font-semibold transition"
+                    :class="
+                      isRefundMode
+                        ? 'border-rose-600 bg-rose-600 text-white'
+                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                    "
+                    @click="setSettlementMode('refund')"
+                  >
+                    Refund
+                  </button>
                 </div>
 
-                <div v-if="!isAdjustmentMode" class="space-y-1">
+                <p v-if="isRefundMode" class="text-xs text-rose-700">
+                  Refund reduces Sale and Sale Receivable on Trial Balance, and posts CR on the
+                  selected {{ formatPayerTypeLabel(entry.payer_type) }} ledger.
+                </p>
+
+                <div v-if="isMainReceiveMode" class="space-y-1">
                   <BaseLabel for="receive_main_account">Receive In Main Account</BaseLabel>
                   <BaseSelect
                     id="receive_main_account"
@@ -259,7 +294,7 @@
                   />
                 </div>
 
-                <div v-else class="space-y-1">
+                <div v-else-if="isAdjustmentMode" class="space-y-1">
                   <BaseLabel for="receive_liability_account">Liabilities Account</BaseLabel>
                   <BaseSelect
                     id="receive_liability_account"
@@ -323,18 +358,24 @@
                 <i class="fa fa-save mr-1"></i>
                 {{
                   submitLoading
-                    ? 'Receiving...'
-                    : isExpenseLinkMethod
+                    ? isRefundMode
+                      ? 'Refunding...'
+                      : 'Receiving...'
+                    : isRefundMode
                       ? isPartialReceive
-                        ? 'Settle Partial via Expense Link'
-                        : 'Settle via Expense Link'
-                      : isAdjustmentMode
+                        ? 'Confirm Partial Refund'
+                        : 'Confirm Refund'
+                      : isExpenseLinkMethod
                         ? isPartialReceive
-                          ? 'Adjust Partial'
-                          : 'Confirm Adjustment'
-                        : isPartialReceive
-                          ? 'Receive Partial'
-                          : 'Confirm Full Receive'
+                          ? 'Settle Partial via Expense Link'
+                          : 'Settle via Expense Link'
+                        : isAdjustmentMode
+                          ? isPartialReceive
+                            ? 'Adjust Partial'
+                            : 'Confirm Adjustment'
+                          : isPartialReceive
+                            ? 'Receive Partial'
+                            : 'Confirm Full Receive'
                 }}
               </BaseButton>
               <BaseButton
@@ -420,9 +461,22 @@ const isAdjustmentMode = computed(
   () => !isExpenseLinkMethod.value && form.settlement_mode === 'adjustment'
 )
 
+const isRefundMode = computed(() => form.settlement_mode === 'refund')
+
+const isMainReceiveMode = computed(
+  () => !isExpenseLinkMethod.value && !isAdjustmentMode.value && !isRefundMode.value
+)
+
+const canRefund = computed(() => {
+  if (isSimplePlIncomeReceivable(entry.value || {})) return false
+  const payerType = String(entry.value?.payer_type || '').toLowerCase()
+  return payerType === 'agent' || payerType === 'candidate'
+})
+
 const submittedPaymentMethod = computed(() => {
   if (isExpenseLinkMethod.value) return 'expense_link'
   if (isAdjustmentMode.value) return 'adjustment'
+  if (isRefundMode.value) return 'refund'
   return String(form.payment_method || 'cash').toLowerCase()
 })
 
@@ -483,7 +537,7 @@ const liabilityAccountOptions = computed(() =>
 )
 
 function ensureDefaultMainAccount() {
-  if (isExpenseLinkMethod.value || isAdjustmentMode.value) {
+  if (isExpenseLinkMethod.value || isAdjustmentMode.value || isRefundMode.value) {
     form.main_account_id = ''
     return
   }
@@ -516,7 +570,9 @@ function ensureDefaultLiabilityAccount() {
 }
 
 function setSettlementMode(mode) {
-  form.settlement_mode = mode === 'adjustment' ? 'adjustment' : 'main'
+  form.settlement_mode =
+    mode === 'adjustment' ? 'adjustment' : mode === 'refund' ? 'refund' : 'main'
+
   if (form.settlement_mode === 'adjustment') {
     form.main_account_id = ''
     ensureDefaultLiabilityAccount()
@@ -524,6 +580,17 @@ function setSettlementMode(mode) {
       ? entry.value?.income_head_name || 'PL income'
       : entry.value?.candidate_name || 'candidate'
     form.particular = `Receivable settled via Adjustment — ${subject}`
+    return
+  }
+
+  if (form.settlement_mode === 'refund') {
+    form.main_account_id = ''
+    form.liability_account_id = ''
+    if (String(form.payment_method || '').toLowerCase() === 'expense_link') {
+      form.payment_method = 'cash'
+    }
+    const subject = entry.value?.candidate_name || 'candidate'
+    form.particular = `Sale refund — ${subject}`
     return
   }
 
@@ -637,7 +704,7 @@ async function handleReceive() {
     return
   }
 
-  if (!isExpenseLinkMethod.value && !isAdjustmentMode.value && !form.main_account_id) {
+  if (!isExpenseLinkMethod.value && !isAdjustmentMode.value && !isRefundMode.value && !form.main_account_id) {
     await Swal.fire({
       icon: 'error',
       title: 'Main Account Required',
@@ -749,7 +816,7 @@ async function handleReceive() {
     const isPlIncome = entry.value.source === 'pl_income'
     const paymentMethod = submittedPaymentMethod.value
     const receiveAccountId =
-      isExpenseLinkMethod.value || isAdjustmentMode.value
+      isExpenseLinkMethod.value || isAdjustmentMode.value || isRefundMode.value
         ? undefined
         : Number(form.main_account_id)
     const liabilityAccountId = isAdjustmentMode.value
@@ -857,11 +924,21 @@ async function handleReceive() {
 
     await Swal.fire({
       icon: 'success',
-      title: remainingAfter <= 0 ? 'Receivable Settled' : 'Partial Payment Received',
+      title: remainingAfter <= 0
+        ? isRefundMode.value
+          ? 'Receivable Refunded'
+          : 'Receivable Settled'
+        : isRefundMode.value
+          ? 'Partial Refund Recorded'
+          : 'Partial Payment Received',
       text:
         remainingAfter <= 0
-          ? 'This bill receivable has been fully settled.'
-          : `Partial receive recorded. Remaining Due: ${formatCurrency(remainingAfter)}.`,
+          ? isRefundMode.value
+            ? 'This bill receivable has been refunded. Sale and Sale Receivable were reduced.'
+            : 'This bill receivable has been fully settled.'
+          : isRefundMode.value
+            ? `Partial refund recorded. Remaining Due: ${formatCurrency(remainingAfter)}.`
+            : `Partial receive recorded. Remaining Due: ${formatCurrency(remainingAfter)}.`,
       confirmButtonColor: '#22C55E',
     })
 

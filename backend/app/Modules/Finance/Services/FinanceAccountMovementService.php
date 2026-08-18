@@ -53,7 +53,7 @@ class FinanceAccountMovementService
             $newlyBilledCandidateSale = 0.0;
             $billsReceivableSettleAmount = 0.0;
 
-            if (in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link', 'adjustment'], true)) {
+            if (in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link', 'adjustment', 'refund'], true)) {
                 $billsReceivableSettleAmount = $this->resolveBillsReceivableSettleAmount($data, $amount);
             }
 
@@ -65,6 +65,7 @@ class FinanceAccountMovementService
                 'balance' => 'Adjust from Balance',
                 'expense_link' => 'Expense Link',
                 'adjustment' => 'Adjustment',
+                'refund' => 'Refund',
                 default => ucfirst($paymentMethod),
             };
 
@@ -427,6 +428,99 @@ class FinanceAccountMovementService
                         true
                     );
                 }
+            } elseif ($paymentMethod === 'refund') {
+                if (!in_array($payerType, ['agent', 'candidate'], true)) {
+                    throw ValidationException::withMessages([
+                        'payment_method' => ['Refund is only available for agent or candidate payers.'],
+                    ]);
+                }
+
+                if ($billsReceivableSettleAmount <= 0) {
+                    throw ValidationException::withMessages([
+                        'payment_method' => ['Refund is only available for outstanding bills receivable.'],
+                    ]);
+                }
+
+                $remainingDue = $this->resolveRefundableRemaining($data);
+                if ($amount - $remainingDue > 0.0001) {
+                    throw ValidationException::withMessages([
+                        'amount' => ["Refund amount cannot exceed remaining due of {$remainingDue}."],
+                    ]);
+                }
+
+                $party = null;
+                if ($payerType === 'agent') {
+                    $partyAccountId = (int) ($data['party_account_id'] ?? 0);
+                    $party = $this->resolveActiveAccount($partyAccountId, 'agent');
+                }
+
+                $refundAccount = $party;
+                $voucherAccountId = $party?->id ?: (int) (($data['candidates'][0]['applicant_account_id'] ?? 0));
+                if ($payerType === 'candidate') {
+                    $firstApplicationId = (int) (($data['candidates'][0]['application_id'] ?? $data['candidates'][0]['candidate_id'] ?? 0));
+                    $firstLabel = trim((string) (($data['candidates'][0]['candidate_name'] ?? '')));
+                    if ($firstApplicationId > 0) {
+                        $refundAccount = $this->resolveApplicantAccountByApplicationId(
+                            $firstApplicationId,
+                            $firstLabel !== '' ? $firstLabel : null
+                        );
+                        $voucherAccountId = (int) $refundAccount->id;
+                    }
+                }
+
+                $voucherNo = $referenceNo !== ''
+                    ? $referenceNo
+                    : ($voucherAccountId > 0
+                        ? $this->nextVoucherNo($voucherAccountId, 'RF', $transactionDate)
+                        : sprintf('RF-%s', now()->format('y')));
+
+                $typeTransaction = $this->createRefundTransaction(
+                    $amount,
+                    $transactionDate,
+                    $particular,
+                    $referenceNo,
+                    $remarks,
+                    $voucherNo,
+                    $refundAccount
+                );
+                $typeTransactionId = $typeTransaction?->id;
+                $result['type_transaction_id'] = $typeTransactionId;
+
+                if ($party) {
+                    $this->createAgentCandidateLedgerEntries(
+                        $party,
+                        $party,
+                        $data,
+                        $typeTransactionId,
+                        $transactionDate,
+                        $particular,
+                        $voucherNo,
+                        $demandLetter,
+                        $job,
+                        $clientName,
+                        $remarks,
+                        $methodLabel,
+                        true
+                    );
+                    $result['party_account_id'] = $party->id;
+                }
+
+                if ($payerType === 'candidate') {
+                    $this->createApplicantCandidateLedgerEntries(
+                        $party,
+                        $data,
+                        $typeTransactionId,
+                        $transactionDate,
+                        $particular,
+                        $voucherNo,
+                        $demandLetter,
+                        $job,
+                        $clientName,
+                        $remarks,
+                        $methodLabel,
+                        true
+                    );
+                }
             } else {
                 throw ValidationException::withMessages([
                     'payment_method' => ['Invalid payment method.'],
@@ -475,6 +569,19 @@ class FinanceAccountMovementService
                     $demandLetter,
                     $job
                 );
+            } elseif ($paymentMethod === 'refund') {
+                $this->accountService->recordSaleRefundEntry(
+                    $amount,
+                    $transactionDate,
+                    $voucherNo,
+                    $result['type_transaction_id'] ?? null,
+                    'Sale Refund',
+                    $methodLabel,
+                    $remarks,
+                    $clientName,
+                    $demandLetter,
+                    $job
+                );
             }
 
             // Bills Receivable Ledger: DR on due / remainder; CR on settle.
@@ -493,7 +600,7 @@ class FinanceAccountMovementService
                     $job
                 );
             } elseif (
-                in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link', 'adjustment'], true)
+                in_array($paymentMethod, ['cash', 'bank', 'balance', 'expense_link', 'adjustment', 'refund'], true)
                 && $billsReceivableSettleAmount > 0
             ) {
                 $this->accountService->recordBillsReceivableEntry(
@@ -502,7 +609,9 @@ class FinanceAccountMovementService
                     $transactionDate,
                     $voucherNo,
                     $result['type_transaction_id'] ?? null,
-                    'Bills Receivable — Received',
+                    $paymentMethod === 'refund'
+                        ? 'Bills Receivable — Refund'
+                        : 'Bills Receivable — Received',
                     $methodLabel,
                     $remarks,
                     $clientName,
@@ -560,6 +669,7 @@ class FinanceAccountMovementService
                     // Latest adjusted sale price used for this candidate.
                     'sale_price' => round((float) $row->sale_price, 2),
                     'collected_amount' => 0.0,
+                    'refund_amount' => 0.0,
                     'has_due' => false,
                 ];
             }
@@ -567,6 +677,14 @@ class FinanceAccountMovementService
             // Due records create receivable only — do not treat as cash/bank collected.
             if ($method === 'due') {
                 $summary[$applicationId]['has_due'] = true;
+                continue;
+            }
+
+            if ($method === 'refund') {
+                $summary[$applicationId]['refund_amount'] = round(
+                    (float) $summary[$applicationId]['refund_amount'] + (float) $row->amount,
+                    2
+                );
                 continue;
             }
 
@@ -578,7 +696,12 @@ class FinanceAccountMovementService
 
         foreach ($summary as &$row) {
             $row['receivable_remaining'] = round(
-                max((float) $row['sale_price'] - (float) $row['collected_amount'], 0),
+                max(
+                    (float) $row['sale_price']
+                    - (float) $row['collected_amount']
+                    - (float) $row['refund_amount'],
+                    0
+                ),
                 2
             );
         }
@@ -1269,6 +1392,76 @@ class FinanceAccountMovementService
             ->exists();
 
         return $hasDue ? $amount : 0.0;
+    }
+
+    private function resolveRefundableRemaining(array $data): float
+    {
+        $candidates = $data['candidates'] ?? [];
+        if (!is_array($candidates) || $candidates === []) {
+            return 0.0;
+        }
+
+        $applicationIds = [];
+        foreach ($candidates as $candidate) {
+            if (!is_array($candidate)) {
+                continue;
+            }
+            $applicationId = (int) ($candidate['application_id'] ?? $candidate['candidate_id'] ?? 0);
+            if ($applicationId > 0) {
+                $applicationIds[] = $applicationId;
+            }
+        }
+        $applicationIds = array_values(array_unique($applicationIds));
+        if ($applicationIds === []) {
+            return 0.0;
+        }
+
+        $summaryById = [];
+        foreach ($this->getSaleCollectionSummary($applicationIds) as $row) {
+            $summaryById[(int) $row['application_id']] = $row;
+        }
+
+        $remaining = 0.0;
+        foreach ($applicationIds as $applicationId) {
+            $remaining = round(
+                $remaining + (float) ($summaryById[$applicationId]['receivable_remaining'] ?? 0),
+                2
+            );
+        }
+
+        return $remaining;
+    }
+
+    private function createRefundTransaction(
+        float $amount,
+        string $transactionDate,
+        string $particular,
+        string $referenceNo,
+        string $remarks,
+        string $voucherNo,
+        ?FinanceAccount $partyAccount
+    ): FinanceAccountTypeTransaction {
+        $base = [
+            'transaction_type' => 'sale_refund',
+            'amount' => $amount,
+            'transaction_date' => $transactionDate,
+            'particular' => $particular !== '' ? $particular : 'Sale Refund',
+            'reference_no' => $referenceNo ?: null,
+            'remarks' => $remarks ?: null,
+            'voucher_no' => $voucherNo,
+        ];
+
+        if ($partyAccount) {
+            return FinanceAccountTypeTransaction::query()->create([
+                ...$base,
+                'account_category' => $partyAccount->category,
+                'main_account_type' => '',
+                'account_id' => $partyAccount->id,
+                'account_label' => $this->accountLabel($partyAccount),
+            ]);
+        }
+
+        return FinanceAccountTypeTransaction::query()->create($base);
     }
 
     private function createReceivePaymentTransaction(

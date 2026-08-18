@@ -226,6 +226,11 @@ export const useSaleEntryStore = defineStore('saleEntry', () => {
       accountLedgerStore.invalidateAccountLedger(Number(payload.liabilityAccountId))
     }
 
+    if (payload.paymentMethod === 'refund') {
+      categories.add('sale')
+      categories.add('bills_receivable')
+    }
+
     if (partyAccountId) {
       const category = payload.payerType === 'client' ? 'client' : 'agent'
       categories.add(category)
@@ -325,8 +330,8 @@ export const useSaleEntryStore = defineStore('saleEntry', () => {
     }
 
     const paymentMethod = String(payload.paymentMethod || 'cash').toLowerCase()
-    if (!['cash', 'bank', 'due', 'expense_link', 'adjustment'].includes(paymentMethod)) {
-      return { ok: false, message: 'Please select a valid receive method (Cash, Bank, Due, Expense Link, or Adjustment).' }
+    if (!['cash', 'bank', 'due', 'expense_link', 'adjustment', 'refund'].includes(paymentMethod)) {
+      return { ok: false, message: 'Please select a valid receive method (Cash, Bank, Due, Expense Link, Adjustment, or Refund).' }
     }
 
     if (['cash', 'bank'].includes(paymentMethod) && !payload.mainAccountId) {
