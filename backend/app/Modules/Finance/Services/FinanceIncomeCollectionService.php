@@ -430,7 +430,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                             $this->postCreditLedger(
                                 $linkedAccount,
                                 $typeTransaction->id,
-                                $amount,
+                                $isAdjustment ? 0.0 : $amount,
                                 $collectionDate,
                                 $particular,
                                 $voucherNo,

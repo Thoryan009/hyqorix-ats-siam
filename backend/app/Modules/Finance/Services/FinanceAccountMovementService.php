@@ -170,7 +170,7 @@ class FinanceAccountMovementService
                             'job' => $job ?: null,
                             'client_name' => $clientName ?: $this->accountLabel($main),
                             'dr_amount' => 0,
-                            'cr_amount' => $amount,
+                            'cr_amount' => $isAdjustment ? 0 : $amount,
                             'payment_method' => $methodLabel,
                             'remarks' => $remarks ?: null,
                         ]);
@@ -1483,7 +1483,7 @@ class FinanceAccountMovementService
                     ? $candidateLabel
                     : ($clientName ?: ($main ? $this->accountLabel($main) : null)),
                 'dr_amount' => 0,
-                'cr_amount' => $payAmount,
+                'cr_amount' => $paymentMethodLabel === 'Adjustment' ? 0 : $payAmount,
                 'payment_method' => $paymentMethodLabel,
                 'remarks' => $remarks !== ''
                     ? $remarks
@@ -1629,7 +1629,7 @@ class FinanceAccountMovementService
                     ? $candidateLabel
                     : ($clientName ?: $this->accountLabel($main)),
                 'dr_amount' => 0,
-                'cr_amount' => $payAmount,
+                'cr_amount' => $paymentMethodLabel === 'Adjustment' ? 0 : $payAmount,
                 'payment_method' => $paymentMethodLabel,
                 'remarks' => $remarks !== ''
                     ? $remarks
