@@ -3,6 +3,7 @@ import { isAdjustmentTransactionType } from '../data/accountTransactionData'
 export function mapAccountTypeTransactionFromApi(row) {
   return {
     id: row.id,
+    transaction_no: row.transaction_no ?? '',
     transaction_type: row.transaction_type,
     amount: Number(row.amount) || 0,
     date: row.date ?? row.transaction_date ?? '',

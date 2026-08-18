@@ -43,7 +43,8 @@ class FinanceAccountTypeTransactionRepository extends BaseRepository
                 ->orWhere('to_account_label', 'like', "%{$search}%")
                 ->orWhere('account_label', 'like', "%{$search}%")
                 ->orWhere('transaction_type', 'like', "%{$search}%")
-                ->orWhere('voucher_no', 'like', "%{$search}%");
+                ->orWhere('voucher_no', 'like', "%{$search}%")
+                ->orWhere('transaction_no', 'like', "%{$search}%");
         });
     }
 

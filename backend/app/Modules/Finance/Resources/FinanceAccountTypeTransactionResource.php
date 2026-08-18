@@ -2,6 +2,7 @@
 
 namespace App\Modules\Finance\Resources;
 
+use App\Modules\Finance\Models\FinanceAccountTypeTransaction;
 use App\Modules\Shared\Helpers\DateTimeFormatter;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -11,6 +12,8 @@ class FinanceAccountTypeTransactionResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'transaction_no' => $this->transaction_no
+                ?: FinanceAccountTypeTransaction::formatTransactionNo((int) $this->id),
             'transaction_type' => $this->transaction_type,
             'amount' => (float) $this->amount,
             'date' => $this->transaction_date?->format('Y-m-d'),

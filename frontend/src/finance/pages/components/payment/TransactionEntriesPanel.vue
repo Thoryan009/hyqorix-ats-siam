@@ -3,7 +3,7 @@
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
       <div class="flex flex-1 flex-col sm:min-w-[200px]">
         <label class="mb-1 text-sm text-gray-700">Search</label>
-        <BaseInput v-model="filters.search" placeholder="Search by particular, reference, account..." />
+        <BaseInput v-model="filters.search" placeholder="Search by txn no, particular, reference, account..." />
       </div>
 
       <div class="flex flex-col sm:min-w-[180px]">
@@ -36,6 +36,10 @@
         :per-page="perPage"
         scrollable
       >
+        <template #cell-transaction_no="{ row }">
+          <span class="font-semibold text-gray-900">{{ formatTransactionNo(row) }}</span>
+        </template>
+
         <template #cell-date="{ row }">
           {{ formatDisplayDate(row.date) }}
         </template>
@@ -104,7 +108,7 @@ const filters = reactive({
 })
 
 const columns = [
-  { key: 'sl', label: 'SL' },
+  { key: 'transaction_no', label: 'Txn No' },
   { key: 'date', label: 'Date' },
   { key: 'transaction_type', label: 'Type' },
   { key: 'particular', label: 'Particular' },
@@ -127,13 +131,7 @@ const links = ref([])
 
 const paginationTotal = computed(() => transactionStore.paginationMeta.total ?? 0)
 
-const tableRows = computed(() => {
-  const start = ((Number(transactionStore.paginationMeta.current_page) || page.value) - 1) * perPage.value
-  return transactionStore.transactions.map((row, index) => ({
-    ...row,
-    sl: start + index + 1,
-  }))
-})
+const tableRows = computed(() => transactionStore.transactions)
 
 const hasActiveFilters = computed(() => Boolean(filters.search.trim() || filters.transactionType))
 
@@ -217,6 +215,12 @@ watch([page, perPage], () => {
 onMounted(async () => {
   await loadEntries()
 })
+
+function formatTransactionNo(row) {
+  if (row.transaction_no) return row.transaction_no
+  if (row.id) return `TXN-${String(row.id).padStart(6, '0')}`
+  return '—'
+}
 
 function typeBadgeClass(type) {
   const classes = {

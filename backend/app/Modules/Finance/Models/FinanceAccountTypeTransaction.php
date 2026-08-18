@@ -21,6 +21,24 @@ class FinanceAccountTypeTransaction extends Model
         'transaction_date' => 'date',
     ];
 
+    protected static function booted(): void
+    {
+        static::created(function (self $transaction): void {
+            if (!empty($transaction->transaction_no)) {
+                return;
+            }
+
+            $transaction->updateQuietly([
+                'transaction_no' => self::formatTransactionNo((int) $transaction->id),
+            ]);
+        });
+    }
+
+    public static function formatTransactionNo(int $id): string
+    {
+        return sprintf('TXN-%06d', $id);
+    }
+
     public function account(): BelongsTo
     {
         return $this->belongsTo(FinanceAccount::class, 'account_id');
