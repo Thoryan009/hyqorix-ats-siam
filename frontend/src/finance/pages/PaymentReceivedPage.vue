@@ -5,51 +5,49 @@
         <PageTitle>Payment / Received 2</PageTitle>
         <p class="mt-1 text-sm text-gray-500">{{ pageSubtitle }}</p>
       </div>
-    </PageHeader>
 
-    <div
-      v-if="summaryCards.length"
-      class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
-    >
       <div
-        v-for="card in summaryCards"
-        :key="card.title"
-        class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm"
+        v-if="summaryCards.length"
+        class="flex w-full flex-wrap justify-end gap-2 sm:w-auto"
       >
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <p class="text-sm text-gray-500">{{ card.title }}</p>
-            <p class="mt-1 text-2xl font-bold text-gray-900">{{ card.value }}</p>
-            <p class="mt-1 text-xs text-gray-400">{{ card.subtitle }}</p>
-          </div>
+        <div
+          v-for="card in summaryCards"
+          :key="card.title"
+          class="flex min-w-[140px] items-center gap-2 rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm"
+        >
           <div
-            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
             :class="card.iconBg"
           >
-            <i :class="[card.icon, card.iconColor, 'text-lg']"></i>
+            <i :class="[card.icon, card.iconColor, 'text-xs']"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[11px] leading-tight text-gray-500">{{ card.title }}</p>
+            <p class="text-sm font-semibold leading-tight text-gray-900">{{ card.value }}</p>
           </div>
         </div>
       </div>
-    </div>
+    </PageHeader>
 
-    <div class="mb-6 flex flex-wrap gap-2">
+    <div class="mb-6 flex flex-wrap gap-3">
       <button
         v-for="tab in pageTabs"
         v-can="'receive_payment.create'"
         :key="tab.id"
         type="button"
-        class="rounded-lg border px-4 py-2 text-sm font-semibold transition-all"
-        :class="
-          activeTab === tab.id
-            ? 'border-primary bg-primary-light! text-primary ring-1 ring-primary'
-            : 'border-gray-200 bg-white text-gray-700 hover:border-primary hover:bg-primary-light!'
-        "
+        class="inline-flex min-w-[220px] items-center justify-center rounded-xl px-6 py-3.5 text-base font-bold shadow-sm transition-all"
+        :class="pageTabClass(tab.id)"
         @click="setActiveTab(tab.id)"
       >
-        <i :class="[tab.icon, 'mr-1.5']"></i>{{ tab.label }}
+        <i :class="[tab.icon, 'mr-2 text-lg']"></i>{{ tab.label }}
         <span
           v-if="tab.id === 'transaction_entry' && paymentStore.pendingBillCount"
-          class="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700"
+          class="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold"
+          :class="
+            activeTab === 'transaction_entry'
+              ? 'bg-white/20 text-white'
+              : 'bg-rose-100 text-rose-800'
+          "
         >
           {{ paymentStore.pendingBillCount }}
         </span>
@@ -57,7 +55,7 @@
     </div>
 
     <TransactionSubmittedSuccess
-      v-if="activeTab === 'other_transaction' && submittedTransfer"
+      v-if="submittedTransfer"
       :amount="submittedTransfer.amount"
       :date="submittedTransfer.date"
       :particular="submittedTransfer.particular"
@@ -72,71 +70,75 @@
       @view-transactions="goToTransactions"
     />
 
-    <div v-else class="rounded-lg bg-white shadow-sm">
-      <div class="border-b border-gray-100 px-4 py-4">
-        <h3 class="text-base font-semibold text-gray-900">{{ activeTabMeta.title }}</h3>
-        <p class="mt-1 text-sm text-gray-500">{{ activeTabMeta.description }}</p>
+    <div
+      v-else-if="activeTab === 'transaction_entry'"
+      class="rounded-xl border border-rose-200 bg-rose-50/70 p-4"
+    >
+      <TransactionEntryPanel
+        :initial-mode="routePaymentMode"
+        locked-direction="payment"
+        @saved="onOtherTransactionSaved"
+      />
+    </div>
+
+    <div v-else class="rounded-xl border border-emerald-200 bg-emerald-50/70 shadow-sm">
+      <div class="border-b border-emerald-200 px-4 py-4">
+        <h3 class="text-base font-semibold text-emerald-950">{{ activeTabMeta.title }}</h3>
+        <p class="mt-1 text-sm text-emerald-800/70">{{ activeTabMeta.description }}</p>
       </div>
 
       <div class="p-4">
-        <TransactionEntryPanel
-          v-if="activeTab === 'transaction_entry'"
-          :initial-mode="routePaymentMode"
-          @saved="goToTransactions"
-        />
-
-        <TransactionEntryPanel
-          v-else-if="activeTab === 'other_transaction'"
-          initial-mode="transaction"
-          transaction-only
-          @saved="onOtherTransactionSaved"
-        />
-
-        <template v-else>
-          <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-            <h4 class="mb-1 text-sm font-semibold text-gray-900">Receive Type</h4>
-            <p class="mb-3 text-xs text-gray-500">
-              Collect gross income, PL income, or settle outstanding due receivables.
-            </p>
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="type in receiveTypes"
-                :key="type.id"
-                type="button"
-                class="rounded-lg px-4 py-2 text-sm font-medium transition"
+        <div class="mb-6 rounded-lg border border-emerald-200 bg-white/80 p-4">
+          <h4 class="mb-1 text-sm font-semibold text-emerald-950">Receive Type</h4>
+          <p class="mb-3 text-xs text-emerald-800/70">
+            Collect gross income, PL income, settle outstanding due receivables, or record other
+            receive transactions.
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="type in receiveTypes"
+              :key="type.id"
+              type="button"
+              class="rounded-lg px-4 py-2 text-sm font-medium transition"
+              :class="
+                receiveType === type.id
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-white text-emerald-900 ring-1 ring-emerald-200 hover:bg-emerald-50'
+              "
+              @click="setReceiveType(type.id)"
+            >
+              <i :class="[type.icon, 'mr-1.5']"></i>{{ type.label }}
+              <span
+                v-if="type.id === 'bills_receivable' && saleEntryStore.receivableBillCount"
+                class="ml-1.5 rounded-full px-2 py-0.5 text-xs font-semibold"
                 :class="
                   receiveType === type.id
-                    ? 'bg-primary text-white'
-                    : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-emerald-100 text-emerald-800'
                 "
-                @click="setReceiveType(type.id)"
               >
-                <i :class="[type.icon, 'mr-1.5']"></i>{{ type.label }}
-                <span
-                  v-if="type.id === 'bills_receivable' && saleEntryStore.receivableBillCount"
-                  class="ml-1.5 rounded-full px-2 py-0.5 text-xs font-semibold"
-                  :class="
-                    receiveType === type.id
-                      ? 'bg-white/20 text-white'
-                      : 'bg-emerald-100 text-emerald-800'
-                  "
-                >
-                  {{ saleEntryStore.receivableBillCount }}
-                </span>
-              </button>
-            </div>
+                {{ saleEntryStore.receivableBillCount }}
+              </span>
+            </button>
           </div>
+        </div>
 
-          <BillsReceivablePanel v-if="receiveType === 'bills_receivable'" />
-          <IncomeCollectionFormPanel
-            v-else-if="receiveType === 'income'"
-            @saved="onIncomeCollected"
-          />
-          <SaleEntryFormPanel
-            v-else
-            @saved="goToPaymentCollections"
-          />
-        </template>
+        <TransactionEntryPanel
+          v-if="receiveType === 'other_transaction'"
+          initial-mode="transaction"
+          transaction-only
+          locked-direction="receive"
+          @saved="onOtherTransactionSaved"
+        />
+        <BillsReceivablePanel v-else-if="receiveType === 'bills_receivable'" />
+        <IncomeCollectionFormPanel
+          v-else-if="receiveType === 'income'"
+          @saved="onIncomeCollected"
+        />
+        <SaleEntryFormPanel
+          v-else
+          @saved="goToPaymentCollections"
+        />
       </div>
     </div>
   </SectionHeader>
@@ -169,31 +171,41 @@ const submittedTransfer = ref(null)
 const pageTabs = [
   { id: 'transaction_entry', label: 'Make Payment', icon: 'fa fa-credit-card' },
   { id: 'sale_entry', label: 'Receive Payment', icon: 'fa fa-money' },
-  { id: 'other_transaction', label: 'Other Transaction', icon: 'fa fa-exchange' },
 ]
+
+function pageTabClass(tabId) {
+  const isActive = activeTab.value === tabId
+
+  if (tabId === 'transaction_entry') {
+    return isActive
+      ? 'bg-rose-600 text-white shadow-md ring-2 ring-rose-300'
+      : 'border-2 border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100'
+  }
+
+  return isActive
+    ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-300'
+    : 'border-2 border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+}
 
 const receiveTypes = [
   { id: 'job', label: 'Sale', icon: 'fa fa-briefcase' },
   { id: 'income', label: 'Income', icon: 'fa fa-plus-circle' },
   { id: 'bills_receivable', label: 'Bills Receivable', icon: 'fa fa-file-text-o' },
+  { id: 'other_transaction', label: 'Other Transaction', icon: 'fa fa-exchange' },
 ]
 
 const tabMeta = {
   transaction_entry: {
     title: 'Make Payment',
-    description: 'Pay pending expense bills or settle approved due bills payable',
-    subtitle: 'Bills to pay and bills payable',
+    description:
+      'Pay pending expense bills, settle approved due bills payable, or record other payment transactions',
+    subtitle: 'Bills to pay, bills payable, and other transactions',
   },
   sale_entry: {
     title: 'Receive Payment',
     description:
-      'Collect gross income by payer, PL income, or settle due bills receivable',
-    subtitle: 'Gross income, PL income, and bills receivable',
-  },
-  other_transaction: {
-    title: 'Other Transaction',
-    description: 'Record loan, advanced, and other account type transactions',
-    subtitle: 'Transfer between accounts or adjust balances',
+      'Collect gross income by payer, PL income, settle due bills receivable, or record other receive transactions',
+    subtitle: 'Gross income, PL income, bills receivable, and other transactions',
   },
 }
 
@@ -210,10 +222,15 @@ const receiveTypeMeta = {
     title: 'Receive Payment — Bills Receivable',
     description: 'Outstanding due receivables awaiting cash or bank settlement',
   },
+  other_transaction: {
+    title: 'Receive Payment — Other Transaction',
+    description: 'Record receive transfers between accounts or adjust balances',
+  },
 }
 
 const routePaymentMode = computed(() => {
   if (route.query.payment_mode === 'bills_payable') return 'bills_payable'
+  if (route.query.payment_mode === 'transaction') return 'transaction'
   if (route.query.payment_mode === 'bills_to_pay') return 'bills_to_pay'
   return 'bills_to_pay'
 })
@@ -225,8 +242,12 @@ const activeTabMeta = computed(() => {
       ...(receiveTypeMeta[receiveType.value] ?? receiveTypeMeta.job),
     }
   }
-  if (activeTab.value === 'other_transaction') {
-    return tabMeta.other_transaction
+  if (activeTab.value === 'transaction_entry' && routePaymentMode.value === 'transaction') {
+    return {
+      title: 'Make Payment — Other Transaction',
+      description: 'Record payment transfers between accounts or adjust balances',
+      subtitle: 'Transfer between accounts or adjust balances',
+    }
   }
   if (activeTab.value === 'transaction_entry' && routePaymentMode.value === 'bills_to_pay') {
     return {
@@ -304,6 +325,10 @@ const summaryCards = computed(() => {
         iconColor: 'text-blue-600',
       },
     ]
+  }
+
+  if (activeTab.value === 'sale_entry' && receiveType.value === 'other_transaction') {
+    return []
   }
 
   if (activeTab.value === 'sale_entry') {
@@ -407,14 +432,22 @@ const setActiveTab = (tabId) => {
     query.receive_type = 'income'
   } else if (receiveType.value === 'bills_receivable') {
     query.receive_type = 'bills_receivable'
+  } else if (receiveType.value === 'other_transaction') {
+    query.receive_type = 'other_transaction'
   } else {
     delete query.receive_type
   }
   if (tabId === 'transaction_entry') {
-    query.payment_mode =
-      route.query.payment_mode === 'bills_payable' ? 'bills_payable' : 'bills_to_pay'
+    if (route.query.payment_mode === 'bills_payable') {
+      query.payment_mode = 'bills_payable'
+    } else if (route.query.payment_mode === 'transaction') {
+      query.payment_mode = 'transaction'
+    } else {
+      query.payment_mode = 'bills_to_pay'
+    }
   } else {
     delete query.payment_mode
+    delete query.bill_id
   }
   router.replace({ query })
 }
@@ -422,7 +455,7 @@ const setActiveTab = (tabId) => {
 const setReceiveType = (typeId) => {
   receiveType.value = typeId
   const query = { ...route.query, tab: 'sale_entry' }
-  if (typeId === 'income' || typeId === 'bills_receivable') {
+  if (typeId === 'income' || typeId === 'bills_receivable' || typeId === 'other_transaction') {
     query.receive_type = typeId
   } else {
     delete query.receive_type
@@ -497,12 +530,12 @@ const applyRouteTab = () => {
     return
   }
 
-  // Legacy: Other Transaction lived under Make Payment
-  if (tab === 'transaction_entry' && route.query.payment_mode === 'transaction') {
-    activeTab.value = 'other_transaction'
-    const query = { ...route.query, tab: 'other_transaction' }
-    delete query.payment_mode
-    router.replace({ query })
+  // Legacy top-level Other Transaction tab → Make Payment
+  if (tab === 'other_transaction') {
+    activeTab.value = 'transaction_entry'
+    router.replace({
+      query: { ...route.query, tab: 'transaction_entry', payment_mode: 'transaction' },
+    })
     return
   }
 
@@ -513,6 +546,8 @@ const applyRouteTab = () => {
         receiveType.value = 'income'
       } else if (route.query.receive_type === 'bills_receivable') {
         receiveType.value = 'bills_receivable'
+      } else if (route.query.receive_type === 'other_transaction') {
+        receiveType.value = 'other_transaction'
       } else {
         receiveType.value = 'job'
       }
@@ -527,9 +562,9 @@ const applyRouteTab = () => {
   } else if (route.query.receive_type === 'bills_receivable') {
     activeTab.value = 'sale_entry'
     receiveType.value = 'bills_receivable'
-  } else if (route.query.payment_mode === 'transaction') {
-    activeTab.value = 'other_transaction'
-    receiveType.value = 'job'
+  } else if (route.query.receive_type === 'other_transaction') {
+    activeTab.value = 'sale_entry'
+    receiveType.value = 'other_transaction'
   } else {
     activeTab.value = 'transaction_entry'
     receiveType.value = 'job'
@@ -544,10 +579,6 @@ async function loadActiveTabData() {
     return
   }
 
-  if (activeTab.value === 'other_transaction') {
-    return
-  }
-
   if (activeTab.value === 'sale_entry') {
     if (receiveType.value === 'income') {
       await incomeCollectionStore.fetchCollections({ force: true, page: 1, perPage: 10 })
@@ -556,6 +587,10 @@ async function loadActiveTabData() {
 
     if (receiveType.value === 'bills_receivable') {
       await saleEntryStore.fetchReceivableBills(true)
+      return
+    }
+
+    if (receiveType.value === 'other_transaction') {
       return
     }
 
