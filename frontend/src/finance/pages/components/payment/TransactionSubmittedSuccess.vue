@@ -13,10 +13,9 @@
             <i class="fa fa-check"></i>
           </div>
 
-          <h2 class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Transfer Successful</h2>
+          <h2 class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{{ title }}</h2>
           <p class="mx-auto mt-3 max-w-md text-sm leading-relaxed text-emerald-50/90">
-            The transaction has been recorded. You can create another transfer or review it in
-            Transactions.
+            {{ description }}
           </p>
         </div>
 
@@ -56,13 +55,23 @@
               </p>
               <p class="mt-1 text-sm font-semibold text-slate-900">{{ extraAccountName }}</p>
             </div>
-            <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 sm:col-span-2">
-              <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">From</p>
-              <p class="mt-1 text-sm font-semibold text-slate-900">{{ fromAccountLabel || '—' }}</p>
+            <div
+              v-if="fromAccountLabel"
+              class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 sm:col-span-2"
+            >
+              <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                {{ fromLabel }}
+              </p>
+              <p class="mt-1 text-sm font-semibold text-slate-900">{{ fromAccountLabel }}</p>
             </div>
-            <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 sm:col-span-2">
-              <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">To</p>
-              <p class="mt-1 text-sm font-semibold text-slate-900">{{ toAccountLabel || '—' }}</p>
+            <div
+              v-if="toAccountLabel"
+              class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 sm:col-span-2"
+            >
+              <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                {{ toLabel }}
+              </p>
+              <p class="mt-1 text-sm font-semibold text-slate-900">{{ toAccountLabel }}</p>
             </div>
             <div class="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 sm:col-span-2">
               <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -79,7 +88,7 @@
               @click="emit('create-another')"
             >
               <i class="fa fa-plus mr-2"></i>
-              Create Another Transaction
+              {{ createAnotherLabel }}
             </BaseButton>
             <BaseButton
               type="button"
@@ -87,7 +96,7 @@
               @click="emit('view-transactions')"
             >
               <i class="fa fa-list mr-2"></i>
-              View Transactions
+              {{ viewLabel }}
             </BaseButton>
           </div>
         </div>
@@ -101,6 +110,16 @@ import { computed } from 'vue'
 import { formatCurrency } from '@/finance/utils/billUtils'
 
 const props = defineProps({
+  title: { type: String, default: 'Transfer Successful' },
+  description: {
+    type: String,
+    default:
+      'The transaction has been recorded. You can create another transfer or review it in Transactions.',
+  },
+  createAnotherLabel: { type: String, default: 'Create Another Transaction' },
+  viewLabel: { type: String, default: 'View Transactions' },
+  fromLabel: { type: String, default: 'From' },
+  toLabel: { type: String, default: 'To' },
   amount: { type: Number, default: 0 },
   date: { type: String, default: '' },
   particular: { type: String, default: '' },

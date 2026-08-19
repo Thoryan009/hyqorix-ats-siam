@@ -1126,16 +1126,48 @@ async function handleSubmit() {
       return
     }
 
-    toast.success(
-      isDueReceiveMethod.value
-        ? 'PL Income due recorded. Settle it from Bills Receivable with cash or bank.'
-        : 'PL Income collected successfully. Any remaining amount was moved to Bills Receivable.'
-    )
+    const created = result.data || {}
+    const paymentMethod = String(form.payment_method || '').toLowerCase()
+    const receiveAccount = form.receive_account_id
+      ? accountStore.getAccount(form.receive_account_id)
+      : null
+    const receiveLabel =
+      paymentMethod === 'due'
+        ? 'Bills Receivable (Due)'
+        : receiveAccount
+          ? `${receiveAccount.account_type} — ${receiveAccount.account_name} (${receiveAccount.account_label})`
+          : created.receive_account_name || ''
+    const fromLabel = isClientIncomeCategory.value
+      ? selectedClientPayer.value
+        ? `${selectedClientPayer.value.client_code} — ${selectedClientPayer.value.client_name}`
+        : created.client_name || ''
+      : selectedLinkedAccount.value?.account?.name || created.linked_account_name || ''
+    const headLabel = [selectedCategory.value?.name, selectedHead.value?.name]
+      .filter(Boolean)
+      .join(' — ')
+    const jobLabel = loadedJob.value
+      ? [loadedJob.value.job_code, loadedJob.value.job_title || loadedJob.value.job_name]
+          .filter(Boolean)
+          .join(' — ')
+      : ''
+    const savedPayload = {
+      kind: 'income',
+      amount: Number(created.amount || form.amount) || 0,
+      date: created.collection_date_raw || created.collection_date || form.collection_date,
+      particular: created.particular || form.particular || '',
+      voucherNo: created.voucher_no || created.reference_no || form.reference_no || '',
+      referenceNo: created.reference_no || form.reference_no || '',
+      fromAccountLabel: fromLabel,
+      toAccountLabel: receiveLabel,
+      directionLabel: paymentMethod === 'due' ? 'Due' : 'Receive',
+      extraAccountType: jobLabel ? 'Job' : headLabel ? 'Income Head' : '',
+      extraAccountName: jobLabel || headLabel,
+    }
 
     await saleEntryStore.fetchReceivableBills(true)
 
     resetForm()
-    emit('saved')
+    emit('saved', savedPayload)
   } finally {
     submitLoading.value = false
   }

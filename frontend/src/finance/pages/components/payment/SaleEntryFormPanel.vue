@@ -1251,22 +1251,35 @@ async function saveEntry() {
       return
     }
 
-    await Swal.fire({
-      icon: 'success',
-      title: 'Receive Payment Saved',
-      text:
-        String(form.value.payment_method || '').toLowerCase() === 'due'
-          ? `Entry ${result.entry.entry_no} saved. Settle it from Bills Receivable with cash or bank.`
-          : Number(result.movedToReceivable || 0) > 0
-            ? `Entry ${result.entry.entry_no} saved. Remaining amount moved to Bills Receivable.`
-            : `Entry ${result.entry.entry_no} saved successfully.`,
-      confirmButtonColor: '#22C55E',
-    })
+    const paymentMethod = String(form.value.payment_method || '').toLowerCase()
+    const payerLabel =
+      form.value.payer_type === 'agent'
+        ? agentBalancePreview.value?.label || ''
+        : form.value.payer_type === 'client'
+          ? clientBalancePreview.value?.label || ''
+          : candidateRows.map((row) => row.candidate_name).filter(Boolean).join(', ')
+    const receiveLabel =
+      paymentMethod === 'due'
+        ? 'Bills Receivable (Due)'
+        : mainBalancePreview.value?.label || ''
+    const jobLabel = loadedJob.value
+      ? [loadedJob.value.job_code, loadedJob.value.job_title].filter(Boolean).join(' — ')
+      : ''
+    const savedPayload = {
+      kind: 'sale',
+      amount: Number(result.entry?.total_amount || 0),
+      date: result.entry?.entry_date || form.value.entry_date,
+      particular: result.entry?.particular || '',
+      voucherNo: result.entry?.entry_no || '',
+      referenceNo: result.entry?.reference_no || '',
+      fromAccountLabel: payerLabel,
+      toAccountLabel: receiveLabel,
+      directionLabel: paymentMethod === 'due' ? 'Due' : 'Receive',
+      extraAccountType: jobLabel ? 'Job' : '',
+      extraAccountName: jobLabel,
+    }
 
-    if (
-      String(form.value.payment_method || '').toLowerCase() === 'due' ||
-      Number(result.movedToReceivable || 0) > 0
-    ) {
+    if (paymentMethod === 'due' || Number(result.movedToReceivable || 0) > 0) {
       await saleEntryStore.fetchReceivableBills(true)
     }
 
@@ -1280,7 +1293,7 @@ async function saveEntry() {
     }
 
     resetForm()
-    emit('saved')
+    emit('saved', savedPayload)
   } finally {
     submitLoading.value = false
   }

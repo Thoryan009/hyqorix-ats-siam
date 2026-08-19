@@ -2,14 +2,11 @@
   <SectionHeader>
     <PageHeader>
       <div>
-        <PageTitle>Payment / Received 2</PageTitle>
+        <PageTitle>Payment / Received</PageTitle>
         <p class="mt-1 text-sm text-gray-500">{{ pageSubtitle }}</p>
       </div>
 
-      <div
-        v-if="summaryCards.length"
-        class="flex w-full flex-wrap justify-end gap-2 sm:w-auto"
-      >
+      <div v-if="summaryCards.length" class="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
         <div
           v-for="card in summaryCards"
           :key="card.title"
@@ -29,17 +26,18 @@
       </div>
     </PageHeader>
 
-    <div class="mb-6 flex flex-wrap gap-3">
+    <div class="mb-6 flex flex-wrap gap-2">
       <button
         v-for="tab in pageTabs"
         v-can="'receive_payment.create'"
         :key="tab.id"
         type="button"
-        class="inline-flex min-w-[220px] items-center justify-center rounded-xl px-6 py-3.5 text-base font-bold shadow-sm transition-all"
+        class="inline-flex min-w-[160px] items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition-all"
         :class="pageTabClass(tab.id)"
         @click="setActiveTab(tab.id)"
       >
-        <i :class="[tab.icon, 'mr-2 text-lg']"></i>{{ tab.label }}
+        <i :class="[tab.icon, 'mr-1.5 text-sm']"></i>
+        {{ tab.label }}
         <span
           v-if="tab.id === 'transaction_entry' && paymentStore.pendingBillCount"
           class="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold"
@@ -48,14 +46,18 @@
               ? 'bg-white/20 text-white'
               : 'bg-rose-100 text-rose-800'
           "
-        >
-          {{ paymentStore.pendingBillCount }}
-        </span>
+        >{{ paymentStore.pendingBillCount }}</span>
       </button>
     </div>
 
     <TransactionSubmittedSuccess
       v-if="submittedTransfer"
+      :title="successCopy.title"
+      :description="successCopy.description"
+      :create-another-label="successCopy.createAnotherLabel"
+      :view-label="successCopy.viewLabel"
+      :from-label="successCopy.fromLabel"
+      :to-label="successCopy.toLabel"
       :amount="submittedTransfer.amount"
       :date="submittedTransfer.date"
       :particular="submittedTransfer.particular"
@@ -107,7 +109,8 @@
               "
               @click="setReceiveType(type.id)"
             >
-              <i :class="[type.icon, 'mr-1.5']"></i>{{ type.label }}
+              <i :class="[type.icon, 'mr-1.5']"></i>
+              {{ type.label }}
               <span
                 v-if="type.id === 'bills_receivable' && saleEntryStore.receivableBillCount"
                 class="ml-1.5 rounded-full px-2 py-0.5 text-xs font-semibold"
@@ -116,9 +119,7 @@
                     ? 'bg-white/20 text-white'
                     : 'bg-emerald-100 text-emerald-800'
                 "
-              >
-                {{ saleEntryStore.receivableBillCount }}
-              </span>
+              >{{ saleEntryStore.receivableBillCount }}</span>
             </button>
           </div>
         </div>
@@ -131,14 +132,8 @@
           @saved="onOtherTransactionSaved"
         />
         <BillsReceivablePanel v-else-if="receiveType === 'bills_receivable'" />
-        <IncomeCollectionFormPanel
-          v-else-if="receiveType === 'income'"
-          @saved="onIncomeCollected"
-        />
-        <SaleEntryFormPanel
-          v-else
-          @saved="goToPaymentCollections"
-        />
+        <IncomeCollectionFormPanel v-else-if="receiveType === 'income'" @saved="onReceiveSaved" />
+        <SaleEntryFormPanel v-else @saved="onReceiveSaved" />
       </div>
     </div>
   </SectionHeader>
@@ -267,6 +262,47 @@ const activeTabMeta = computed(() => {
   return tabMeta[activeTab.value] ?? tabMeta.sale_entry
 })
 const pageSubtitle = computed(() => activeTabMeta.value.subtitle)
+
+const successCopy = computed(() => {
+  const kind = submittedTransfer.value?.kind
+  const isDue = String(submittedTransfer.value?.directionLabel || '').toLowerCase() === 'due'
+
+  if (kind === 'sale') {
+    return {
+      title: isDue ? 'Sale Due Recorded' : 'Payment Received',
+      description: isDue
+        ? 'The due sale was recorded. Settle it from Bills Receivable with cash or bank, or collect another sale.'
+        : 'The sale collection has been recorded. You can collect another sale or review it in Receipt List.',
+      createAnotherLabel: 'Collect Another Sale',
+      viewLabel: 'View Receipts',
+      fromLabel: 'Payer',
+      toLabel: 'Received In',
+    }
+  }
+
+  if (kind === 'income') {
+    return {
+      title: isDue ? 'Income Due Recorded' : 'Income Collected',
+      description: isDue
+        ? 'The due income was recorded. Settle it from Bills Receivable with cash or bank, or collect another income.'
+        : 'The income collection has been recorded. You can collect another income or review it in Income List.',
+      createAnotherLabel: 'Collect Another Income',
+      viewLabel: 'View Income List',
+      fromLabel: 'From',
+      toLabel: 'Received In',
+    }
+  }
+
+  return {
+    title: 'Transfer Successful',
+    description:
+      'The transaction has been recorded. You can create another transfer or review it in Transactions.',
+    createAnotherLabel: 'Create Another Transaction',
+    viewLabel: 'View Transactions',
+    fromLabel: 'From',
+    toLabel: 'To',
+  }
+})
 
 const summaryCards = computed(() => {
   if (activeTab.value === 'sale_entry' && receiveType.value === 'income') {
@@ -464,7 +500,16 @@ const setReceiveType = (typeId) => {
 }
 
 function goToTransactions() {
+  const kind = submittedTransfer.value?.kind
   submittedTransfer.value = null
+  if (kind === 'sale') {
+    router.push({ path: '/finance/payment-collection' })
+    return
+  }
+  if (kind === 'income') {
+    router.push({ path: '/finance/income-list' })
+    return
+  }
   router.push({ path: '/finance/transactions' })
 }
 
@@ -473,17 +518,17 @@ function onOtherTransactionSaved(payload) {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-function createAnotherTransfer() {
-  submittedTransfer.value = null
+function onReceiveSaved(payload) {
+  submittedTransfer.value = payload
+  if (payload?.kind === 'income') {
+    incomeCollectionStore.fetchCollections({ force: true, page: 1, perPage: 10 })
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-function goToPaymentCollections() {
-  router.push({ path: '/finance/payment-collection' })
-}
-
-function onIncomeCollected() {
-  incomeCollectionStore.fetchCollections({ force: true, page: 1, perPage: 10 })
+function createAnotherTransfer() {
+  submittedTransfer.value = null
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function formatSaleAmount(amount) {
@@ -494,7 +539,12 @@ const applyRouteTab = () => {
   const tab = route.query.tab
 
   // Bill Generation moved to its own Finance nav page
-  if (tab === 'bill_entry' || tab === 'pay_expense' || route.query.category_id || route.query.head_id) {
+  if (
+    tab === 'bill_entry' ||
+    tab === 'pay_expense' ||
+    route.query.category_id ||
+    route.query.head_id
+  ) {
     router.replace({
       path: '/finance/bills-and-purchases',
       query: {
