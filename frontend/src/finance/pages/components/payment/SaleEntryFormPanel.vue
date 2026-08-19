@@ -266,7 +266,7 @@
 
             <div class="flex flex-col gap-2.5 border-t border-slate-100 pt-4 sm:flex-row sm:flex-wrap">
               <BaseButton
-                class="flex-1 rounded-lg bg-emerald-600 px-4 py-2.5 text-white shadow-sm hover:bg-emerald-700"
+                :className="'flex-1 cursor-pointer rounded-lg bg-emerald-600 px-4 py-2.5 text-white shadow-sm hover:bg-emerald-700'"
                 :disabled="submitLoading"
                 @click="saveEntry"
                 v-can="'receive_payment.create'"

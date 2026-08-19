@@ -1,6 +1,6 @@
 <template>
-  <SectionHeader>
-    <PageHeader :className="'mb-3'">
+  <section :class="embedded ? '' : 'min-h-screen bg-gray-50'">
+    <PageHeader v-if="!embedded" :className="'mb-3'">
       <div>
         <button
           type="button"
@@ -47,18 +47,18 @@
         <!-- Left: read-only bill summary -->
         <aside class="space-y-3 xl:col-span-5">
           <section
-            class="overflow-hidden rounded-xl border border-emerald-100 bg-white shadow-sm"
+            class="overflow-hidden rounded-xl border border-rose-100 bg-white shadow-sm"
           >
             <div
-              class="bg-gradient-to-br from-[#0d5c4d] via-[#0f766e] to-[#134e4a] px-4 py-4 text-white"
+              class="bg-gradient-to-br from-rose-700 via-rose-600 to-rose-800 px-4 py-4 text-white"
             >
-              <p class="text-[11px] font-semibold uppercase tracking-wide text-emerald-100/80">
+              <p class="text-[11px] font-semibold uppercase tracking-wide text-rose-100/80">
                 {{ isBatchPayMode ? 'Batch Total' : 'Bill Amount' }}
               </p>
               <p class="mt-0.5 text-2xl font-bold tabular-nums tracking-tight">
                 {{ formatCurrency(displayAmount) }}
               </p>
-              <p v-if="isBatchPayMode" class="mt-1 text-xs font-medium text-emerald-100/85">
+              <p v-if="isBatchPayMode" class="mt-1 text-xs font-medium text-rose-100/85">
                 {{ batchEntries.length }} bills · {{ batchLabel }}
               </p>
               <div class="mt-2 flex flex-wrap gap-1.5">
@@ -244,7 +244,7 @@
 
           <section
             v-if="hasCandidateDetails"
-            class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm"
+            class="rounded-xl border border-rose-100 bg-rose-50/50 p-4 shadow-sm"
           >
             <h3 class="text-sm font-semibold text-slate-900">Candidate / Job</h3>
             <dl class="mt-2 space-y-1.5 text-sm">
@@ -278,7 +278,7 @@
 
           <section
             v-if="showDigitalManagerApproval"
-            class="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 shadow-sm"
+            class="rounded-xl border border-rose-100 bg-rose-50/60 p-4 shadow-sm"
           >
             <h3 class="text-sm font-semibold text-slate-900">Approved By</h3>
             <dl class="mt-2 space-y-1.5 text-sm">
@@ -317,7 +317,7 @@
                   <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     Already Paid
                   </p>
-                  <p class="mt-0.5 text-sm font-bold tabular-nums text-emerald-700">
+                  <p class="mt-0.5 text-sm font-bold tabular-nums text-rose-700">
                     {{ formatCurrency(payablePaidAmount) }}
                   </p>
                 </div>
@@ -384,7 +384,7 @@
                     :class="
                       payableDueAfterPayment > 0
                         ? 'border-amber-200 bg-amber-50 text-amber-800'
-                        : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                        : 'border-rose-200 bg-rose-50 text-rose-800'
                     "
                   >
                     {{ formatCurrency(payableDueAfterPayment) }}
@@ -403,10 +403,10 @@
               v-else
               class="mb-3 space-y-3"
             >
-              <div class="rounded-xl border-2 border-emerald-200 bg-emerald-50/70 p-3">
+              <div class="rounded-xl border-2 border-rose-200 bg-rose-50/70 p-3">
                 <BaseLabel
                   for="pay_amount"
-                  :className="'mb-1 block text-xs font-bold uppercase tracking-wide text-emerald-800'"
+                  :className="'mb-1 block text-xs font-bold uppercase tracking-wide text-rose-800'"
                 >
                   {{ isBatchPayMode ? 'Batch Total (৳)' : 'Bill Amount (৳)' }}
                 </BaseLabel>
@@ -418,9 +418,9 @@
                   step="0.01"
                   :required="true"
                   :disabled="isReadonly || isBatchPayMode"
-                  :className="'w-full rounded-lg border-2 border-emerald-300 bg-white px-3 py-2.5 text-2xl font-bold tabular-nums text-emerald-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30'"
+                  :className="'w-full rounded-lg border-2 border-rose-300 bg-white px-3 py-2.5 text-2xl font-bold tabular-nums text-rose-900 shadow-sm focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/30'"
                 />
-                <p v-if="isBatchPayMode" class="mt-1 text-xs text-emerald-800/80">
+                <p v-if="isBatchPayMode" class="mt-1 text-xs text-rose-800/80">
                   Each bill in the batch is paid at its own amount. Payment method and account apply to all.
                 </p>
               </div>
@@ -469,7 +469,7 @@
                       :class="
                         billsToPayDueRemaining > 0
                           ? 'border-amber-200 bg-amber-50 text-amber-800'
-                          : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                          : 'border-rose-200 bg-rose-50 text-rose-800'
                       "
                     >
                       {{ formatCurrency(billsToPayDueRemaining) }}
@@ -707,7 +707,7 @@
                 <BaseButton
                 v-can="'receive_payment.create'"
                   type="submit"
-                  class="cursor-pointer rounded-lg bg-emerald-600 px-4 py-2 text-white shadow-sm hover:bg-emerald-700"
+                  class="cursor-pointer rounded-lg bg-rose-600 px-4 py-2 text-white shadow-sm hover:bg-rose-700"
                   :disabled="loading || payAmountExceedsRemaining || payNowExceedsBillAmount || (showPaymentAccountFields && insufficientPaymentBalance)"
                 >
                   {{
@@ -738,7 +738,7 @@
                 v-can="'receive_payment.create'"
                   v-if="!isPayableSettlementMode && !isBatchPayMode"
                   type="button"
-                  :className="'cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-white shadow-sm hover:bg-red-700'"
+                  :className="'cursor-pointer rounded-lg border-2 border-red-600 bg-white px-4 py-2 font-semibold text-red-600 shadow-sm hover:bg-red-50'"
                   :disabled="loading"
                   @click="handleReject"
                 >
@@ -746,6 +746,7 @@
                 </BaseButton>
               </template>
               <BaseButton
+                v-if="!embedded"
                 v-can="'receive_payment.create'"
                 type="button"
                 :className="'cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50'"
@@ -758,13 +759,12 @@
         </section>
       </div>
     </BaseForm>
-  </SectionHeader>
+  </section>
 </template>
 
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
 import BaseForm from '@/shared/components/base/BaseForm.vue'
 import { useExpensePaymentStore } from '@/finance/store/expensePaymentStore'
@@ -795,6 +795,14 @@ import { formatCurrency, getBillBatchKey, getBillBatchLabel } from '@/finance/ut
 import { isPayableBill, getPayableRemainingAmount } from '@/finance/utils/payableBillUtils'
 import { fetchApprovalManagers } from '@/modules/employee/services/employeeService'
 import Swal from 'sweetalert2'
+
+const props = defineProps({
+  embedded: { type: Boolean, default: false },
+  billId: { type: [String, Number], default: '' },
+  payableMode: { type: Boolean, default: false },
+})
+
+const emit = defineEmits(['done'])
 
 const route = useRoute()
 const router = useRouter()
@@ -934,7 +942,14 @@ const showBillsToPayPaymentMethod = computed(
   () => !isBatchPayMode.value && !isPayableSettlementMode.value
 )
 
-const isPayableSettlementMode = computed(() => route.name === 'Bill Payable Payment')
+const resolvedBillId = computed(() => {
+  if (props.embedded) return Number(props.billId) || 0
+  return Number(route.params.id) || 0
+})
+
+const isPayableSettlementMode = computed(() =>
+  props.embedded ? Boolean(props.payableMode) : route.name === 'Bill Payable Payment'
+)
 
 const isBatchPayMode = computed(
   () => !isPayableSettlementMode.value && batchEntries.value.length > 1
@@ -1276,7 +1291,7 @@ function populateForm(bill) {
     amount: bill.amount ?? '',
     pay_amount: '',
     pay_now_amount:
-      route.name === 'Bill Payable Payment'
+      isPayableSettlementMode.value
         ? ''
         : isDuePaymentMethod(submittedMethod)
           ? 0
@@ -1358,7 +1373,7 @@ function populateForm(bill) {
   clearMismatchedPaymentAccountForMethod()
 
   if (
-    route.name !== 'Bill Payable Payment' &&
+    !isPayableSettlementMode.value &&
     bill.status === 'pending' &&
     Boolean(bill.is_depreciation_expense) &&
     bill.entry_type !== 'asset_purchase'
@@ -1372,7 +1387,7 @@ function populateForm(bill) {
     form.payment_account_name = ''
   }
 
-  if (route.name === 'Bill Payable Payment' && bill.payment_method === 'due') {
+  if (isPayableSettlementMode.value && bill.payment_method === 'due') {
     form.payment_method = 'cash'
     form.payment_account_category = form.payment_account_category || 'main'
     form.main_account_type = ''
@@ -1383,6 +1398,11 @@ function populateForm(bill) {
 }
 
 function goBack() {
+  if (props.embedded) {
+    emit('done')
+    return
+  }
+
   if (isPayableSettlementMode.value) {
     router.push({
       path: '/finance/payment-received',
@@ -1500,6 +1520,11 @@ async function handleReject() {
     text: 'Bill entry has been rejected.',
     confirmButtonColor: '#22C55E',
   })
+
+  if (props.embedded) {
+    emit('done')
+    return
+  }
 
   router.push({ path: '/finance/rejected-bills' })
 }
@@ -1785,7 +1810,14 @@ async function loadPage() {
     loadApprovalManagers(),
   ])
 
-  const billId = Number(route.params.id)
+  const billId = resolvedBillId.value
+  if (!billId) {
+    entry.value = null
+    batchEntries.value = []
+    pageLoading.value = false
+    return
+  }
+
   let bill = null
   try {
     bill = await paymentStore.fetchBillEntryById(billId)
@@ -1793,7 +1825,7 @@ async function loadPage() {
     bill = null
   }
 
-  if (route.name === 'Bill Payable Payment' && bill && !isPayableBill(bill)) {
+  if (isPayableSettlementMode.value && bill && !isPayableBill(bill)) {
     entry.value = null
     batchEntries.value = []
     pageLoading.value = false
@@ -1806,7 +1838,7 @@ async function loadPage() {
     .filter(Boolean)
 
   let siblings = []
-  if (route.name === 'Bill Payment Review' && bill && queryIds.length > 1) {
+  if (!props.embedded && !isPayableSettlementMode.value && bill && queryIds.length > 1) {
     const siblingRows = await Promise.all(
       queryIds.map(async (id) => {
         try {
@@ -1852,8 +1884,9 @@ async function loadPage() {
 }
 
 watch(
-  () => [route.params.id, route.query.ids],
+  () => [resolvedBillId.value, String(route.query.ids || ''), isPayableSettlementMode.value],
   () => {
+    if (props.embedded) return
     loadPage()
   }
 )
@@ -1863,6 +1896,8 @@ onMounted(() => {
 })
 
 function scrollPageToTop() {
+  if (props.embedded) return
+
   const scrollParent =
     document.querySelector('main.overflow-y-auto') ||
     document.scrollingElement ||

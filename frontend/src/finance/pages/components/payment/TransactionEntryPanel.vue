@@ -1,66 +1,106 @@
 <template>
   <div class="space-y-5">
-    <div v-if="!transactionOnly" class="flex flex-wrap gap-2">
-      <button
-        v-for="type in paymentModes"
-        :key="type.id"
-        type="button"
-        class="rounded-lg border px-3 py-2 text-sm font-semibold transition-all"
+    <div v-if="!transactionOnly" class="space-y-4">
+      <div class="rounded-lg border border-rose-200 bg-white p-4 shadow-sm">
+        <div class="mb-4">
+          <h3 class="text-base font-semibold text-rose-950">{{ makePaymentTitle }}</h3>
+          <p class="mt-1 text-sm text-rose-800/70">{{ makePaymentDescription }}</p>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="type in paymentModes"
+            :key="type.id"
+            type="button"
+            class="rounded-md border px-3 py-1.5 text-xs font-semibold transition-all"
+            :class="
+              activePaymentMode === type.id
+                ? 'border-rose-300 bg-rose-50 text-rose-800 ring-1 ring-rose-300'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-rose-200 hover:bg-rose-50/70'
+            "
+            @click="setPaymentMode(type.id)"
+          >
+            <i :class="[type.icon, 'mr-1.5']"></i>{{ type.label }}
+            <span
+              v-if="type.id === BILLS_TO_PAY_MODE && pendingBillCount"
+              class="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700"
+            >
+              {{ pendingBillCount }}
+            </span>
+            <span
+              v-if="type.id === BILLS_PAYABLE_MODE && payableBillCount"
+              class="ml-1.5 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700"
+            >
+              {{ payableBillCount }}
+            </span>
+          </button>
+        </div>
+
+        <div v-if="isBillsToPayMode || isBillsPayableMode" class="mt-4">
+          <div class="flex w-full flex-col">
+            <label class="mb-1 text-sm text-gray-700">Bill</label>
+            <BaseSearchSelect
+              v-model="selectedBillId"
+              :options="billOptions"
+              placeholder="Search and select a bill to pay"
+              :disabled="!billOptions.length"
+              :filter-fn="filterBillOption"
+              list-class-name="max-h-72"
+            />
+          </div>
+        </div>
+      </div>
+
+      <template v-if="isBillsToPayMode || isBillsPayableMode">
+        <div
+          v-if="pickerLoading && !selectedBillId"
+          class="rounded-xl border border-rose-200 bg-white p-10 text-center text-sm text-rose-700/80"
+        >
+          Loading bills...
+        </div>
+
+        <div
+          v-else-if="!pickerLoading && !billOptions.length"
+          class="rounded-xl border border-rose-200 bg-white p-8 text-center text-sm text-rose-800/80"
+        >
+          <p class="font-medium text-rose-950">{{ emptyTitle }}</p>
+          <p class="mt-1 text-xs text-rose-700/70">{{ emptyHint }}</p>
+        </div>
+
+        <div
+          v-else-if="!selectedBillId"
+          class="rounded-xl border border-rose-200 bg-white p-8 text-center text-sm text-rose-800/80"
+        >
+          <p class="font-medium text-rose-950">Select a bill to pay</p>
+          <p class="mt-1 text-xs text-rose-700/70">
+            Use the bill dropdown above to search and choose a bill.
+          </p>
+        </div>
+
+        <BillApprovePage
+          v-else
+          :key="`${activePaymentMode}-${selectedBillId}`"
+          embedded
+          :bill-id="selectedBillId"
+          :payable-mode="isBillsPayableMode"
+          @done="onEmbeddedPaymentDone"
+        />
+      </template>
+    </div>
+
+    <div
+      v-if="transactionOnly || isTransactionMode"
+      class="overflow-hidden rounded-xl border bg-white shadow-sm"
+      :class="transactionOnly ? 'border-emerald-200' : 'border-rose-200'"
+    >
+      <div
+        class="border-b px-6 py-5"
         :class="
-          activePaymentMode === type.id
-            ? 'border-primary bg-primary-light! text-primary ring-1 ring-primary'
-            : 'border-gray-200 bg-white text-gray-700 hover:border-primary hover:bg-primary-light!'
+          transactionOnly
+            ? 'border-emerald-100 bg-gradient-to-r from-emerald-50 to-white'
+            : 'border-rose-100 bg-gradient-to-r from-rose-50 to-white'
         "
-        @click="setPaymentMode(type.id)"
       >
-        <i :class="[type.icon, 'mr-1.5']"></i>{{ type.label }}
-        <span
-          v-if="type.id === BILLS_TO_PAY_MODE && pendingBillCount"
-          class="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700"
-        >
-          {{ pendingBillCount }}
-        </span>
-        <span
-          v-if="type.id === BILLS_PAYABLE_MODE && payableBillCount"
-          class="ml-1.5 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700"
-        >
-          {{ payableBillCount }}
-        </span>
-      </button>
-    </div>
-
-    <div
-      v-if="!transactionOnly && isBillsToPayMode"
-      class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-    >
-      <div class="mb-4 border-b border-gray-100 pb-3">
-        <h3 class="text-base font-semibold text-gray-800">Bills To Pay</h3>
-        <p class="mt-1 text-sm text-gray-500">
-          Manager-approved bills awaiting accountant payment review
-        </p>
-      </div>
-      <BillEntriesPanel status-scope="pending" />
-    </div>
-
-    <div
-      v-else-if="!transactionOnly && isBillsPayableMode"
-      class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-    >
-      <div class="mb-4 border-b border-gray-100 pb-3">
-        <h3 class="text-base font-semibold text-gray-800">Bills Payable</h3>
-        <p class="mt-1 text-sm text-gray-500">
-          Approved due bills posted to expense accounts across direct, client recruitment, and
-          operating expense ledgers
-        </p>
-      </div>
-      <BillEntriesPanel status-scope="payable" />
-    </div>
-
-    <div
-      v-else
-      class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
-    >
-      <div class="border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white px-6 py-5">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 class="text-lg font-semibold tracking-tight text-gray-900">Other Transaction</h3>
@@ -134,7 +174,7 @@
             Select exactly one of Owner's Equity, Asset, or Liabilities account (required).
           </p>
 
-          <div v-if="!isAdjustmentType && hasExtraAccountSelected" class="space-y-2">
+          <div v-if="!isAdjustmentType" class="space-y-2">
             <BaseLabel>
               Cash Direction
               <span class="text-red-500">*</span>
@@ -144,13 +184,13 @@
                 v-for="option in directionOptions"
                 :key="option.id"
                 type="button"
-                class="rounded-lg border px-4 py-2 text-sm font-semibold transition-all"
+                disabled
+                class="cursor-not-allowed rounded-lg border px-4 py-2 text-sm font-semibold"
                 :class="
                   form.transaction_direction === option.id
                     ? option.activeClass
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                    : 'border-gray-200 bg-gray-50 text-gray-400'
                 "
-                @click="form.transaction_direction = option.id"
               >
                 <i :class="[option.icon, 'mr-1.5']"></i>{{ option.label }}
               </button>
@@ -430,7 +470,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseForm from '@/shared/components/base/BaseForm.vue'
 import BaseSearchSelect from '@/shared/components/base/BaseSearchSelect.vue'
-import BillEntriesPanel from './BillEntriesPanel.vue'
+import BillApprovePage from '@/finance/pages/BillApprovePage.vue'
 import { useFinanceAccountStore } from '@/finance/store/financeAccountStore'
 import { useAccountTransactionStore } from '@/finance/store/accountTransactionStore'
 import { useExpensePaymentStore } from '@/finance/store/expensePaymentStore'
@@ -444,6 +484,8 @@ import {
   mainAccountTypeOptions,
 } from '@/finance/data/accountTransactionData'
 import { getPartyConfig } from '@/finance/config/partyAccountConfigs'
+import { formatCurrency } from '@/finance/utils/billUtils'
+import { getPayableRemainingAmount } from '@/finance/utils/payableBillUtils'
 import Swal from 'sweetalert2'
 
 const BILLS_TO_PAY_MODE = 'bills_to_pay'
@@ -455,6 +497,11 @@ const emit = defineEmits(['saved'])
 const props = defineProps({
   initialMode: { type: String, default: '' },
   transactionOnly: { type: Boolean, default: false },
+  lockedDirection: {
+    type: String,
+    default: '',
+    validator: (value) => ['', 'payment', 'receive'].includes(value),
+  },
 })
 
 const route = useRoute()
@@ -475,6 +522,7 @@ const activePaymentMode = ref(
 const paymentModes = [
   { id: BILLS_TO_PAY_MODE, label: 'Bills To Pay', icon: 'fa fa-clock-o' },
   { id: BILLS_PAYABLE_MODE, label: 'Bills Payable', icon: 'fa fa-file-text-o' },
+  { id: TRANSACTION_MODE, label: 'Other Transaction', icon: 'fa fa-exchange' },
 ]
 const accountCategoryOptions = accountTransactionCategoryOptions
 
@@ -498,8 +546,160 @@ const isBillsToPayMode = computed(
 const isBillsPayableMode = computed(
   () => !props.transactionOnly && activePaymentMode.value === BILLS_PAYABLE_MODE
 )
+const isTransactionMode = computed(() => activePaymentMode.value === TRANSACTION_MODE)
+const makePaymentTitle = computed(() => {
+  if (isTransactionMode.value) return 'Make Payment — Other Transaction'
+  if (isBillsPayableMode.value) return 'Make Payment — Bills Payable'
+  return 'Make Payment — Bills To Pay'
+})
+const makePaymentDescription = computed(() => {
+  if (isTransactionMode.value) {
+    return 'Record payment transfers between accounts or adjust balances'
+  }
+  if (isBillsPayableMode.value) {
+    return 'Approved due bills posted to expense accounts across direct, client recruitment, and operating expense ledgers'
+  }
+  return 'Pending expense bills awaiting accountant review and approval'
+})
 const pendingBillCount = computed(() => paymentStore.pendingBillCount)
 const payableBillCount = computed(() => paymentStore.payableBillCount)
+const pickerLoading = ref(false)
+const selectedBillId = ref('')
+let pickerRequestId = 0
+
+const pickerBills = computed(() => paymentStore.payments)
+
+const billOptions = computed(() =>
+  pickerBills.value.map((entry) => ({
+    id: String(entry.id),
+    name: formatBillOptionLabel(entry),
+    searchText: [
+      entry.voucher_no,
+      entry.reference_no,
+      entry.request_no,
+      entry.head_name,
+      entry.category_name,
+      entry.candidate_name,
+      entry.passport_no,
+      entry.client_name,
+      entry.demand_letter,
+      entry.particular,
+      entry.job_name,
+    ]
+      .filter(Boolean)
+      .join(' '),
+  }))
+)
+
+const emptyTitle = computed(() =>
+  isBillsPayableMode.value ? 'No bills payable on expense accounts.' : 'No expense bills ready to pay.'
+)
+
+const emptyHint = computed(() =>
+  isBillsPayableMode.value
+    ? 'Approved due bills linked to expense accounts appear here after payment review.'
+    : 'Bills appear here after a manager approves them from Submitted Bills.'
+)
+
+function formatBillOptionLabel(entry) {
+  const billNo = entry.voucher_no || entry.reference_no || `Bill #${entry.id}`
+  const amount = formatCurrency(
+    isBillsPayableMode.value ? getPayableRemainingAmount(entry) : Number(entry.amount) || 0
+  )
+  const detail = entry.candidate_name || entry.head_name || entry.category_name || ''
+  return detail ? `${billNo} · ${detail} · ${amount}` : `${billNo} · ${amount}`
+}
+
+function filterBillOption(option, query) {
+  const haystack = [option?.name, option?.searchText, option?.id]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+  return haystack.includes(query)
+}
+
+function buildPickerFilters() {
+  const apiFilters = {}
+
+  if (isBillsPayableMode.value) {
+    apiFilters.scope = 'payable'
+  } else {
+    apiFilters.status = 'pending'
+  }
+
+  return apiFilters
+}
+
+function preferredBillId() {
+  if (selectedBillId.value && billOptions.value.some((option) => option.id === selectedBillId.value)) {
+    return selectedBillId.value
+  }
+  return ''
+}
+
+function syncBillQuery(billId) {
+  const nextId = billId ? String(billId) : ''
+  const currentId = route.query.bill_id ? String(route.query.bill_id) : ''
+  const query = { ...route.query, tab: 'transaction_entry' }
+  query.payment_mode = isBillsPayableMode.value ? BILLS_PAYABLE_MODE : BILLS_TO_PAY_MODE
+
+  if (nextId) {
+    query.bill_id = nextId
+  } else {
+    delete query.bill_id
+  }
+
+  if (
+    currentId === nextId &&
+    query.payment_mode === (route.query.payment_mode || BILLS_TO_PAY_MODE)
+  ) {
+    return
+  }
+
+  router.replace({ query })
+}
+
+function applySelectedBill(billId) {
+  const nextId = billId ? String(billId) : ''
+  if (selectedBillId.value !== nextId) {
+    selectedBillId.value = nextId
+  }
+  syncBillQuery(nextId)
+}
+
+async function loadPickerBills() {
+  if (props.transactionOnly) return
+
+  const requestId = ++pickerRequestId
+  pickerLoading.value = true
+  try {
+    while (paymentStore.isLoading) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+    if (requestId !== pickerRequestId) return
+
+    await Promise.all([
+      paymentStore.fetchBillEntries({
+        force: true,
+        page: 1,
+        perPage: 100,
+        filters: buildPickerFilters(),
+      }),
+      paymentStore.fetchBillSummary(),
+    ])
+    if (requestId !== pickerRequestId) return
+    applySelectedBill(preferredBillId())
+  } finally {
+    if (requestId === pickerRequestId) {
+      pickerLoading.value = false
+    }
+  }
+}
+
+async function onEmbeddedPaymentDone() {
+  selectedBillId.value = ''
+  await loadPickerBills()
+}
 
 const createDefaultForm = () => ({
   transaction_type: 'loan',
@@ -508,7 +708,10 @@ const createDefaultForm = () => ({
   particular: '',
   reference_no: '',
   remarks: '',
-  transaction_direction: '',
+  transaction_direction:
+    props.lockedDirection === 'receive' || props.lockedDirection === 'payment'
+      ? props.lockedDirection
+      : '',
   owners_equity_account_id: '',
   asset_account_id: '',
   liabilities_account_id: '',
@@ -536,6 +739,19 @@ const hasExtraAccountSelected = computed(
   () => isOwnersEquitySelected.value || isAssetSelected.value || isLiabilitiesSelected.value
 )
 
+function applyLockedDirection() {
+  if (props.lockedDirection === 'payment' || props.lockedDirection === 'receive') {
+    form.transaction_direction = props.lockedDirection
+  }
+}
+
+watch(
+  () => props.lockedDirection,
+  () => {
+    applyLockedDirection()
+  }
+)
+
 const directionOptions = [
   {
     id: 'payment',
@@ -553,12 +769,12 @@ const directionOptions = [
 
 const directionHint = computed(() => {
   if (form.transaction_direction === 'payment') {
-    return 'Payment: cash goes out — party/staff posts DR, Owner Drawings / similar accounts post DR.'
+    return 'Payment: cash goes out — party/staff posts DR, Owner Drawings / similar accounts post DR. This is locked for Make Payment.'
   }
   if (form.transaction_direction === 'receive') {
-    return 'Receive: cash comes in — party/staff posts CR, Owner Capital / similar accounts post CR.'
+    return 'Receive: cash comes in — party/staff posts CR, Owner Capital / similar accounts post CR. This is locked for Receive Payment.'
   }
-  return 'Select Payment or Receive. Cash Direction is required before submitting this transfer.'
+  return 'Cash direction is set automatically and cannot be changed.'
 })
 
 const ownersEquityAccountOptions = computed(() => getAccountOptions('owners_equity'))
@@ -789,16 +1005,41 @@ function filterAccountOption(option, query) {
 }
 
 function setPaymentMode(modeId) {
+  const modeChanged = activePaymentMode.value !== modeId
   activePaymentMode.value = modeId
 
   const query = { ...route.query, tab: 'transaction_entry' }
   if (modeId === BILLS_PAYABLE_MODE) {
     query.payment_mode = 'bills_payable'
+  } else if (modeId === TRANSACTION_MODE) {
+    query.payment_mode = 'transaction'
   } else {
     query.payment_mode = 'bills_to_pay'
   }
+  if (modeChanged) {
+    selectedBillId.value = ''
+    delete query.bill_id
+  }
   router.replace({ query })
 }
+
+watch(
+  () => activePaymentMode.value,
+  async (mode) => {
+    if (props.transactionOnly) return
+    if (mode === TRANSACTION_MODE) {
+      applyLockedDirection()
+      await financeAccountStore.fetchAllCategories()
+      return
+    }
+    loadPickerBills()
+  }
+)
+
+watch(selectedBillId, (billId) => {
+  if (props.transactionOnly || isTransactionMode.value) return
+  syncBillQuery(billId)
+})
 
 watch(
   () => [props.initialMode, props.transactionOnly],
@@ -811,6 +1052,11 @@ watch(
 
     if (mode === BILLS_PAYABLE_MODE) {
       activePaymentMode.value = BILLS_PAYABLE_MODE
+      return
+    }
+
+    if (mode === TRANSACTION_MODE) {
+      activePaymentMode.value = TRANSACTION_MODE
       return
     }
 
@@ -1001,6 +1247,8 @@ async function handleSubmit() {
 }
 
 onMounted(async () => {
+  applyLockedDirection()
+
   if (props.transactionOnly) {
     activePaymentMode.value = TRANSACTION_MODE
     setTransactionType(form.transaction_type || accountTransactionTypes[0]?.id || 'loan')
@@ -1008,10 +1256,15 @@ onMounted(async () => {
     return
   }
 
-  if (!route.query.payment_mode || route.query.payment_mode === 'transaction') {
+  if (!route.query.payment_mode) {
     setPaymentMode(BILLS_TO_PAY_MODE)
   }
 
-  // Bills modes: parent loads bill summary; BillEntriesPanel loads list data.
+  if (isTransactionMode.value) {
+    await financeAccountStore.fetchAllCategories()
+    return
+  }
+
+  await loadPickerBills()
 })
 </script>
