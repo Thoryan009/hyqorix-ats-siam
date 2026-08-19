@@ -2,7 +2,7 @@
   <SectionHeader>
     <PageHeader>
       <div>
-        <PageTitle>Payment / Received</PageTitle>
+        <PageTitle>Payment / Received 2</PageTitle>
         <p class="mt-1 text-sm text-gray-500">{{ pageSubtitle }}</p>
       </div>
     </PageHeader>
