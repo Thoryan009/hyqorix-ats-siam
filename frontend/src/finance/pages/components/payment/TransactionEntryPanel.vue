@@ -899,9 +899,13 @@ function mapAccountOption(account) {
   const category = account.category
 
   if (category === ACCOUNT_CATEGORIES.MAIN) {
+    const isCash = String(account.account_type || '').toLowerCase() === 'cash'
+    const name = isCash
+      ? `${account.account_type} — ${account.account_name} — ৳${balance}`
+      : `${account.account_type} — ${account.account_name} (${account.account_label}) — ৳${balance}`
     return {
       id: account.id,
-      name: `${account.account_type} — ${account.account_name} (${account.account_label}) — ৳${balance}`,
+      name,
     }
   }
 

@@ -424,7 +424,7 @@
         <BaseButton
           type="submit"
           v-can="'bill_generation.create'"
-          class="cursor-pointer rounded-lg bg-emerald-600 px-4 py-2 text-white shadow-sm hover:bg-emerald-700"
+          :className="'cursor-pointer rounded-lg bg-emerald-600 px-4 py-2 text-white shadow-sm hover:bg-emerald-700'"
           :disabled="submitLoading"
         >
           <i class="fa fa-check mr-1.5"></i>

@@ -710,29 +710,7 @@
                   class="cursor-pointer rounded-lg bg-rose-600 px-4 py-2 text-white shadow-sm hover:bg-rose-700"
                   :disabled="loading || payAmountExceedsRemaining || payNowExceedsBillAmount || (showPaymentAccountFields && insufficientPaymentBalance)"
                 >
-                  {{
-                    loading
-                      ? isPayableSettlementMode
-                        ? 'Paying...'
-                        : isBatchPayMode
-                          ? 'Paying Batch...'
-                          : 'Approving...'
-                      : isPayableSettlementMode
-                        ? isIncomeLinkMethod
-                          ? isPayablePartialPayment
-                            ? 'Settle Partial via Income Link'
-                            : 'Settle via Income Link'
-                          : isPayablePartialPayment
-                            ? 'Pay Partial'
-                            : 'Confirm Full Payment'
-                        : isBatchPayMode
-                          ? `Pay Batch (${batchEntries.length})`
-                          : billsToPayDueRemaining > 0 && billsToPayNowAmount > 0
-                            ? 'Pay Partial & Move Due'
-                            : billsToPayNowAmount <= 0
-                              ? 'Approve as Due'
-                              : 'Pay Bill'
-                  }}
+                  {{ submitButtonLabel }}
                 </BaseButton>
                 <BaseButton
                 v-can="'receive_payment.create'"
@@ -941,6 +919,42 @@ const payNowExceedsBillAmount = computed(() => {
 const showBillsToPayPaymentMethod = computed(
   () => !isBatchPayMode.value && !isPayableSettlementMode.value
 )
+
+const submitButtonLabel = computed(() => {
+  if (loading.value) {
+    if (isPayableSettlementMode.value) return 'Paying...'
+    if (isBatchPayMode.value) return 'Paying Batch...'
+    if (isDepreciationMethod.value) return 'Paying...'
+    return 'Approving...'
+  }
+
+  if (isPayableSettlementMode.value) {
+    if (isIncomeLinkMethod.value) {
+      return isPayablePartialPayment.value
+        ? 'Settle Partial via Income Link'
+        : 'Settle via Income Link'
+    }
+    return isPayablePartialPayment.value ? 'Pay Partial' : 'Confirm Full Payment'
+  }
+
+  if (isBatchPayMode.value) {
+    return `Pay Batch (${batchEntries.value.length})`
+  }
+
+  if (isDepreciationMethod.value) {
+    return 'Pay Depreciation'
+  }
+
+  if (billsToPayDueRemaining.value > 0 && billsToPayNowAmount.value > 0) {
+    return 'Pay Partial & Move Due'
+  }
+
+  if (billsToPayNowAmount.value <= 0) {
+    return 'Approve as Due'
+  }
+
+  return 'Pay Bill'
+})
 
 const resolvedBillId = computed(() => {
   if (props.embedded) return Number(props.billId) || 0
