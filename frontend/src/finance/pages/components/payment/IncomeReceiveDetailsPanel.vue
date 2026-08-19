@@ -16,6 +16,30 @@
     </div>
 
     <div class="space-y-4 p-4">
+      <div
+        v-if="showBilledAmount"
+        class="rounded-xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white px-4 py-3.5 shadow-sm"
+      >
+        <BaseLabel
+          class-name="!mb-1.5 !text-xs !font-medium !uppercase !tracking-wide !text-violet-700/80"
+        >
+          {{ billedAmountLabel }}
+        </BaseLabel>
+        <BaseInput
+          :model-value="billedAmount"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="Billed income amount"
+          :required="true"
+          :class-name="'w-full rounded-lg border-2 border-violet-300 bg-white px-3 py-2.5 text-xl font-bold tabular-nums text-violet-900 shadow-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30'"
+          @update:model-value="$emit('update:billedAmount', $event)"
+        />
+        <p class="mt-1.5 text-xs text-violet-700/70">
+          If receive is less than this amount, the remainder moves to Bills Receivable.
+        </p>
+      </div>
+
       <div class="rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white px-4 py-3.5 shadow-sm">
         <BaseLabel
           class-name="!mb-1.5 !text-xs !font-medium !uppercase !tracking-wide !text-emerald-700/80"
@@ -171,6 +195,9 @@ defineProps({
   amountValue: { type: Number, default: 0 },
   amountEditable: { type: Boolean, default: false },
   amountModel: { type: [String, Number], default: '' },
+  showBilledAmount: { type: Boolean, default: false },
+  billedAmount: { type: [String, Number], default: '' },
+  billedAmountLabel: { type: String, default: 'Billed Income Amount (BDT)' },
   paymentMethod: { type: String, default: 'cash' },
   receiveMethodOptions: { type: Array, default: () => [] },
   requiresMainAccount: { type: Boolean, default: true },
@@ -187,6 +214,7 @@ defineProps({
 
 const emit = defineEmits([
   'update:amount',
+  'update:billedAmount',
   'update:paymentMethod',
   'update:receiveAccountId',
   'update:particular',

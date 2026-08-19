@@ -225,23 +225,6 @@
                         {{ formatCurrency(selectedHead.base_price) }}
                       </dd>
                     </div>
-                    <div class="space-y-2 py-3">
-                      <dt class="text-slate-500">Income Amount (BDT)</dt>
-                      <dd>
-                        <BaseInput
-                          id="operating_billed_amount"
-                          v-model="form.billed_amount"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="Billed income amount"
-                          :required="true"
-                        />
-                        <p class="mt-1 text-xs text-slate-500">
-                          If receive is less than this amount, the remainder moves to Bills Receivable.
-                        </p>
-                      </dd>
-                    </div>
                     <div v-if="selectedLinkedAccount" class="flex justify-between gap-3 py-3">
                       <dt class="text-slate-500">Linked Account</dt>
                       <dd class="max-w-[60%] text-right font-medium text-slate-900">
@@ -272,6 +255,9 @@
             :amount-value="Number(form.amount) || 0"
             :amount-editable="true"
             :amount-model="form.amount"
+            :show-billed-amount="true"
+            :billed-amount="form.billed_amount"
+            :billed-amount-label="'Billed Income Amount (BDT)'"
             :payment-method="form.payment_method"
             :receive-method-options="receiveMethodOptions"
             :requires-main-account="requiresMainAccount"
@@ -285,6 +271,7 @@
             :submit-loading="submitLoading"
             :submit-label="collectSubmitLabel"
             @update:amount="form.amount = $event"
+            @update:billed-amount="onOperatingBilledAmountChange"
             @update:payment-method="form.payment_method = $event"
             @update:receive-account-id="form.receive_account_id = $event"
             @update:particular="onParticularInput"
@@ -923,6 +910,11 @@ function resetForm() {
   particularInputKey.value += 1
   ensureDefaultReceiveAccount()
   ensureDefaultIncomeCategory()
+}
+
+function onOperatingBilledAmountChange(value) {
+  form.billed_amount = value
+  form.amount = value
 }
 
 watch(
