@@ -1971,16 +1971,10 @@ class FinanceIncomeCollectionService extends BaseCachedService
                 $remaining = round($remaining + $candidateRemaining, 2);
             }
         } else {
+            // Each new operating-income partial bill creates its own remainder due.
+            // Prior dues for the same head must not suppress a new shortfall — callers
+            // already skip this method when the cash row is settling a prior due.
             $remaining = round(max($billedAmount - $receivedAmount, 0), 2);
-            if (
-                $remaining > 0.005
-                && $this->hasPriorDueIncomeForHead(
-                    (int) $head->id,
-                    $this->normalizeLinkedAccountIdForDueMatching($linkedAccount?->id, (int) $head->id)
-                )
-            ) {
-                $remaining = 0.0;
-            }
         }
 
         if ($remaining <= 0.005) {
