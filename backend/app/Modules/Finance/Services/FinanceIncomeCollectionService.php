@@ -376,13 +376,23 @@ class FinanceIncomeCollectionService extends BaseCachedService
                 }
 
                 $counterpartyAccount = $receiveAccount ?? $expenseAccount ?? $liabilityAccount;
-                // Candidate bills settle by application overlap; simple PL income by head + party.
+                $jobListId = !empty($data['job_list_id'] ?? $data['job_id'] ?? null)
+                    ? (int) ($data['job_list_id'] ?? $data['job_id'])
+                    : null;
+                $jobCode = trim((string) ($data['job_code'] ?? '')) ?: null;
+
+                // Candidate bills settle by application overlap; simple PL / operating income by head + party (+ job).
                 $settlingPriorDue = $postPaymentCredit && (
                     $settlesCollectionId > 0
                     || (
                         $hasClientCandidateBills
                             ? $this->hasPriorDueIncomeForCandidates($normalizedCandidates, (int) $head->id)
-                            : $this->hasPriorDueIncomeForHead((int) $head->id, $linkedAccount?->id)
+                            : $this->hasPriorDueIncomeForHead(
+                                (int) $head->id,
+                                $linkedAccount?->id,
+                                $jobListId,
+                                $jobCode
+                            )
                     )
                 );
 
@@ -390,12 +400,13 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     $settlesCollectionId = $this->resolvePriorDueCollectionId(
                         (int) $head->id,
                         $normalizedCandidates,
-                        $linkedAccount?->id
+                        $linkedAccount?->id,
+                        $jobListId,
+                        $jobCode
                     );
                 }
 
                 $billParticular = trim((string) $head->name).' Bill';
-                $jobCode = trim((string) ($data['job_code'] ?? '')) ?: null;
                 $clientDisplayName = trim((string) ($data['client_name'] ?? ''))
                     ?: ($linkedAccount ? $this->accountLabel($linkedAccount) : '');
 
@@ -1155,9 +1166,19 @@ class FinanceIncomeCollectionService extends BaseCachedService
         return $this->resolvePriorDueCollectionId($incomeHeadId, $candidates, null) > 0;
     }
 
-    private function hasPriorDueIncomeForHead(int $incomeHeadId, ?int $linkedAccountId): bool
-    {
-        return $this->resolvePriorDueCollectionId($incomeHeadId, null, $linkedAccountId) > 0;
+    private function hasPriorDueIncomeForHead(
+        int $incomeHeadId,
+        ?int $linkedAccountId,
+        ?int $jobListId = null,
+        ?string $jobCode = null
+    ): bool {
+        return $this->resolvePriorDueCollectionId(
+            $incomeHeadId,
+            null,
+            $linkedAccountId,
+            $jobListId,
+            $jobCode
+        ) > 0;
     }
 
     /**
@@ -1166,7 +1187,9 @@ class FinanceIncomeCollectionService extends BaseCachedService
     private function resolvePriorDueCollectionId(
         int $incomeHeadId,
         ?array $candidates,
-        ?int $linkedAccountId
+        ?int $linkedAccountId,
+        ?int $jobListId = null,
+        ?string $jobCode = null
     ): int {
         if ($incomeHeadId <= 0) {
             return 0;
@@ -1194,8 +1217,27 @@ class FinanceIncomeCollectionService extends BaseCachedService
         }
 
         $query->whereNull('candidates');
-        if ($linkedAccountId) {
+        // Operating income due matching must be strict:
+        // if the settlement has no linked account, only match due rows with NULL linked_account_id.
+        if ($linkedAccountId !== null) {
             $query->where('linked_account_id', $linkedAccountId);
+        } else {
+            $query->whereNull('linked_account_id');
+        }
+
+        // Operating income due matching must be job-aware.
+        // Otherwise a due row from a different job can incorrectly mark the new cash
+        // collection as "settling prior due" (posting CR-only and leaving receivable).
+        if ($jobListId !== null) {
+            $query->where('job_list_id', $jobListId);
+        } else {
+            $query->whereNull('job_list_id');
+        }
+
+        if ($jobCode !== null) {
+            $query->where('job_code', $jobCode);
+        } else {
+            $query->whereNull('job_code');
         }
 
         return (int) ($query->value('id') ?? 0);
