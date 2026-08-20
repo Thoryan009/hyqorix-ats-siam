@@ -746,6 +746,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     !$isDue
                     && !$settlingPriorDue
                     && in_array($paymentMethod, ['cash', 'bank', 'expense_link', 'adjustment'], true)
+                    && round($billedAmount - $amount, 2) > 0.005
                 ) {
                     $this->createDueRemainderIncomeCollection(
                         $collection,
@@ -1751,16 +1752,27 @@ class FinanceIncomeCollectionService extends BaseCachedService
         string $methodLabel,
         string $remarks
     ): void {
-        $this->postDebitReceivableLedger(
-            $incomeAccount,
-            $typeTransactionId,
-            $billedAmount,
-            $collectionDate,
-            $billParticular,
-            $voucherNo,
-            $counterpartyLabel,
-            $remarks ?: 'Income charge'
-        );
+        $billedAmount = round($billedAmount, 2);
+        $receivedAmount = round($receivedAmount, 2);
+        $isPartialReceive = $billedAmount > $receivedAmount + 0.005;
+
+        if ($isPartialReceive) {
+            $this->postDebitReceivableLedger(
+                $incomeAccount,
+                $typeTransactionId,
+                $billedAmount,
+                $collectionDate,
+                $billParticular,
+                $voucherNo,
+                $counterpartyLabel,
+                $remarks ?: 'Income charge'
+            );
+        }
+
+        if ($receivedAmount <= 0) {
+            return;
+        }
+
         $this->postCreditLedger(
             $incomeAccount,
             $typeTransactionId,
@@ -1802,6 +1814,13 @@ class FinanceIncomeCollectionService extends BaseCachedService
         ?array $candidates,
         ?FinanceAccount $linkedAccount
     ): void {
+        $billedAmount = round($billedAmount, 2);
+        $receivedAmount = round($receivedAmount, 2);
+
+        if ($billedAmount <= $receivedAmount + 0.005) {
+            return;
+        }
+
         $collectionDate = (string) ($cashCollection->collection_date ?? now()->toDateString());
         $voucherNo = trim((string) ($cashCollection->voucher_no ?? $cashCollection->reference_no ?? ''));
         $remainderVoucher = $voucherNo !== ''
