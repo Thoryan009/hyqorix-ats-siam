@@ -18,13 +18,14 @@
       <div>
         <BaseButton
           v-can="'principal.delete'"
+          
           v-if="selectedIds.length"
           class="bg-red-600 text-white hover:bg-red-700"
           @click="bulkDelete"
           :disabled="removeItemsLoading"
         >
           <span v-if="removeItemsLoading">{{t('shared.messages.deleting')}}</span>
-          <span v-else>{{ t('principal.delete_selected', { count: selectedIds.length }) }}</span>
+          <span v-else>{{ t('shared.messages.delete_selected', { count: selectedIds.length }) }}</span>
         </BaseButton>
       </div>
       <div></div>
@@ -155,26 +156,12 @@ const columnTemp = computed (() => {
     { key: 'country', label: t('shared.labels.country') },
     { key: 'contact_person_name', label: t('principal.contact_person_name') },
 
-    // { key: 'contact_person_no', label: 'Contact Person No' },
   ]
 })
 
 const { columns, onView, onEdit } = useCrudTable(
   store,
   columnTemp,
-  // [
-  //   { key: 'principal_id', label: 'Principal ID' },
-  //   { key: 'organization_name', label: 'Organization' },
-  //   { key: 'designation', label: 'Designation' },
-  //   { key: 'email', label: 'Email' },
-  //   { key: 'role', label: 'Role' },
-  //   { key: 'contact_no', label: 'Contact No' },
-  //   { key: 'whatsapp_no', label: 'Whatsapp No' },
-  //   { key: 'country', label: 'Country' },
-  //   { key: 'contact_person_name', label: 'Contact Person' },
-
-  //   // { key: 'contact_person_no', label: 'Contact Person No' },
-  // ],
   {
     timestamps: false,
     trackUser: false,

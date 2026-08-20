@@ -10,7 +10,7 @@ export default {
     agent_report: 'Agent Report',
     principal_report: 'Principal Report',
 
-    print_ats_report: 'Print ATS Report',
+    print_ats_report: 'Print Report',
     print_application_report: 'Print Application Report',
     export_csv: 'Export CSV',
 
