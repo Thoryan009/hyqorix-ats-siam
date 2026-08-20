@@ -381,18 +381,32 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     : null;
                 $jobCode = trim((string) ($data['job_code'] ?? '')) ?: null;
 
+                // Operating income with an explicit billed amount is a new bill + receive, not an
+                // implicit settlement of an older due (that path uses settles_income_collection_id).
+                $hasNewOperatingBill = !$hasCandidatePayload
+                    && $billedAmount > 0
+                    && in_array($paymentMethod, ['cash', 'bank', 'expense_link', 'adjustment'], true);
+
+                $dueMatchLinkedAccountId = $this->normalizeLinkedAccountIdForDueMatching(
+                    $linkedAccount?->id,
+                    (int) $head->id
+                );
+
                 // Candidate bills settle by application overlap; simple PL / operating income by head + party (+ job).
                 $settlingPriorDue = $postPaymentCredit && (
                     $settlesCollectionId > 0
                     || (
-                        $hasClientCandidateBills
-                            ? $this->hasPriorDueIncomeForCandidates($normalizedCandidates, (int) $head->id)
-                            : $this->hasPriorDueIncomeForHead(
-                                (int) $head->id,
-                                $linkedAccount?->id,
-                                $jobListId,
-                                $jobCode
-                            )
+                        !$hasNewOperatingBill
+                        && (
+                            $hasClientCandidateBills
+                                ? $this->hasPriorDueIncomeForCandidates($normalizedCandidates, (int) $head->id)
+                                : $this->hasPriorDueIncomeForHead(
+                                    (int) $head->id,
+                                    $dueMatchLinkedAccountId,
+                                    $jobListId,
+                                    $jobCode
+                                )
+                        )
                     )
                 );
 
@@ -400,7 +414,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     $settlesCollectionId = $this->resolvePriorDueCollectionId(
                         (int) $head->id,
                         $normalizedCandidates,
-                        $linkedAccount?->id,
+                        $dueMatchLinkedAccountId,
                         $jobListId,
                         $jobCode
                     );
@@ -1217,13 +1231,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
         }
 
         $query->whereNull('candidates');
-        // Operating income due matching must be strict:
-        // if the settlement has no linked account, only match due rows with NULL linked_account_id.
-        if ($linkedAccountId !== null) {
-            $query->where('linked_account_id', $linkedAccountId);
-        } else {
-            $query->whereNull('linked_account_id');
-        }
+        $this->applyOperatingDueLinkedAccountScope($query, $incomeHeadId, $linkedAccountId);
 
         // Operating income due matching must be job-aware.
         // Otherwise a due row from a different job can incorrectly mark the new cash
@@ -1288,17 +1296,70 @@ class FinanceIncomeCollectionService extends BaseCachedService
                 continue;
             }
 
-            $dueLinkedId = $due->linked_account_id ? (int) $due->linked_account_id : null;
-            if ($linkedAccountId) {
-                if ($dueLinkedId === $linkedAccountId) {
+            $dueLinkedId = $this->normalizeLinkedAccountIdForDueMatching(
+                $due->linked_account_id ? (int) $due->linked_account_id : null,
+                $headId
+            );
+            $rowLinkedId = $this->normalizeLinkedAccountIdForDueMatching($linkedAccountId, $headId);
+
+            if ($rowLinkedId !== null) {
+                if ($dueLinkedId === $rowLinkedId) {
                     return true;
                 }
-            } else {
+            } elseif ($dueLinkedId === null) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Income-head ledger accounts are not receivable parties; treat them as unlinked for due matching.
+     */
+    private function normalizeLinkedAccountIdForDueMatching(?int $linkedAccountId, int $incomeHeadId): ?int
+    {
+        if ($linkedAccountId === null || $linkedAccountId <= 0) {
+            return null;
+        }
+
+        $account = FinanceAccount::query()->find($linkedAccountId);
+        if (!$account) {
+            return null;
+        }
+
+        if (
+            $this->isIncomeCategoryAccount($account)
+            && (int) ($account->income_head_id ?? 0) === $incomeHeadId
+        ) {
+            return null;
+        }
+
+        return $linkedAccountId;
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<FinanceIncomeCollection>  $query
+     */
+    private function applyOperatingDueLinkedAccountScope($query, int $incomeHeadId, ?int $linkedAccountId): void
+    {
+        if ($linkedAccountId !== null) {
+            $query->where('linked_account_id', $linkedAccountId);
+
+            return;
+        }
+
+        $incomeHeadAccountIds = FinanceAccount::query()
+            ->where('income_head_id', $incomeHeadId)
+            ->whereIn('category', ['recruitment_income', 'client_income', 'other_income'])
+            ->pluck('id');
+
+        $query->where(function ($inner) use ($incomeHeadAccountIds) {
+            $inner->whereNull('linked_account_id');
+            if ($incomeHeadAccountIds->isNotEmpty()) {
+                $inner->orWhereIn('linked_account_id', $incomeHeadAccountIds);
+            }
+        });
     }
 
     /**
@@ -1911,7 +1972,13 @@ class FinanceIncomeCollectionService extends BaseCachedService
             }
         } else {
             $remaining = round(max($billedAmount - $receivedAmount, 0), 2);
-            if ($remaining > 0.005 && $this->hasPriorDueIncomeForHead((int) $head->id, $linkedAccount?->id)) {
+            if (
+                $remaining > 0.005
+                && $this->hasPriorDueIncomeForHead(
+                    (int) $head->id,
+                    $this->normalizeLinkedAccountIdForDueMatching($linkedAccount?->id, (int) $head->id)
+                )
+            ) {
                 $remaining = 0.0;
             }
         }

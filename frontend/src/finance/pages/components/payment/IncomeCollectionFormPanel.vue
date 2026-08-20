@@ -1018,15 +1018,6 @@ watch(
     const single = groups.find((group) => group.accounts.length === 1)
     if (groups.length === 1 && single) {
       selectLinkedAccount(single.category, single.accounts[0].id)
-      return
-    }
-
-    const incomeAccount = incomeAccountsStore.getAccountByHeadId(form.category_id, headId)
-    if (incomeAccount && !groups.length) {
-      const incomeType = incomeAccountsStore.getIncomeTypeByCategoryId(form.category_id)
-      if (incomeType) {
-        selectLinkedAccount(incomeType, incomeAccount.id)
-      }
     }
   }
 )
