@@ -32,13 +32,26 @@ class FinanceAccountLedgerRepository extends BaseRepository
 
     protected function applyOrder(Builder $query, array $filters): void
     {
-        // Opening rows always lead the statement, then chronological (oldest → newest).
+        // Opening rows lead, then chronological by date + transaction.
+        // Within a voucher/transaction, DR (bill) must appear before CR (receive)
+        // even if the credit row was inserted later.
         $query->orderByRaw("CASE
                 WHEN particular IN ('Opening Balance', 'Opening Receivable', 'Opening Payable') THEN 0
                 WHEN particular LIKE 'Opening Balance%' THEN 0
                 ELSE 1
             END")
             ->orderBy('entry_date', 'asc')
+            ->orderByRaw('COALESCE(finance_account_type_transaction_id, 0) ASC')
+            ->orderByRaw("CASE
+                WHEN COALESCE(dr_amount, 0) > 0 THEN 0
+                WHEN COALESCE(cr_amount, 0) > 0 THEN 1
+                ELSE 2
+            END")
+            ->orderByRaw("CASE
+                WHEN voucher_no IS NULL OR voucher_no = '' THEN 1
+                ELSE 0
+            END")
+            ->orderBy('voucher_no', 'asc')
             ->orderBy('id', 'asc');
     }
 

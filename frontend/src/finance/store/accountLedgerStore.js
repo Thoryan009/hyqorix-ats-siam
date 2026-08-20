@@ -68,6 +68,18 @@ function sortLedgerEntries(entries = []) {
     const dateB = String(b.date || b.entry_date || '').slice(0, 10)
     if (dateA !== dateB) return dateA.localeCompare(dateB)
 
+    const txnA = Number(a.finance_account_type_transaction_id || a.type_transaction_id || 0)
+    const txnB = Number(b.finance_account_type_transaction_id || b.type_transaction_id || 0)
+    if (txnA !== txnB) return txnA - txnB
+
+    const sideA = Number(a.dr_amount) > 0 ? 0 : Number(a.cr_amount) > 0 ? 1 : 2
+    const sideB = Number(b.dr_amount) > 0 ? 0 : Number(b.cr_amount) > 0 ? 1 : 2
+    if (sideA !== sideB) return sideA - sideB
+
+    const voucherA = String(a.voucher_no || '')
+    const voucherB = String(b.voucher_no || '')
+    if (voucherA !== voucherB) return voucherA.localeCompare(voucherB)
+
     return Number(a.id || 0) - Number(b.id || 0)
   })
 }
