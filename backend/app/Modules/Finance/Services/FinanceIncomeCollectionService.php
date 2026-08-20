@@ -1754,9 +1754,8 @@ class FinanceIncomeCollectionService extends BaseCachedService
     ): void {
         $billedAmount = round($billedAmount, 2);
         $receivedAmount = round($receivedAmount, 2);
-        $isPartialReceive = $billedAmount > $receivedAmount + 0.005;
 
-        if ($isPartialReceive) {
+        if ($billedAmount > 0) {
             $this->postDebitReceivableLedger(
                 $incomeAccount,
                 $typeTransactionId,
