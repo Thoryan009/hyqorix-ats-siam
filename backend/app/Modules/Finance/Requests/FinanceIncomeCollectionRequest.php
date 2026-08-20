@@ -40,14 +40,21 @@ class FinanceIncomeCollectionRequest extends FormRequest
     public function rules(): array
     {
         $paymentMethod = strtolower((string) $this->input('payment_method', 'cash'));
+        $candidates = $this->input('candidates');
+        $isOperatingDue = $paymentMethod === 'due'
+            && (!is_array($candidates) || $candidates === []);
 
         return [
             'category_id' => ['nullable', 'integer'],
             'income_category_id' => ['required', 'integer', 'exists:income_categories,id'],
             'head_id' => ['nullable', 'integer'],
             'income_head_id' => ['required', 'integer', 'exists:income_heads,id'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'billed_amount' => ['nullable', 'numeric', 'min:0'],
+            'amount' => $isOperatingDue
+                ? ['required', 'numeric', 'min:0']
+                : ['required', 'numeric', 'min:0.01'],
+            'billed_amount' => $isOperatingDue
+                ? ['required', 'numeric', 'min:0.01']
+                : ['nullable', 'numeric', 'min:0'],
             'collection_date' => ['required', 'date'],
             'payment_method' => ['required', 'string', Rule::in(['cash', 'bank', 'due', 'expense_link', 'adjustment'])],
             'particular' => ['nullable', 'string', 'max:255'],

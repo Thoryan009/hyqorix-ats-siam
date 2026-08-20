@@ -254,6 +254,7 @@
             :amount-label="'Receive Amount (BDT)'"
             :amount-value="Number(form.amount) || 0"
             :amount-editable="true"
+            :amount-disabled="isDueReceiveMethod"
             :amount-model="form.amount"
             :show-billed-amount="true"
             :billed-amount="form.billed_amount"
@@ -552,6 +553,14 @@ watch(
     ensureDefaultReceiveAccount()
     if (isDueReceiveMethod.value) {
       syncPayAmountsToDue()
+      if (!isClientIncomeCategory.value) {
+        form.amount = 0
+      }
+      return
+    }
+
+    if (!isClientIncomeCategory.value && form.billed_amount !== '' && form.billed_amount != null) {
+      form.amount = form.billed_amount
     }
   }
 )
@@ -914,7 +923,7 @@ function resetForm() {
 
 function onOperatingBilledAmountChange(value) {
   form.billed_amount = value
-  form.amount = value
+  form.amount = isDueReceiveMethod.value ? 0 : value
 }
 
 watch(
@@ -994,8 +1003,8 @@ watch(
     if (!head) return
 
     if (!isClientIncomeCategory.value) {
-      form.amount = head.base_price ? String(head.base_price) : ''
       form.billed_amount = head.base_price ? String(head.base_price) : ''
+      form.amount = isDueReceiveMethod.value ? 0 : form.billed_amount
     }
 
     syncParticular()
@@ -1047,7 +1056,12 @@ async function handleSubmit() {
     toast.error('Please select a main account to receive income.')
     return
   }
-  if (!Number(form.amount) || Number(form.amount) <= 0) {
+  if (!isClientIncomeCategory.value && isDueReceiveMethod.value) {
+    if (!Number(form.billed_amount) || Number(form.billed_amount) <= 0) {
+      toast.error('Please enter a valid billed income amount.')
+      return
+    }
+  } else if (!Number(form.amount) || Number(form.amount) <= 0) {
     toast.error('Please enter a valid amount.')
     return
   }
@@ -1092,7 +1106,8 @@ async function handleSubmit() {
     const result = await collectionStore.collectIncome({
       category_id: Number(form.category_id),
       head_id: Number(form.head_id),
-      amount: Number(form.amount),
+      amount:
+        !isClientIncomeCategory.value && isDueReceiveMethod.value ? 0 : Number(form.amount),
       billed_amount: isClientIncomeCategory.value
         ? undefined
         : Number(form.billed_amount || form.amount) || undefined,

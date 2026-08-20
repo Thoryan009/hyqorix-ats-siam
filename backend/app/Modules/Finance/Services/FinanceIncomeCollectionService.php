@@ -98,14 +98,28 @@ class FinanceIncomeCollectionService extends BaseCachedService
                 $categoryId = (int) ($data['category_id'] ?? $data['income_category_id'] ?? 0);
                 $headId = (int) ($data['head_id'] ?? $data['income_head_id'] ?? 0);
                 $amount = round((float) ($data['amount'] ?? 0), 2);
+                $billedAmount = round((float) ($data['billed_amount'] ?? 0), 2);
                 $collectionDate = (string) ($data['collection_date'] ?? now()->toDateString());
                 $paymentMethod = strtolower((string) ($data['payment_method'] ?? 'cash'));
                 $particular = trim((string) ($data['particular'] ?? ''));
                 $referenceNo = trim((string) ($data['reference_no'] ?? ''));
                 $remarks = trim((string) ($data['remarks'] ?? ''));
                 $receiveAccountId = (int) ($data['receive_account_id'] ?? $data['main_account_id'] ?? 0);
+                $hasCandidatePayload = is_array($data['candidates'] ?? null) && $data['candidates'] !== [];
+                $isDue = $paymentMethod === 'due';
+                $isOperatingDue = $isDue && !$hasCandidatePayload;
 
-                if ($amount <= 0) {
+                if ($isOperatingDue) {
+                    if ($billedAmount <= 0 && $amount > 0) {
+                        $billedAmount = $amount;
+                    }
+                    if ($billedAmount <= 0) {
+                        throw ValidationException::withMessages([
+                            'billed_amount' => ['Please enter a valid billed income amount.'],
+                        ]);
+                    }
+                    $amount = 0.0;
+                } elseif ($amount <= 0) {
                     throw ValidationException::withMessages([
                         'amount' => ['Please enter a valid amount.'],
                     ]);
@@ -227,7 +241,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
 
                 $typeTransactionPayload = [
                     'transaction_type' => 'income_collection',
-                    'amount' => $amount,
+                    'amount' => $isOperatingDue ? $billedAmount : $amount,
                     'transaction_date' => $collectionDate,
                     'particular' => $particular,
                     'reference_no' => $referenceNo ?: null,
@@ -242,6 +256,14 @@ class FinanceIncomeCollectionService extends BaseCachedService
                         'main_account_type' => '',
                         'account_id' => $linkedAccount->id,
                         'account_label' => $this->accountLabel($linkedAccount),
+                    ]);
+                } elseif ($isDue && $incomeAccount) {
+                    $typeTransaction = FinanceAccountTypeTransaction::query()->create([
+                        ...$typeTransactionPayload,
+                        'account_category' => $incomeAccount->category,
+                        'main_account_type' => '',
+                        'account_id' => $incomeAccount->id,
+                        'account_label' => $this->accountLabel($incomeAccount),
                     ]);
                 } elseif ($receiveAccount) {
                     $typeTransaction = FinanceAccountTypeTransaction::query()->create([
@@ -492,6 +514,8 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     && !$isDue
                     && $postPaymentCredit
                     && !$settlingPriorDue
+                    && !$this->isIncomeCategoryAccount($linkedAccount)
+                    && !$this->isSameAccount($linkedAccount, $incomeAccount)
                 ) {
                     $this->postCreditLedger(
                         $linkedAccount,
@@ -532,7 +556,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                             $this->postDebitReceivableLedger(
                                 $incomeAccount,
                                 $typeTransaction->id,
-                                $amount,
+                                $isOperatingDue ? $billedAmount : $amount,
                                 $collectionDate,
                                 $billParticular,
                                 $voucherNo,
@@ -594,37 +618,66 @@ class FinanceIncomeCollectionService extends BaseCachedService
                         );
                     } elseif ($postPaymentCredit) {
                         // Cash/bank without candidates: DR billed amount (bill) + CR receive.
-                        $this->postDebitReceivableLedger(
+                        $this->postIncomeHeadBillAndReceive(
                             $incomeAccount,
-                            $typeTransaction->id,
+                            $counterpartyAccount,
                             $billedAmount,
+                            $amount,
+                            $typeTransaction->id,
                             $collectionDate,
                             $billParticular,
-                            $voucherNo,
-                            $linkedAccount ? $this->accountLabel($linkedAccount) : $head->name,
-                            $remarks ?: 'Income charge'
-                        );
-                        $this->postCreditLedger(
-                            $incomeAccount,
-                            $typeTransaction->id,
-                            $amount,
-                            $collectionDate,
                             $particular,
                             $voucherNo,
-                            $counterpartyAccount
-                                ? $this->accountLabel($counterpartyAccount)
-                                : $head->name,
+                            $linkedAccount ? $this->accountLabel($linkedAccount) : $head->name,
                             $methodLabel,
-                            $remarks ?: 'Income collection'
+                            $remarks
                         );
                     }
+                } elseif (
+                    $linkedAccount
+                    && $this->isIncomeCategoryAccount($linkedAccount)
+                    && $isDue
+                    && !$hasClientCandidateBills
+                ) {
+                    $this->postDebitReceivableLedger(
+                        $linkedAccount,
+                        $typeTransaction->id,
+                        $isOperatingDue ? $billedAmount : $amount,
+                        $collectionDate,
+                        $billParticular,
+                        $voucherNo,
+                        $head->name,
+                        $remarks ?: 'Due bill'
+                    );
+                } elseif (
+                    $linkedAccount
+                    && $this->isIncomeCategoryAccount($linkedAccount)
+                    && $postPaymentCredit
+                    && !$isDue
+                    && !$settlingPriorDue
+                    && !$hasClientCandidateBills
+                ) {
+                    $this->postIncomeHeadBillAndReceive(
+                        $linkedAccount,
+                        $counterpartyAccount,
+                        $billedAmount,
+                        $amount,
+                        $typeTransaction->id,
+                        $collectionDate,
+                        $billParticular,
+                        $particular,
+                        $voucherNo,
+                        $head->name,
+                        $methodLabel,
+                        $remarks
+                    );
                 }
 
                 // Receivable ledger: DR on due, CR when Bills Receivable receive payment settles it.
                 if ($isDue) {
                     $this->accountService->recordIncomeReceivableEntry(
                         $head,
-                        $amount,
+                        $isOperatingDue ? $billedAmount : $amount,
                         'dr',
                         $collectionDate,
                         $voucherNo,
@@ -659,7 +712,7 @@ class FinanceIncomeCollectionService extends BaseCachedService
                     'job_title' => trim((string) ($data['job_title'] ?? '')) ?: null,
                     'client_name' => trim((string) ($data['client_name'] ?? '')) ?: null,
                     'candidates' => $normalizedCandidates,
-                    'amount' => $amount,
+                    'amount' => $isOperatingDue ? $billedAmount : $amount,
                     'payment_method' => $paymentMethod,
                     'collection_date' => $collectionDate,
                     'particular' => $particular,
@@ -1663,20 +1716,64 @@ class FinanceIncomeCollectionService extends BaseCachedService
             return null;
         }
 
-        $incomeAccount = $this->accountService->ensureIncomeHeadAccount($head);
-        if (!$incomeAccount) {
-            return null;
+        return $this->accountService->ensureIncomeHeadAccount($head);
+    }
+
+    private function isSameAccount(?FinanceAccount $left, ?FinanceAccount $right): bool
+    {
+        return $left && $right && (int) $left->id === (int) $right->id;
+    }
+
+    private function isIncomeCategoryAccount(?FinanceAccount $account): bool
+    {
+        if (!$account) {
+            return false;
         }
 
-        // Avoid double-posting when the linked account is the income head account itself.
-        if (
-            $linkedAccount
-            && (int) $linkedAccount->id === (int) $incomeAccount->id
-        ) {
-            return null;
-        }
+        return in_array(
+            (string) $account->category,
+            ['recruitment_income', 'client_income', 'other_income'],
+            true
+        );
+    }
 
-        return $incomeAccount;
+    private function postIncomeHeadBillAndReceive(
+        FinanceAccount $incomeAccount,
+        ?FinanceAccount $counterpartyAccount,
+        float $billedAmount,
+        float $receivedAmount,
+        int $typeTransactionId,
+        string $collectionDate,
+        string $billParticular,
+        string $receiveParticular,
+        string $voucherNo,
+        string $counterpartyLabel,
+        string $methodLabel,
+        string $remarks
+    ): void {
+        $this->postDebitReceivableLedger(
+            $incomeAccount,
+            $typeTransactionId,
+            $billedAmount,
+            $collectionDate,
+            $billParticular,
+            $voucherNo,
+            $counterpartyLabel,
+            $remarks ?: 'Income charge'
+        );
+        $this->postCreditLedger(
+            $incomeAccount,
+            $typeTransactionId,
+            $receivedAmount,
+            $collectionDate,
+            $receiveParticular,
+            $voucherNo,
+            $counterpartyAccount
+                ? $this->accountLabel($counterpartyAccount)
+                : $counterpartyLabel,
+            $methodLabel,
+            $remarks ?: 'Income collection'
+        );
     }
 
     private function accountLabel(FinanceAccount $account): string

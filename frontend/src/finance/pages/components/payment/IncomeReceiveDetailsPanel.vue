@@ -35,7 +35,10 @@
           :class-name="'w-full rounded-lg border-2 border-violet-300 bg-white px-3 py-2.5 text-xl font-bold tabular-nums text-violet-900 shadow-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30'"
           @update:model-value="$emit('update:billedAmount', $event)"
         />
-        <p class="mt-1.5 text-xs text-violet-700/70">
+        <p v-if="showBilledAmount && isDueReceiveMethod" class="mt-1.5 text-xs text-violet-700/70">
+          Due receive records the billed amount as DR on the income head and Bills Receivable.
+        </p>
+        <p v-else-if="showBilledAmount" class="mt-1.5 text-xs text-violet-700/70">
           If receive is less than this amount, the remainder moves to Bills Receivable.
         </p>
       </div>
@@ -54,7 +57,8 @@
           min="0"
           step="0.01"
           placeholder="Enter receive amount"
-          :required="true"
+          :required="!amountDisabled"
+          :disabled="amountDisabled"
           :class-name="'w-full rounded-lg border-2 border-emerald-300 bg-white px-3 py-2.5 text-2xl font-bold tabular-nums text-emerald-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30'"
           @update:model-value="$emit('update:amount', $event)"
         />
@@ -184,16 +188,18 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import BaseButton from '@/shared/components/base/BaseButton.vue'
 import BaseInput from '@/shared/components/base/BaseInput.vue'
 import BaseLabel from '@/shared/components/base/BaseLabel.vue'
 import BaseSelect from '@/shared/components/base/BaseSelect.vue'
 import { formatCurrency } from '@/finance/utils/billUtils'
 
-defineProps({
+const props = defineProps({
   amountLabel: { type: String, default: 'Total Receive Amount (BDT)' },
   amountValue: { type: Number, default: 0 },
   amountEditable: { type: Boolean, default: false },
+  amountDisabled: { type: Boolean, default: false },
   amountModel: { type: [String, Number], default: '' },
   showBilledAmount: { type: Boolean, default: false },
   billedAmount: { type: [String, Number], default: '' },
@@ -211,6 +217,10 @@ defineProps({
   submitLoading: { type: Boolean, default: false },
   submitLabel: { type: String, default: 'Collect Client Income' },
 })
+
+const isDueReceiveMethod = computed(
+  () => String(props.paymentMethod || '').toLowerCase() === 'due'
+)
 
 const emit = defineEmits([
   'update:amount',
