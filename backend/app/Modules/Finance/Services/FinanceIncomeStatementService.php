@@ -43,6 +43,17 @@ class FinanceIncomeStatementService
             $filters['to_date'] ?? null
         );
 
+        // Operating Income (other_income): bill amount is the income-head ledger DR.
+        // Collection amounts alone understate partial bills when a later cash row is
+        // incorrectly treated as settling a prior remainder due.
+        $operatingIncomeDrByHead = $this->getOperatingIncomeBilledAmountsByHead(
+            $filters['from_date'] ?? null,
+            $filters['to_date'] ?? null
+        );
+        foreach ($operatingIncomeDrByHead as $headId => $drAmount) {
+            $amountsByIncomeHead[(int) $headId] = round((float) $drAmount, 2);
+        }
+
         // Bills payable settled via linked Operating Income head
         // (e.g. Liability Written Back) post ledger CRs, not income collections.
         $linkIncomeQuery = FinanceAccountLedgerEntry::query()
@@ -239,5 +250,42 @@ class FinanceIncomeStatementService
                 'is_profit' => $netProfit >= 0,
             ],
         ];
+    }
+
+    /**
+     * Operating Income billed amount = sum of DR on the income-head ledger.
+     *
+     * @return array<int, float>
+     */
+    private function getOperatingIncomeBilledAmountsByHead(?string $fromDate, ?string $toDate): array
+    {
+        $query = FinanceAccountLedgerEntry::query()
+            ->join(
+                'finance_accounts',
+                'finance_account_ledger_entries.finance_account_id',
+                '=',
+                'finance_accounts.id'
+            )
+            ->where('finance_accounts.category', 'other_income')
+            ->whereNotNull('finance_accounts.income_head_id')
+            ->where('finance_account_ledger_entries.dr_amount', '>', 0);
+
+        if (!empty($fromDate)) {
+            $query->whereDate('finance_account_ledger_entries.entry_date', '>=', $fromDate);
+        }
+
+        if (!empty($toDate)) {
+            $query->whereDate('finance_account_ledger_entries.entry_date', '<=', $toDate);
+        }
+
+        return $query
+            ->select([
+                'finance_accounts.income_head_id',
+                DB::raw('SUM(finance_account_ledger_entries.dr_amount) as total_amount'),
+            ])
+            ->groupBy('finance_accounts.income_head_id')
+            ->pluck('total_amount', 'income_head_id')
+            ->map(fn ($amount) => round((float) $amount, 2))
+            ->all();
     }
 }
