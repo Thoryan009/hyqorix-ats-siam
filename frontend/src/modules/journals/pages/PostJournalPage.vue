@@ -94,9 +94,13 @@
           <BaseSelect
             id="party_id"
             v-model="form.party_id"
-            :options="partyOptions"
-            :placeholder="t('journals.select_party')"
+            :options="partyLedgerOptions"
+            :placeholder="partyLedgerPlaceholder"
+            :disabled="isPartyLedgerLoading"
           />
+          <p v-if="isPartyLedgerLoading" class="text-xs text-slate-500">
+            {{ t('journals.loading_parties') }}
+          </p>
         </div>
 
         <div class="space-y-1.5">
@@ -280,17 +284,17 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
 import { useTranslate } from '@/shared/composables/useTranslate'
+import { usePartyLedgerOptionsQuery } from '../queries/usePartyLedgerOptionsQuery'
 import {
   accountOptions,
   costTypeOptions,
   defaultJournalForm,
   defaultJournalLines,
-  partyOptions,
   partyTypeOptions,
   projectOptions,
   transactionTypeOptions,
@@ -301,6 +305,31 @@ const router = useRouter()
 
 const form = ref({ ...defaultJournalForm })
 const lines = ref(defaultJournalLines.map((line) => ({ ...line })))
+
+const partyTypeRef = computed(() => form.value.party_type)
+const { data: partiesData, isLoading: isPartyLedgerLoading } =
+  usePartyLedgerOptionsQuery(partyTypeRef)
+
+const partyLedgerOptions = computed(() => {
+  const parties = partiesData.value?.data?.data ?? []
+  return parties.map((party) => ({
+    id: party.id,
+    name: `${party.code} – ${party.name}`,
+  }))
+})
+
+const partyLedgerPlaceholder = computed(() =>
+  isPartyLedgerLoading.value
+    ? t('journals.loading_parties')
+    : t('journals.select_party'),
+)
+
+watch(
+  () => form.value.party_type,
+  () => {
+    form.value.party_id = ''
+  },
+)
 
 const toNumber = (value) => {
   const n = Number(value)

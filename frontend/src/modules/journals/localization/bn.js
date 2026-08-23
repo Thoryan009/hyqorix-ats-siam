@@ -29,6 +29,7 @@ export default {
     party_type: 'পার্টির ধরন',
     party_ledger: 'পার্টি / লেজার',
     select_party: 'পার্টি নির্বাচন করুন',
+    loading_parties: 'পার্টি লোড হচ্ছে...',
     project_client_demand: 'প্রজেক্ট / ক্লায়েন্ট / ডিমান্ড',
     journal_lines: 'জার্নাল লাইন',
     balance_hint: 'পোস্ট করার আগে ডেবিট ও ক্রেডিট সমান হতে হবে।',

@@ -5,18 +5,13 @@ export const transactionTypeOptions = [
 ]
 
 export const partyTypeOptions = [
-  { id: 'none', name: 'None' },
-  { id: 'client', name: 'Client' },
-  { id: 'vendor', name: 'Vendor' },
-  { id: 'agent', name: 'Agent' },
-  { id: 'candidate', name: 'Candidate' },
-  { id: 'staff', name: 'Staff' },
-]
-
-export const partyOptions = [
-  { id: 'CL001', name: 'CL001 – Gulf Engineering Co.' },
-  { id: 'VN001', name: 'VN001 – Skyline Air Travels' },
-  { id: 'CA001', name: 'CA001 – Candidate – Karim' },
+  { id: '', name: 'None' },
+  { id: 'Client', name: 'Client' },
+  { id: 'Principal', name: 'Principal' },
+  { id: 'Agent', name: 'Agent' },
+  { id: 'Candidate', name: 'Candidate' },
+  { id: 'Vendor', name: 'Vendor' },
+  { id: 'Staff', name: 'Staff' },
 ]
 
 export const projectOptions = [
@@ -39,12 +34,12 @@ export const costTypeOptions = [
 ]
 
 export const defaultJournalForm = {
-  voucher_no: 'JV-2026-0049',
+  voucher_no: 'JE001',
   status: 'Draft',
   voucher_date: '2026-08-22',
   transaction_type: 'journal_voucher',
   reference_no: 'REF-001',
-  party_type: 'none',
+  party_type: '',
   party_id: '',
   project_id: 'general',
   narration:

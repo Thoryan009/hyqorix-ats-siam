@@ -29,6 +29,7 @@ export default {
     party_type: 'Party Type',
     party_ledger: 'Party / Ledger',
     select_party: 'Select party',
+    loading_parties: 'Loading parties...',
     project_client_demand: 'Project / Client / Demand',
     journal_lines: 'Journal Lines',
     balance_hint: 'Debit must equal Credit before posting.',
