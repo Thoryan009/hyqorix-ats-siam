@@ -20,13 +20,6 @@ export const projectOptions = [
   { id: 'demand_01', name: 'Demand – Manpower Batch A' },
 ]
 
-export const accountOptions = [
-  { id: 'recruitment_refund', name: 'Recruitment Revenue Refund – Candidate' },
-  { id: 'bank', name: 'Bank Account' },
-  { id: 'cash', name: 'Cash in Hand' },
-  { id: 'receivable_client', name: 'Accounts Receivable – Client' },
-]
-
 export const costTypeOptions = [
   { id: 'general', name: 'General' },
   { id: 'direct', name: 'Direct Cost' },
@@ -49,8 +42,7 @@ export const defaultJournalForm = {
 export const defaultJournalLines = [
   {
     id: 1,
-    account_id: 'recruitment_refund',
-    account_label: 'Recruitment Revenue Refund – Candidate',
+    account_id: '',
     sub_ledger: '',
     cost_type: 'general',
     debit: 10000,
@@ -58,8 +50,7 @@ export const defaultJournalLines = [
   },
   {
     id: 2,
-    account_id: 'bank',
-    account_label: 'Bank Account',
+    account_id: '',
     sub_ledger: '',
     cost_type: 'general',
     debit: '',

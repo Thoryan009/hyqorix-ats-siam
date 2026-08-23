@@ -91,16 +91,14 @@
 
         <div class="space-y-1.5">
           <BaseLabel for="party_id">{{ t('journals.party_ledger') }}</BaseLabel>
-          <BaseSelect
+          <BaseSearchSelect
             id="party_id"
             v-model="form.party_id"
             :options="partyLedgerOptions"
             :placeholder="partyLedgerPlaceholder"
             :disabled="isPartyLedgerLoading"
+            :filter-fn="filterByCodeOrName"
           />
-          <p v-if="isPartyLedgerLoading" class="text-xs text-slate-500">
-            {{ t('journals.loading_parties') }}
-          </p>
         </div>
 
         <div class="space-y-1.5">
@@ -150,7 +148,13 @@
             <tr v-for="(line, index) in lines" :key="line.id" class="align-middle">
               <td class="border-b border-slate-100 px-3 py-2 text-slate-700">{{ index + 1 }}</td>
               <td class="border-b border-slate-100 px-3 py-2">
-                <BaseSelect v-model="line.account_id" :options="accountOptions" />
+                <BaseSearchSelect
+                  v-model="line.account_id"
+                  :options="accountOptions"
+                  :placeholder="accountPlaceholder"
+                  :disabled="isAccountLoading"
+                  :filter-fn="filterByCodeOrName"
+                />
               </td>
               <td class="border-b border-slate-100 px-3 py-2">
                 <BaseInput
@@ -289,9 +293,9 @@ import { useRouter } from 'vue-router'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
 import { useTranslate } from '@/shared/composables/useTranslate'
+import { useAccountOptionsQuery } from '../queries/useAccountOptionsQuery'
 import { usePartyLedgerOptionsQuery } from '../queries/usePartyLedgerOptionsQuery'
 import {
-  accountOptions,
   costTypeOptions,
   defaultJournalForm,
   defaultJournalLines,
@@ -309,12 +313,23 @@ const lines = ref(defaultJournalLines.map((line) => ({ ...line })))
 const partyTypeRef = computed(() => form.value.party_type)
 const { data: partiesData, isLoading: isPartyLedgerLoading } =
   usePartyLedgerOptionsQuery(partyTypeRef)
+const { data: accountsData, isLoading: isAccountLoading } = useAccountOptionsQuery()
 
 const partyLedgerOptions = computed(() => {
   const parties = partiesData.value?.data?.data ?? []
   return parties.map((party) => ({
     id: party.id,
     name: `${party.code} – ${party.name}`,
+    code: party.code,
+  }))
+})
+
+const accountOptions = computed(() => {
+  const accounts = accountsData.value?.data?.data ?? []
+  return accounts.map((account) => ({
+    id: account.id,
+    name: `${account.code} – ${account.name}`,
+    code: account.code,
   }))
 })
 
@@ -323,6 +338,18 @@ const partyLedgerPlaceholder = computed(() =>
     ? t('journals.loading_parties')
     : t('journals.select_party'),
 )
+
+const accountPlaceholder = computed(() =>
+  isAccountLoading.value
+    ? t('journals.loading_accounts')
+    : t('journals.select_account'),
+)
+
+const filterByCodeOrName = (option, query) => {
+  const label = String(option?.name ?? '').toLowerCase()
+  const code = String(option?.code ?? '').toLowerCase()
+  return label.includes(query) || code.includes(query)
+}
 
 watch(
   () => form.value.party_type,
@@ -361,9 +388,7 @@ const differenceLabel = computed(() => {
 const postingPreview = computed(() =>
   lines.value.map((line) => {
     const account =
-      accountOptions.find((opt) => String(opt.id) === String(line.account_id))?.name ||
-      line.account_label ||
-      '—'
+      accountOptions.value.find((opt) => String(opt.id) === String(line.account_id))?.name || '—'
     if (toNumber(line.debit) > 0) {
       return `${account}: ${t('journals.dr')} ${formatAmount(line.debit)}`
     }
