@@ -1,0 +1,20 @@
+export default {
+  accounts: {
+    module: 'Chart of Accounts',
+    management: 'Chart of Accounts ব্যবস্থাপনা',
+    add: 'অ্যাকাউন্ট যোগ করুন',
+    edit: 'অ্যাকাউন্ট সম্পাদনা',
+    view: 'অ্যাকাউন্ট দেখুন',
+    information: 'অ্যাকাউন্ট তথ্য',
+    code: 'কোড',
+    account_name: 'অ্যাকাউন্টের নাম',
+    type: 'ধরন',
+    financial_statement: 'আর্থিক বিবরণী',
+    normal_balance: 'স্বাভাবিক ব্যালেন্স',
+    description: 'বিবরণ',
+    all_types: 'সব ধরন',
+    all_statements: 'সব বিবরণী',
+    all_balances: 'সব ব্যালেন্স',
+    all_statuses: 'সব স্ট্যাটাস',
+  },
+}

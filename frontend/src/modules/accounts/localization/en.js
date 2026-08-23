@@ -1,0 +1,20 @@
+export default {
+  accounts: {
+    module: 'Chart of Accounts',
+    management: 'Chart of Accounts Management',
+    add: 'Add Account',
+    edit: 'Edit Account',
+    view: 'View Account',
+    information: 'Account Information',
+    code: 'Code',
+    account_name: 'Account Name',
+    type: 'Type',
+    financial_statement: 'Financial Statement',
+    normal_balance: 'Normal Balance',
+    description: 'Description',
+    all_types: 'All Types',
+    all_statements: 'All Statements',
+    all_balances: 'All Balances',
+    all_statuses: 'All Statuses',
+  },
+}

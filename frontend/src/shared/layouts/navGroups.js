@@ -264,6 +264,18 @@ export const navGroups = [
     ],
   },
 
+  {
+    label: 'FiNANCE 2',
+    icon: 'fa fa-calculator',
+    items: [
+      {
+        name: 'Chart of Accounts',
+        path: '/accounts/chart-of-accounts',
+        icon: 'fa fa-list-alt',
+      },
+    ],
+  },
+
     {
     label: 'navigation.hr_access_control',
     icon: 'fa fa-users',

@@ -24,6 +24,7 @@ use App\Modules\Employee\Seeders\EmployeeSeeder;
 use App\Modules\JobList\Seeders\JobListSeeder;
 use App\Modules\Setting\Seeders\SettingSeeder;
 use App\Modules\WorkOrder\Seeders\WorkOrderSeeder;
+use App\Modules\Accounts\Seeders\ChartOfAccountSeeder;
 use App\Modules\Finance\Seeders\ExpenseCategorySeeder;
 use App\Modules\Finance\Seeders\IncomeCategorySeeder;
 use App\Modules\JobList\Seeders\JobListDetailSeeder;
@@ -67,6 +68,7 @@ class DatabaseSeeder extends Seeder
             JobListDetailsHeadSeeder::class,
             ExpenseCategorySeeder::class,
             IncomeCategorySeeder::class,
+            ChartOfAccountSeeder::class,
             JobListDetailSeeder::class,
             ApplicationExperienceSeeder::class,
             ActivityLogSeeder::class,
