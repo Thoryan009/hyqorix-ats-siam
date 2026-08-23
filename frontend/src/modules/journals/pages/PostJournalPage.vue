@@ -121,7 +121,7 @@
           <h3 class="text-sm font-semibold text-slate-800">{{ t('journals.journal_lines') }}</h3>
           <p class="mt-0.5 text-xs text-slate-500">{{ t('journals.balance_hint') }}</p>
         </div>
-        <BaseButton className="bg-slate-800 text-white hover:bg-slate-900">
+        <BaseButton className="bg-slate-800 text-white hover:bg-slate-900" @click="addLine">
           + {{ t('journals.add_line') }}
         </BaseButton>
       </div>
@@ -296,6 +296,7 @@ import { useAccountOptionsQuery } from '../queries/useAccountOptionsQuery'
 import { usePartyLedgerOptionsQuery } from '../queries/usePartyLedgerOptionsQuery'
 import {
   costTypeOptions,
+  createEmptyJournalLine,
   defaultJournalForm,
   defaultJournalLines,
   partyTypeOptions,
@@ -308,6 +309,11 @@ const router = useRouter()
 
 const form = ref({ ...defaultJournalForm })
 const lines = ref(defaultJournalLines.map((line) => ({ ...line })))
+let nextLineId = Math.max(...lines.value.map((line) => Number(line.id) || 0), 0) + 1
+
+const addLine = () => {
+  lines.value.push(createEmptyJournalLine(nextLineId++))
+}
 
 const partyTypeRef = computed(() => form.value.party_type)
 const { data: partiesData, isLoading: isPartyLedgerLoading } =

@@ -38,21 +38,13 @@ export const defaultJournalForm = {
   narration: '',
 }
 
-export const defaultJournalLines = [
-  {
-    id: 1,
-    account_id: '',
-    sub_ledger: '',
-    cost_type: '',
-    debit: '',
-    credit: '',
-  },
-  {
-    id: 2,
-    account_id: '',
-    sub_ledger: '',
-    cost_type: '',
-    debit: '',
-    credit: '',
-  },
-]
+export const createEmptyJournalLine = (id = Date.now()) => ({
+  id,
+  account_id: '',
+  sub_ledger: '',
+  cost_type: '',
+  debit: '',
+  credit: '',
+})
+
+export const defaultJournalLines = [createEmptyJournalLine(1), createEmptyJournalLine(2)]
