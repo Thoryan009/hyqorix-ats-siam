@@ -133,10 +133,10 @@
               <th class="min-w-[140px] border-b border-slate-200 px-3 py-2.5 font-semibold">
                 {{ t('journals.cost_revenue_type') }}
               </th>
-              <th class="whitespace-nowrap border-b border-slate-200 px-3 py-2.5 text-right font-semibold">
+              <th class="w-36 whitespace-nowrap border-b border-slate-200 px-2 py-2.5 text-right font-semibold">
                 {{ t('journals.debit_label') }}
               </th>
-              <th class="whitespace-nowrap border-b border-slate-200 px-3 py-2.5 text-right font-semibold">
+              <th class="w-36 whitespace-nowrap border-b border-slate-200 px-2 py-2.5 text-right font-semibold">
                 {{ t('journals.credit_label') }}
               </th>
               <th class="whitespace-nowrap border-b border-slate-200 px-3 py-2.5 font-semibold">
@@ -167,39 +167,27 @@
               <td class="border-b border-slate-100 px-3 py-2">
                 <BaseSelect v-model="line.cost_type" :options="costTypeOptions" />
               </td>
-              <td class="border-b border-slate-100 px-3 py-2">
+              <td class="w-36 border-b border-slate-100 px-2 py-2">
                 <BaseInput
                   type="number"
                   v-model="line.debit"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full rounded-md border border-gray-300 px-2 py-2 text-right text-sm tabular-nums focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </td>
-              <td class="border-b border-slate-100 px-3 py-2">
+              <td class="w-36 border-b border-slate-100 px-2 py-2">
                 <BaseInput
                   type="number"
                   v-model="line.credit"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm tabular-nums focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full rounded-md border border-gray-300 px-2 py-2 text-right text-sm tabular-nums focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </td>
-              <td class="border-b border-slate-100 px-3 py-2">
-                <div class="flex flex-wrap gap-1">
-                  <button
-                    type="button"
-                    class="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
-                  >
-                    {{ t('journals.edit') }}
-                  </button>
+              <td class="whitespace-nowrap border-b border-slate-100 px-3 py-2">
+                <div class="flex flex-nowrap items-center gap-1">
                   <button
                     type="button"
                     class="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
                   >
                     {{ t('journals.copy') }}
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
-                  >
-                    {{ t('journals.ledger') }}
                   </button>
                   <button
                     type="button"
