@@ -273,6 +273,11 @@ export const navGroups = [
         path: '/accounts/chart-of-accounts',
         icon: 'fa fa-list-alt',
       },
+      {
+        name: 'Party Management',
+        path: '/parties',
+        icon: 'fa fa-handshake-o',
+      },
     ],
   },
 
