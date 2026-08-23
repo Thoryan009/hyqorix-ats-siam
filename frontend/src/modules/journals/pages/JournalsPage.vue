@@ -5,6 +5,12 @@
         <PageTitle>{{ t('journals.management') }}</PageTitle>
         <p class="mt-1 text-sm text-gray-500">{{ t('journals.static_note') }}</p>
       </div>
+      <BaseButton
+        className="bg-indigo-600 text-white hover:bg-indigo-700"
+        @click="$router.push({ name: 'Post Journal' })"
+      >
+        {{ t('journals.post_journal') }}
+      </BaseButton>
     </PageHeader>
 
     <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">

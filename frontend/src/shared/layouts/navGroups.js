@@ -283,6 +283,11 @@ export const navGroups = [
         path: '/journals',
         icon: 'fa fa-book',
       },
+      {
+        name: 'Post Journal',
+        path: '/journals/post',
+        icon: 'fa fa-pencil-square-o',
+      },
     ],
   },
 
