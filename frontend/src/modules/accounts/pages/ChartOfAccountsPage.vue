@@ -155,7 +155,7 @@ const { filters, hasActiveFilters, resetFilters } = useTableFilters({
   status: '',
 })
 
-const pagination = usePagination()
+const pagination = usePagination({ perPage: 25 })
 const { page, perPage, total, showing, links, setPage, setPerPage } = pagination
 
 const { data, isLoading } = useChartOfAccountsQuery(page, perPage, filters)
