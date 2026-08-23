@@ -278,6 +278,11 @@ export const navGroups = [
         path: '/parties',
         icon: 'fa fa-handshake-o',
       },
+      {
+        name: 'Journal Management',
+        path: '/journals',
+        icon: 'fa fa-book',
+      },
     ],
   },
 
