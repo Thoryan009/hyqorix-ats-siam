@@ -27,16 +27,15 @@ export const costTypeOptions = [
 ]
 
 export const defaultJournalForm = {
-  voucher_no: 'JE001',
+  voucher_no: '—',
   status: 'Draft',
-  voucher_date: '2026-08-22',
-  transaction_type: 'journal_voucher',
-  reference_no: 'REF-001',
+  voucher_date: '',
+  transaction_type: '',
+  reference_no: '',
   party_type: '',
   party_id: '',
-  project_id: 'general',
-  narration:
-    'Example: Lump-sum recruitment service charge refund to returned candidate',
+  project_id: '',
+  narration: '',
 }
 
 export const defaultJournalLines = [
@@ -44,16 +43,16 @@ export const defaultJournalLines = [
     id: 1,
     account_id: '',
     sub_ledger: '',
-    cost_type: 'general',
-    debit: 10000,
+    cost_type: '',
+    debit: '',
     credit: '',
   },
   {
     id: 2,
     account_id: '',
     sub_ledger: '',
-    cost_type: 'general',
+    cost_type: '',
     debit: '',
-    credit: 10000,
+    credit: '',
   },
 ]

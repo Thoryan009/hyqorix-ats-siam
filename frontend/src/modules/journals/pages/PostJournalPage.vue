@@ -72,6 +72,7 @@
             id="transaction_type"
             v-model="form.transaction_type"
             :options="transactionTypeOptions"
+            :placeholder="t('journals.select_transaction_type')"
           />
         </div>
 
@@ -80,6 +81,7 @@
           <BaseInput
             id="reference_no"
             v-model="form.reference_no"
+            :placeholder="t('journals.reference_no_placeholder')"
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
@@ -103,7 +105,12 @@
 
         <div class="space-y-1.5">
           <BaseLabel for="project_id">{{ t('journals.project_client_demand') }}</BaseLabel>
-          <BaseSelect id="project_id" v-model="form.project_id" :options="projectOptions" />
+          <BaseSelect
+            id="project_id"
+            v-model="form.project_id"
+            :options="projectOptions"
+            :placeholder="t('journals.select_project')"
+          />
         </div>
       </div>
     </div>
@@ -165,7 +172,11 @@
                 />
               </td>
               <td class="border-b border-slate-100 px-3 py-2">
-                <BaseSelect v-model="line.cost_type" :options="costTypeOptions" />
+                <BaseSelect
+                  v-model="line.cost_type"
+                  :options="costTypeOptions"
+                  :placeholder="t('journals.select_cost_type')"
+                />
               </td>
               <td class="w-36 border-b border-slate-100 px-2 py-2">
                 <BaseInput
@@ -373,16 +384,24 @@ const differenceLabel = computed(() => {
   return `${formatAmount(abs)} ${difference.value > 0 ? t('journals.dr') : t('journals.cr')}`
 })
 
-const postingPreview = computed(() =>
-  lines.value.map((line) => {
+const postingPreview = computed(() => {
+  const previewLines = lines.value.filter(
+    (line) => line.account_id || toNumber(line.debit) > 0 || toNumber(line.credit) > 0,
+  )
+
+  if (!previewLines.length) {
+    return [t('journals.posting_preview_empty')]
+  }
+
+  return previewLines.map((line) => {
     const account =
       accountOptions.value.find((opt) => String(opt.id) === String(line.account_id))?.name || '—'
     if (toNumber(line.debit) > 0) {
       return `${account}: ${t('journals.dr')} ${formatAmount(line.debit)}`
     }
     return `${account}: ${t('journals.cr')} ${formatAmount(line.credit)}`
-  }),
-)
+  })
+})
 
 const goBack = () => {
   router.push({ name: 'Journal Management' })
