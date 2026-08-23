@@ -112,8 +112,7 @@
           @update:perPage="setPerPage"
         />
 
-        <AddModal />
-        <EditModal />
+        <FormModal />
         <ViewModal />
       </div>
     </div>
@@ -144,8 +143,7 @@ import {
 const { t } = useTranslate()
 
 const ViewModal = defineAsyncComponent(() => import('./components/ViewModal.vue'))
-const AddModal = defineAsyncComponent(() => import('./components/AddModal.vue'))
-const EditModal = defineAsyncComponent(() => import('./components/EditModal.vue'))
+const FormModal = defineAsyncComponent(() => import('./components/FormModal.vue'))
 
 const store = useChartOfAccountStore()
 
