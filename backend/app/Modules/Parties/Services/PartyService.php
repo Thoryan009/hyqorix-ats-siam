@@ -143,15 +143,16 @@ class PartyService
     private function getStaffSourceOptions(): Collection
     {
         return Employee::query()
-            ->select(['id', 'username', 'user_id'])
+            ->select(['id', 'user_id'])
             ->with(['user:id,name,status'])
             ->tap(fn (Builder $query) => $this->applyActiveUserFilter($query))
             ->orderBy('id')
             ->limit(500)
             ->get()
-            ->map(fn (Employee $employee) => [
+            ->values()
+            ->map(fn (Employee $employee, int $index) => [
                 'id' => $employee->id,
-                'code' => $employee->username,
+                'code' => 'ST'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT),
                 'name' => $employee->user?->name,
             ]);
     }
