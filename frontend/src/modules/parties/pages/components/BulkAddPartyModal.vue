@@ -20,17 +20,10 @@
         />
       </div>
 
-      <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="mb-3">
         <p class="text-sm font-medium text-slate-700">
           {{ t('parties.total_rows') }}: {{ rows.length }}
         </p>
-        <BaseButton
-          type="button"
-          className="bg-slate-800 text-white hover:bg-slate-900"
-          @click="addRow"
-        >
-          + {{ t('parties.add_row') }}
-        </BaseButton>
       </div>
 
       <div class="overflow-x-auto rounded-md border border-slate-200 pb-4">
@@ -144,6 +137,16 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="mt-3 flex justify-start">
+        <BaseButton
+          type="button"
+          className="bg-slate-800 text-white hover:bg-slate-900"
+          @click="addRow"
+        >
+          + {{ t('parties.add_row') }}
+        </BaseButton>
       </div>
 
       <p v-if="validationMessage" class="mt-3 text-sm text-red-600">{{ validationMessage }}</p>
