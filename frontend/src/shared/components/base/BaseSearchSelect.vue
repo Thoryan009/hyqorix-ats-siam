@@ -25,7 +25,7 @@
     />
 
     <ul
-      v-if="isOpen && filteredOptions.length"
+      v-if="!teleportDropdown && isOpen && filteredOptions.length"
       class="absolute z-50 mt-1 w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg"
       :class="listClassName"
     >
@@ -39,12 +39,42 @@
       </li>
     </ul>
 
+    <Teleport to="body" :disabled="!teleportDropdown">
+      <ul
+        v-if="teleportDropdown && isOpen && filteredOptions.length"
+        ref="dropdownRef"
+        class="fixed z-[9999] overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg"
+        :class="listClassName"
+        :style="dropdownStyle"
+      >
+        <li
+          v-for="option in filteredOptions"
+          :key="getValue(option)"
+          class="cursor-pointer px-3 py-2 text-sm text-gray-800 hover:bg-indigo-50"
+          @mousedown.prevent="selectOption(option)"
+        >
+          {{ getLabel(option) }}
+        </li>
+      </ul>
+    </Teleport>
+
     <p
-      v-else-if="isOpen && searchQuery.trim()"
+      v-if="!teleportDropdown && isOpen && searchQuery.trim() && !filteredOptions.length"
       class="absolute z-50 mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-500 shadow-lg"
     >
       No results found
     </p>
+
+    <Teleport to="body" :disabled="!teleportDropdown">
+      <p
+        v-if="teleportDropdown && isOpen && searchQuery.trim() && !filteredOptions.length"
+        ref="dropdownRef"
+        class="fixed z-[9999] rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-500 shadow-lg"
+        :style="dropdownStyle"
+      >
+        No results found
+      </p>
+    </Teleport>
   </div>
 </template>
 
@@ -96,13 +126,22 @@ const props = defineProps({
     type: String,
     default: 'max-h-56',
   },
+  teleportDropdown: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])
 
 const containerRef = ref(null)
+const dropdownRef = ref(null)
 const isOpen = ref(false)
 const searchQuery = ref('')
+const dropdownStyle = ref({})
+
+const DROPDOWN_GAP = 4
+const DROPDOWN_MAX_HEIGHT = 384
 
 const inputClass = computed(() => [
   'w-full px-3 py-2 rounded-md border border-gray-300 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition',
@@ -147,12 +186,14 @@ const handleFocus = () => {
   if (props.disabled) return
   isOpen.value = true
   searchQuery.value = ''
+  updateDropdownPosition()
 }
 
 const handleInput = (event) => {
   if (props.disabled) return
   isOpen.value = true
   searchQuery.value = event.target.value
+  updateDropdownPosition()
 
   if (!searchQuery.value.trim()) {
     emit('update:modelValue', '')
@@ -176,8 +217,28 @@ const closeDropdown = () => {
   searchQuery.value = ''
 }
 
+const updateDropdownPosition = () => {
+  if (!props.teleportDropdown || !containerRef.value) return
+
+  const rect = containerRef.value.getBoundingClientRect()
+  const spaceBelow = window.innerHeight - rect.bottom - DROPDOWN_GAP
+  const spaceAbove = rect.top - DROPDOWN_GAP
+  const openUpward = spaceBelow < 180 && spaceAbove > spaceBelow
+  const availableSpace = openUpward ? spaceAbove : spaceBelow
+  const maxHeight = Math.max(Math.min(DROPDOWN_MAX_HEIGHT, availableSpace), 160)
+
+  dropdownStyle.value = {
+    top: openUpward ? `${rect.top - maxHeight - DROPDOWN_GAP}px` : `${rect.bottom + DROPDOWN_GAP}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    maxHeight: `${maxHeight}px`,
+  }
+}
+
 const handleClickOutside = (event) => {
-  if (containerRef.value && !containerRef.value.contains(event.target)) {
+  const inContainer = containerRef.value?.contains(event.target)
+  const inDropdown = dropdownRef.value?.contains(event.target)
+  if (!inContainer && !inDropdown) {
     closeDropdown()
   }
 }
@@ -191,11 +252,33 @@ watch(
   },
 )
 
+watch(isOpen, (open) => {
+  if (!props.teleportDropdown) return
+
+  if (open) {
+    updateDropdownPosition()
+    window.addEventListener('scroll', updateDropdownPosition, true)
+    window.addEventListener('resize', updateDropdownPosition)
+    return
+  }
+
+  window.removeEventListener('scroll', updateDropdownPosition, true)
+  window.removeEventListener('resize', updateDropdownPosition)
+})
+
+watch(filteredOptions, () => {
+  if (isOpen.value && props.teleportDropdown) {
+    updateDropdownPosition()
+  }
+})
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('scroll', updateDropdownPosition, true)
+  window.removeEventListener('resize', updateDropdownPosition)
 })
 </script>

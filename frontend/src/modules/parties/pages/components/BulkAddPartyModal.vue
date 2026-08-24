@@ -2,10 +2,11 @@
   <BaseModal
     :isVisible="store.isBulkModal"
     :title="t('parties.bulk_add_title')"
-    className="xl:max-w-6xl max-h-[90vh]"
+    className="w-[98vw] max-w-[1680px] max-h-[92vh]"
     @close="closeModal"
   >
     <BaseForm :onSubmit="handleSubmit">
+      <div class="max-h-[calc(92vh-8rem)] overflow-y-auto pr-1">
       <p class="mb-4 text-sm text-slate-500">{{ t('parties.bulk_add_hint') }}</p>
 
       <div class="mb-4 max-w-xs space-y-2">
@@ -32,8 +33,8 @@
         </BaseButton>
       </div>
 
-      <div class="overflow-x-auto rounded-md border border-slate-200">
-        <table class="min-w-full border-collapse text-sm">
+      <div class="overflow-x-auto rounded-md border border-slate-200 pb-4">
+        <table class="min-w-[1200px] w-full border-collapse text-sm">
           <thead>
             <tr class="bg-slate-50 text-left text-slate-600">
               <th class="whitespace-nowrap border-b border-slate-200 px-3 py-2.5 font-semibold">#</th>
@@ -69,7 +70,7 @@
           <tbody>
             <tr v-for="(row, index) in rows" :key="row.id" class="align-middle">
               <td class="border-b border-slate-100 px-3 py-2 text-slate-700">{{ index + 1 }}</td>
-              <td v-if="showSourceSelect" class="border-b border-slate-100 px-3 py-2">
+              <td v-if="showSourceSelect" class="relative overflow-visible border-b border-slate-100 px-3 py-2 align-top">
                 <BaseSearchSelect
                   v-model="row.source_id"
                   :options="getSourceOptionsForRow(row)"
@@ -77,6 +78,8 @@
                   :disabled="isSourceLoading"
                   :filter-fn="filterByCodeOrName"
                   :required="true"
+                  teleport-dropdown
+                  list-class-name="max-h-96"
                   @update:modelValue="(value) => fillRowFromSource(row, value)"
                 />
               </td>
@@ -166,6 +169,7 @@
           <span v-if="isSubmitting">{{ t('shared.actions.save') }}...</span>
           <span v-else>{{ t('parties.save_all') }}</span>
         </BaseButton>
+      </div>
       </div>
     </BaseForm>
   </BaseModal>
