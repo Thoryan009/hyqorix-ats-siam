@@ -6,22 +6,22 @@
   >
     <BaseForm :onSubmit="handleSubmit">
       <div class="space-y-2">
-        <BaseLabel for="code">{{ t('parties.party_id') }}</BaseLabel>
-        <BaseInput
-          id="code"
-          v-model="formData.code"
-          placeholder="Eg: CL001"
-          :required="true"
-        />
-      </div>
-
-      <div class="space-y-2">
         <BaseLabel for="type">{{ t('parties.party_type') }}</BaseLabel>
         <BaseSelect
           id="type"
           v-model="formData.type"
           :options="partyTypeOptions"
           placeholder="Select type"
+          :required="true"
+        />
+      </div>
+
+      <div class="space-y-2">
+        <BaseLabel for="code">{{ t('parties.party_id') }}</BaseLabel>
+        <BaseInput
+          id="code"
+          v-model="formData.code"
+          placeholder="Eg: CL001"
           :required="true"
         />
       </div>
