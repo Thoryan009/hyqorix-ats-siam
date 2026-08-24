@@ -154,13 +154,15 @@
           <tbody>
             <tr v-for="(line, index) in lines" :key="line.id" class="align-middle">
               <td class="border-b border-slate-100 px-3 py-2 text-slate-700">{{ index + 1 }}</td>
-              <td class="border-b border-slate-100 px-3 py-2">
+              <td class="relative overflow-visible border-b border-slate-100 px-3 py-2">
                 <BaseSearchSelect
                   v-model="line.account_id"
                   :options="accountOptions"
                   :placeholder="accountPlaceholder"
                   :disabled="isAccountLoading"
                   :filter-fn="filterByCodeOrName"
+                  teleport-dropdown
+                  list-class-name="max-h-96"
                 />
               </td>
               <td class="border-b border-slate-100 px-3 py-2">

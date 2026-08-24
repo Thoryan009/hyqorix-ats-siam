@@ -1,7 +1,13 @@
 export const transactionTypeOptions = [
   { id: 'journal_voucher', name: 'Journal Voucher' },
-  { id: 'payment_voucher', name: 'Payment Voucher' },
-  { id: 'receipt_voucher', name: 'Receipt Voucher' },
+  { id: 'direct_expense', name: 'Direct Expense' },
+  { id: 'operating_expense', name: 'Operating Expense' },
+  { id: 'recruitment_revenue', name: 'Recruitment Revenue' },
+  { id: 'recruitment_refund', name: 'Recruitment Refund' },
+  { id: 'asset_purchase', name: 'Asset Purchase' },
+  { id: 'asset_return', name: 'Asset Return' },
+  { id: 'staff_advance', name: 'Staff Advance' },
+  { id: 'advance_adjustment', name: 'Advance Adjustment' },
 ]
 
 export const partyTypeOptions = [
@@ -22,8 +28,12 @@ export const projectOptions = [
 
 export const costTypeOptions = [
   { id: 'general', name: 'General' },
-  { id: 'direct', name: 'Direct Cost' },
-  { id: 'operating', name: 'Operating Expense' },
+  { id: 'direct_cost', name: 'Direct Cost' },
+  { id: 'operating_expense', name: 'Operating Expense' },
+  { id: 'recruitment_revenue', name: 'Recruitment Revenue' },
+  { id: 'sales_return_refund', name: 'Sales Return / Refund' },
+  { id: 'asset', name: 'Asset' },
+  { id: 'liability', name: 'Liability' },
 ]
 
 export const todayIsoDate = () => {
