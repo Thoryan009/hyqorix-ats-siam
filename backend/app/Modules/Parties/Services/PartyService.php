@@ -103,7 +103,7 @@ class PartyService
             ->get()
             ->map(fn (Client $client) => [
                 'id' => $client->id,
-                'code' => $client->client_id,
+                'code' => $this->compactPartyCode($client->client_id),
                 'name' => $client->user?->name,
             ])
             ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes))
@@ -165,7 +165,7 @@ class PartyService
             ->get()
             ->map(fn (Vendor $vendor) => [
                 'id' => $vendor->id,
-                'code' => $vendor->vendor_id,
+                'code' => $this->compactPartyCode($vendor->vendor_id),
                 'name' => $vendor->organization_name,
             ])
             ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes))
@@ -245,6 +245,7 @@ class PartyService
             }
 
             $set[$normalized] = true;
+            $set[$this->compactPartyCode($normalized)] = true;
 
             if ($shortPrefix) {
                 $set[$this->normalizeShortCode($shortPrefix, $normalized)] = true;
@@ -281,8 +282,11 @@ class PartyService
     private function isExistingPartyCode(?string $code, array $existingCodes): bool
     {
         $normalized = strtoupper(trim((string) $code));
+        $compact = $this->compactPartyCode($normalized);
 
-        return $normalized !== '' && isset($existingCodes[$normalized]);
+        return $normalized !== '' && (
+            isset($existingCodes[$normalized]) || isset($existingCodes[$compact])
+        );
     }
 
     private function applyActiveUserFilter(Builder $query): void
@@ -298,7 +302,7 @@ class PartyService
     }
 
     /**
-     * Normalize source codes to a short prefix format (e.g. AG-001, PR-001, ST-001).
+     * Normalize source codes to a short prefix format (e.g. AG001, PR001, ST001).
      */
     private function normalizeShortCode(string $prefix, ?string $rawCode, ?int $fallbackNumber = null): string
     {
@@ -315,6 +319,11 @@ class PartyService
             $number = $fallbackNumber && $fallbackNumber > 0 ? $fallbackNumber : 1;
         }
 
-        return $prefix.'-'.str_pad((string) $number, 3, '0', STR_PAD_LEFT);
+        return $prefix.str_pad((string) $number, 3, '0', STR_PAD_LEFT);
+    }
+
+    private function compactPartyCode(?string $code): string
+    {
+        return strtoupper(str_replace('-', '', trim((string) $code)));
     }
 }
