@@ -54,18 +54,27 @@ class PartyService
         return $this->model->whereIn('id', $ids)->get();
     }
 
-    public function getSourceOptions(string $type): array
+    public function getSourceOptions(string $type, array $filters = []): array
     {
         return match ($type) {
-            'Candidate' => PartyCandidateSourceResource::collection($this->getCandidateSourceOptions())->resolve(),
+            'Candidate' => PartyCandidateSourceResource::collection(
+                $this->getCandidateSourceOptions($filters)
+            )->resolve(),
             default => throw new InvalidArgumentException("Party source options are not available for type [{$type}]."),
         };
     }
 
-    private function getCandidateSourceOptions(): Collection
+    private function getCandidateSourceOptions(array $filters = []): Collection
     {
+        $jobListId = isset($filters['job_list_id']) ? (int) $filters['job_list_id'] : 0;
+
+        if ($jobListId <= 0) {
+            return collect();
+        }
+
         return Application::query()
-            ->select(['id', 'given_name', 'sur_name', 'application_id', 'passport_no'])
+            ->select(['id', 'given_name', 'sur_name', 'application_id', 'passport_no', 'job_list_id'])
+            ->where('job_list_id', $jobListId)
             ->whereNotNull('passport_no')
             ->where('passport_no', '!=', '')
             ->orderByDesc('id')

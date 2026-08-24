@@ -35,7 +35,8 @@ export const partySourceConfigs = {
   },
   Candidate: {
     selectLabelKey: 'parties.select_candidate',
-    fetch: () => fetchPartySourceOptions('Candidate'),
+    fetch: (filters = {}) => fetchPartySourceOptions('Candidate', filters),
+    requiresJobFilter: true,
     mapItem: (row) => ({
       id: row.id,
       code: row.passport_no,
@@ -65,6 +66,10 @@ export const partySourceConfigs = {
 
 export function hasPartySource(partyType) {
   return Boolean(partySourceConfigs[partyType])
+}
+
+export function requiresPartyJobFilter(partyType) {
+  return Boolean(partySourceConfigs[partyType]?.requiresJobFilter)
 }
 
 export function getPartySourceConfig(partyType) {

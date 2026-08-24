@@ -20,9 +20,10 @@ export async function fetchAll(page = 1, perPage = 10, filters = {}) {
   return response(api)
 }
 
-export async function fetchPartySourceOptions(type) {
+export async function fetchPartySourceOptions(type, filters = {}) {
   const api = useApi()
-  await api.sendRequest(`${BASE_URL}/source-options/${encodeURIComponent(type)}`)
+  const url = buildUrl(`${BASE_URL}/source-options/${encodeURIComponent(type)}`, filters)
+  await api.sendRequest(url)
   return response(api)
 }
 

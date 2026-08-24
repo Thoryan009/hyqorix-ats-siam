@@ -5,15 +5,32 @@
     @close="store.handleToggleModal"
   >
     <BaseForm :onSubmit="handleSubmit">
-      <div class="space-y-2">
-        <BaseLabel for="type">{{ t('parties.party_type') }}</BaseLabel>
-        <BaseSelect
-          id="type"
-          v-model="formData.type"
-          :options="partyTypeOptions"
-          placeholder="Select type"
-          :required="true"
-        />
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div class="space-y-2">
+          <BaseLabel for="type">{{ t('parties.party_type') }}</BaseLabel>
+          <BaseSelect
+            id="type"
+            v-model="formData.type"
+            :options="partyTypeOptions"
+            placeholder="Select type"
+            :required="true"
+          />
+        </div>
+
+        <div v-if="showJobFilter" class="space-y-2">
+          <BaseLabel for="job_id">{{ t('shared.labels.job') }}</BaseLabel>
+          <BaseSearchSelect
+            id="job_id"
+            v-model="jobId"
+            :options="jobOptions"
+            :placeholder="jobPlaceholder"
+            :disabled="isJobLoading"
+            :filter-fn="filterJobByNameOrCode"
+            :required="true"
+            teleport-dropdown
+            list-class-name="max-h-96"
+          />
+        </div>
       </div>
 
       <div v-if="showSourceSelect" class="space-y-2">
@@ -115,15 +132,17 @@ import BaseSearchSelect from '@/shared/components/base/BaseSearchSelect.vue'
 import app from '@/shared/config/appConfig'
 import { usePartyMutations } from '@/modules/parties/queries/usePartyMutations'
 import { usePartySourceOptionsQuery } from '@/modules/parties/queries/usePartySourceOptionsQuery'
+import { usePartyJobOptionsQuery } from '@/modules/parties/queries/usePartyJobOptionsQuery'
 import { usePartyStore } from '@/modules/parties/store/partyStore'
 import { useTranslate } from '@/shared/composables/useTranslate'
-import { getPartySourceConfig, hasPartySource } from '../../data/partySourceConfig'
+import { getPartySourceConfig, hasPartySource, requiresPartyJobFilter } from '../../data/partySourceConfig'
 import { partyTypeOptions, statusOptions } from '../../data/partyOptions'
 
 const { t } = useTranslate()
 const store = usePartyStore()
 
 const sourceId = ref('')
+const jobId = ref('')
 
 const emptyFormData = {
   code: '',
@@ -151,11 +170,29 @@ const createDefaultForm = () =>
 const formData = ref(createDefaultForm())
 
 const partyTypeRef = computed(() => formData.value.type)
-const { data: sourceData, isLoading: isSourceLoading } = usePartySourceOptionsQuery(partyTypeRef)
-
-const showSourceSelect = computed(
-  () => store.isModal && !store.isEditModal && hasPartySource(formData.value.type),
+const sourceFiltersRef = computed(() =>
+  requiresPartyJobFilter(formData.value.type) ? { job_list_id: jobId.value || undefined } : {},
 )
+const showJobFilter = computed(
+  () => store.isModal && !store.isEditModal && formData.value.type === 'Candidate',
+)
+const { data: jobOptionsData, isLoading: isJobLoading } = usePartyJobOptionsQuery(showJobFilter)
+const { data: sourceData, isLoading: isSourceLoading } = usePartySourceOptionsQuery(
+  partyTypeRef,
+  sourceFiltersRef,
+)
+
+const jobOptions = computed(() => jobOptionsData.value ?? [])
+
+const jobPlaceholder = computed(() =>
+  isJobLoading.value ? t('parties.loading_source') : t('parties.search_job'),
+)
+
+const showSourceSelect = computed(() => {
+  if (!store.isModal || store.isEditModal || !hasPartySource(formData.value.type)) return false
+  if (requiresPartyJobFilter(formData.value.type)) return Boolean(jobId.value)
+  return true
+})
 
 const sourceSelectLabel = computed(() => {
   const config = getPartySourceConfig(formData.value.type)
@@ -171,9 +208,17 @@ const sourceOptions = computed(() => {
   }))
 })
 
-const sourcePlaceholder = computed(() =>
-  isSourceLoading.value ? t('parties.loading_source') : t('parties.search_source'),
-)
+const sourcePlaceholder = computed(() => {
+  if (requiresPartyJobFilter(formData.value.type) && !jobId.value) {
+    return t('parties.select_job_to_load_candidates')
+  }
+  return isSourceLoading.value ? t('parties.loading_source') : t('parties.search_source')
+})
+
+const filterJobByNameOrCode = (option, query) => {
+  const label = String(option?.name ?? '').toLowerCase()
+  return label.includes(query)
+}
 
 const filterByCodeOrName = (option, query) => {
   const label = String(option?.name ?? '').toLowerCase()
@@ -190,6 +235,7 @@ const isSaving = computed(() => submitLoading.value || updateLoading.value)
 const resetForm = () => {
   formData.value = createDefaultForm()
   sourceId.value = ''
+  jobId.value = ''
 }
 
 watch(
@@ -198,10 +244,18 @@ watch(
     if (!store.isModal || store.isEditModal) return
     if (!oldType || newType === oldType) return
     sourceId.value = ''
+    jobId.value = ''
     formData.value.code = ''
     formData.value.name = ''
   },
 )
+
+watch(jobId, () => {
+  if (formData.value.type !== 'Candidate' || store.isEditModal) return
+  sourceId.value = ''
+  formData.value.code = ''
+  formData.value.name = ''
+})
 
 watch(sourceId, (value) => {
   if (!value) return
@@ -218,6 +272,7 @@ watch(
   () => {
     if (store.isEditModal && store.item) {
       sourceId.value = ''
+      jobId.value = ''
       formData.value = {
         code: store.item.code ?? '',
         type: store.item.type ?? '',

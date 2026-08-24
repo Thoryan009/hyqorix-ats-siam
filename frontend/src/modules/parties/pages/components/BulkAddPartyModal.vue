@@ -9,15 +9,32 @@
       <div class="max-h-[calc(92vh-8rem)] overflow-y-auto pr-1">
       <p class="mb-4 text-sm text-slate-500">{{ t('parties.bulk_add_hint') }}</p>
 
-      <div class="mb-4 max-w-xs space-y-2">
-        <BaseLabel for="bulk_party_type">{{ t('parties.party_type') }}</BaseLabel>
-        <BaseSelect
-          id="bulk_party_type"
-          v-model="partyType"
-          :options="partyTypeOptions"
-          placeholder="Select type"
-          :required="true"
-        />
+      <div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div class="space-y-2">
+          <BaseLabel for="bulk_party_type">{{ t('parties.party_type') }}</BaseLabel>
+          <BaseSelect
+            id="bulk_party_type"
+            v-model="partyType"
+            :options="partyTypeOptions"
+            placeholder="Select type"
+            :required="true"
+          />
+        </div>
+
+        <div v-if="showJobFilter" class="space-y-2">
+          <BaseLabel for="bulk_job_id">{{ t('shared.labels.job') }}</BaseLabel>
+          <BaseSearchSelect
+            id="bulk_job_id"
+            v-model="jobId"
+            :options="jobOptions"
+            :placeholder="jobPlaceholder"
+            :disabled="isJobLoading"
+            :filter-fn="filterJobByNameOrCode"
+            :required="true"
+            teleport-dropdown
+            list-class-name="max-h-96"
+          />
+        </div>
       </div>
 
       <div class="mb-3">
@@ -175,6 +192,7 @@ import BaseForm from '@/shared/components/base/BaseForm.vue'
 import BaseSearchSelect from '@/shared/components/base/BaseSearchSelect.vue'
 import { toast } from '@/shared/config/toastConfig'
 import { usePartySourceOptionsQuery } from '@/modules/parties/queries/usePartySourceOptionsQuery'
+import { usePartyJobOptionsQuery } from '@/modules/parties/queries/usePartyJobOptionsQuery'
 import { usePartyStore } from '@/modules/parties/store/partyStore'
 import { useTranslate } from '@/shared/composables/useTranslate'
 import {
@@ -183,22 +201,41 @@ import {
   createEmptyPartyRow,
   validateBulkPartyRows,
 } from '../../data/partyFormHelpers'
-import { getPartySourceConfig, hasPartySource } from '../../data/partySourceConfig'
+import { getPartySourceConfig, hasPartySource, requiresPartyJobFilter } from '../../data/partySourceConfig'
 import { partyTypeOptions, statusOptions } from '../../data/partyOptions'
 
 const { t } = useTranslate()
 const store = usePartyStore()
 
 const partyType = ref('')
+const jobId = ref('')
 const rows = ref(createDefaultPartyRows())
 const validationMessage = ref('')
 const isSubmitting = ref(false)
 let nextRowId = rows.value.length + 1
 
 const partyTypeRef = computed(() => partyType.value)
-const { data: sourceData, isLoading: isSourceLoading } = usePartySourceOptionsQuery(partyTypeRef)
+const sourceFiltersRef = computed(() =>
+  requiresPartyJobFilter(partyType.value) ? { job_list_id: jobId.value || undefined } : {},
+)
+const showJobFilter = computed(() => partyType.value === 'Candidate')
+const { data: jobOptionsData, isLoading: isJobLoading } = usePartyJobOptionsQuery(showJobFilter)
+const { data: sourceData, isLoading: isSourceLoading } = usePartySourceOptionsQuery(
+  partyTypeRef,
+  sourceFiltersRef,
+)
 
-const showSourceSelect = computed(() => hasPartySource(partyType.value))
+const jobOptions = computed(() => jobOptionsData.value ?? [])
+
+const jobPlaceholder = computed(() =>
+  isJobLoading.value ? t('parties.loading_source') : t('parties.search_job'),
+)
+
+const showSourceSelect = computed(() => {
+  if (!hasPartySource(partyType.value)) return false
+  if (requiresPartyJobFilter(partyType.value)) return Boolean(jobId.value)
+  return true
+})
 
 const sourceSelectLabel = computed(() => {
   const config = getPartySourceConfig(partyType.value)
@@ -215,9 +252,17 @@ const sourceOptions = computed(() => {
   }))
 })
 
-const sourcePlaceholder = computed(() =>
-  isSourceLoading.value ? t('parties.loading_source') : t('parties.search_source'),
-)
+const sourcePlaceholder = computed(() => {
+  if (requiresPartyJobFilter(partyType.value) && !jobId.value) {
+    return t('parties.select_job_to_load_candidates')
+  }
+  return isSourceLoading.value ? t('parties.loading_source') : t('parties.search_source')
+})
+
+const filterJobByNameOrCode = (option, query) => {
+  const label = String(option?.name ?? '').toLowerCase()
+  return label.includes(query)
+}
 
 const filterByCodeOrName = (option, query) => {
   const label = String(option?.name ?? '').toLowerCase()
@@ -249,9 +294,19 @@ const fillRowFromSource = (row, value) => {
 
 const resetForm = () => {
   partyType.value = ''
+  jobId.value = ''
   rows.value = createDefaultPartyRows()
   nextRowId = rows.value.length + 1
   validationMessage.value = ''
+}
+
+const resetRowSelections = () => {
+  rows.value = rows.value.map((row) => ({
+    ...row,
+    source_id: '',
+    code: '',
+    name: '',
+  }))
 }
 
 const addRow = () => {
@@ -278,13 +333,25 @@ watch(
 watch(partyType, (newType, oldType) => {
   if (!oldType || newType === oldType) return
 
+  jobId.value = ''
   rows.value = createDefaultPartyRows()
   nextRowId = rows.value.length + 1
   validationMessage.value = ''
 })
 
+watch(jobId, () => {
+  if (partyType.value !== 'Candidate') return
+  resetRowSelections()
+})
+
 const handleSubmit = async () => {
   validationMessage.value = ''
+
+  if (requiresPartyJobFilter(partyType.value) && !jobId.value) {
+    validationMessage.value = t('parties.select_job_to_load_candidates')
+    toast.error(t('parties.bulk_validation_failed'))
+    return
+  }
 
   const errors = validateBulkPartyRows(partyType.value, rows.value, {
     requireSource: showSourceSelect.value,

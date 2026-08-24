@@ -10,6 +10,7 @@ use App\Modules\Parties\Requests\PartyRequest;
 use App\Modules\Parties\Resources\PartyResource;
 use App\Modules\Parties\Services\PartyService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PartyController extends Controller
@@ -70,10 +71,12 @@ class PartyController extends Controller
         return apiSuccess(null, 'deleted', 200, 'Records');
     }
 
-    public function sourceOptions(string $type): JsonResponse
+    public function sourceOptions(Request $request, string $type): JsonResponse
     {
         return apiSuccess(
-            $this->service->getSourceOptions($type),
+            $this->service->getSourceOptions($type, [
+                'job_list_id' => $request->integer('job_list_id') ?: null,
+            ]),
             'fetched',
             200,
             'Party source options'
