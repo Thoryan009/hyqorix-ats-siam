@@ -197,12 +197,15 @@
                   <button
                     type="button"
                     class="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+                    @click="copyLine(index)"
                   >
                     {{ t('journals.copy') }}
                   </button>
                   <button
                     type="button"
-                    class="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                    class="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="lines.length <= 1"
+                    @click="deleteLine(index)"
                   >
                     {{ t('journals.delete') }}
                   </button>
@@ -313,6 +316,22 @@ let nextLineId = Math.max(...lines.value.map((line) => Number(line.id) || 0), 0)
 
 const addLine = () => {
   lines.value.push(createEmptyJournalLine(nextLineId++))
+}
+
+const copyLine = (index) => {
+  const source = lines.value[index]
+  if (!source) return
+
+  const copied = {
+    ...source,
+    id: nextLineId++,
+  }
+  lines.value.splice(index + 1, 0, copied)
+}
+
+const deleteLine = (index) => {
+  if (lines.value.length <= 1) return
+  lines.value.splice(index, 1)
 }
 
 const partyTypeRef = computed(() => form.value.party_type)
