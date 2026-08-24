@@ -15,6 +15,21 @@ export function createDefaultPartyRows(count = 2, startId = 1) {
   return Array.from({ length: count }, (_, index) => createEmptyPartyRow(startId + index))
 }
 
+export function isPartyRowEmpty(row, { requireSource = false } = {}) {
+  const code = String(row?.code ?? '').trim()
+  const name = String(row?.name ?? '').trim()
+  const remarks = String(row?.remarks ?? '').trim()
+  const openingDebit = Number(row?.opening_debit) || 0
+  const openingCredit = Number(row?.opening_credit) || 0
+  const hasSource = Boolean(row?.source_id)
+
+  if (requireSource && hasSource) return false
+  if (code || name || remarks) return false
+  if (openingDebit > 0 || openingCredit > 0) return false
+
+  return true
+}
+
 export function buildBulkPartyPayload(partyType, rows) {
   return rows.map((row) => ({
     type: partyType,
@@ -31,41 +46,88 @@ export function validateBulkPartyRows(partyType, rows, { requireSource = false }
   const errors = []
 
   if (!partyType) {
-    errors.push('Party type is required.')
+    errors.push({ key: 'parties.bulk_error_party_type_required' })
     return errors
   }
 
   if (!rows.length) {
-    errors.push('Add at least one party row.')
+    errors.push({ key: 'parties.bulk_error_min_one_row' })
     return errors
   }
 
+  const emptyRowNumbers = []
   const codes = new Set()
 
   rows.forEach((row, index) => {
     const rowNo = index + 1
     const code = String(row.code ?? '').trim()
     const name = String(row.name ?? '').trim()
+    const empty = isPartyRowEmpty(row, { requireSource })
+
+    if (empty) {
+      emptyRowNumbers.push(rowNo)
+      return
+    }
 
     if (requireSource && !row.source_id) {
-      errors.push(`Row ${rowNo}: select a ${partyType.toLowerCase()}.`)
+      errors.push({
+        key: 'parties.bulk_error_row_select_source',
+        params: { row: rowNo, type: partyType },
+      })
+    }
+
+    if (!code && !name) {
+      errors.push({
+        key: 'parties.bulk_error_row_empty_required',
+        params: { row: rowNo },
+      })
+      return
     }
 
     if (!code) {
-      errors.push(`Row ${rowNo}: party ID is required.`)
+      errors.push({
+        key: 'parties.bulk_error_row_party_id_required',
+        params: { row: rowNo },
+      })
     }
 
     if (!name) {
-      errors.push(`Row ${rowNo}: name is required.`)
+      errors.push({
+        key: 'parties.bulk_error_row_name_required',
+        params: { row: rowNo },
+      })
     }
 
     if (code) {
-      if (codes.has(code.toLowerCase())) {
-        errors.push(`Row ${rowNo}: duplicate party ID "${code}" in this batch.`)
+      const normalized = code.toLowerCase()
+      if (codes.has(normalized)) {
+        errors.push({
+          key: 'parties.bulk_error_row_duplicate_party_id',
+          params: { row: rowNo, code },
+        })
       }
-      codes.add(code.toLowerCase())
+      codes.add(normalized)
     }
   })
+
+  if (emptyRowNumbers.length) {
+    const filledCount = rows.length - emptyRowNumbers.length
+
+    if (filledCount > 0) {
+      errors.unshift({
+        key:
+          emptyRowNumbers.length === 1
+            ? 'parties.bulk_error_empty_row'
+            : 'parties.bulk_error_empty_rows',
+        params: {
+          row: emptyRowNumbers[0],
+          rows: emptyRowNumbers.join(', '),
+        },
+      })
+    } else {
+      errors.unshift({ key: 'parties.bulk_error_all_rows_empty' })
+    }
+  }
 
   return errors
 }

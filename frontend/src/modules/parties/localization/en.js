@@ -33,6 +33,18 @@ export default {
     save_all: 'Save All Parties',
     bulk_ready: '{count} parties saved successfully.',
     bulk_validation_failed: 'Please fix the highlighted issues before saving.',
+    bulk_error_party_type_required: 'Please select a party type first.',
+    bulk_error_min_one_row: 'Add at least one party row.',
+    bulk_error_all_rows_empty: 'Please fill at least one party row before saving.',
+    bulk_error_empty_row:
+      'Row {row} is empty. Please fill it in or delete the row before saving.',
+    bulk_error_empty_rows:
+      'Rows {rows} are empty. Please fill them in or delete those rows before saving.',
+    bulk_error_row_select_source: 'Row {row}: please select a {type}.',
+    bulk_error_row_empty_required: 'Row {row}: Party ID and Name are required.',
+    bulk_error_row_party_id_required: 'Row {row}: Party ID is required.',
+    bulk_error_row_name_required: 'Row {row}: Name is required.',
+    bulk_error_row_duplicate_party_id: 'Row {row}: duplicate Party ID "{code}" in this batch.',
     action: 'Action',
     copy: 'Copy',
     delete: 'Delete',

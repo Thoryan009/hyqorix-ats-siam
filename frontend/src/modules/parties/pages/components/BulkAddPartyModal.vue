@@ -17,7 +17,6 @@
             v-model="partyType"
             :options="partyTypeOptions"
             placeholder="Select type"
-            :required="true"
           />
         </div>
 
@@ -30,7 +29,6 @@
             :placeholder="jobPlaceholder"
             :disabled="isJobLoading"
             :filter-fn="filterJobByNameOrCode"
-            :required="true"
             teleport-dropdown
             list-class-name="max-h-96"
           />
@@ -87,7 +85,6 @@
                   :placeholder="sourcePlaceholder"
                   :disabled="(isSourceLoading || isSourceFetching) && !sourceOptions.length"
                   :filter-fn="filterByCodeOrName"
-                  :required="true"
                   teleport-dropdown
                   list-class-name="max-h-96"
                   @update:modelValue="(value) => fillRowFromSource(row, value)"
@@ -97,7 +94,6 @@
                 <BaseInput
                   v-model="row.code"
                   placeholder="Eg: CL001"
-                  :required="true"
                   className="w-full min-w-[110px] rounded-md border border-gray-300 px-2 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </td>
@@ -105,7 +101,6 @@
                 <BaseInput
                   v-model="row.name"
                   placeholder="Eg: Gulf Engineering Co."
-                  :required="true"
                   className="w-full min-w-[160px] rounded-md border border-gray-300 px-2 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </td>
@@ -131,7 +126,6 @@
                 <BaseSelect
                   v-model="row.status"
                   :options="statusOptions"
-                  :required="true"
                 />
               </td>
               <td class="border-b border-slate-100 px-3 py-2">
@@ -360,7 +354,7 @@ const handleSubmit = async () => {
 
   if (requiresPartyJobFilter(partyType.value) && !jobId.value) {
     validationMessage.value = t('parties.select_job_to_load_candidates')
-    toast.error(t('parties.bulk_validation_failed'))
+    toast.error(validationMessage.value)
     return
   }
 
@@ -369,8 +363,14 @@ const handleSubmit = async () => {
   })
 
   if (errors.length) {
-    validationMessage.value = errors[0]
-    toast.error(t('parties.bulk_validation_failed'))
+    const firstError = errors[0]
+    const message =
+      typeof firstError === 'string'
+        ? firstError
+        : t(firstError.key, firstError.params || {})
+
+    validationMessage.value = message
+    toast.error(message)
     return
   }
 
@@ -384,6 +384,7 @@ const handleSubmit = async () => {
       error?.message ||
       t('parties.bulk_validation_failed')
     validationMessage.value = message
+    toast.error(message)
   }
 }
 </script>

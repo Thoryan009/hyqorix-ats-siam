@@ -33,6 +33,18 @@ export default {
     save_all: 'সব পার্টি সংরক্ষণ করুন',
     bulk_ready: '{count}টি পার্টি সফলভাবে সংরক্ষণ হয়েছে।',
     bulk_validation_failed: 'সংরক্ষণের আগে সমস্যাগুলো ঠিক করুন।',
+    bulk_error_party_type_required: 'আগে পার্টির ধরন নির্বাচন করুন।',
+    bulk_error_min_one_row: 'কমপক্ষে একটি পার্টি সারি যোগ করুন।',
+    bulk_error_all_rows_empty: 'সংরক্ষণের আগে কমপক্ষে একটি পার্টি সারি পূরণ করুন।',
+    bulk_error_empty_row:
+      'সারি {row} খালি আছে। সংরক্ষণের আগে পূরণ করুন অথবা সারিটি মুছে ফেলুন।',
+    bulk_error_empty_rows:
+      'সারি {rows} খালি আছে। সংরক্ষণের আগে পূরণ করুন অথবা সেই সারিগুলো মুছে ফেলুন।',
+    bulk_error_row_select_source: 'সারি {row}: একটি {type} নির্বাচন করুন।',
+    bulk_error_row_empty_required: 'সারি {row}: পার্টি আইডি এবং নাম আবশ্যক।',
+    bulk_error_row_party_id_required: 'সারি {row}: পার্টি আইডি আবশ্যক।',
+    bulk_error_row_name_required: 'সারি {row}: নাম আবশ্যক।',
+    bulk_error_row_duplicate_party_id: 'সারি {row}: এই ব্যাচে পার্টি আইডি "{code}" ডুপ্লিকেট।',
     action: 'অ্যাকশন',
     copy: 'কপি',
     delete: 'ডিলিট',
