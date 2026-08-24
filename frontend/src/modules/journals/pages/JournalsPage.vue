@@ -13,6 +13,14 @@
       </BaseButton>
     </PageHeader>
 
+    <div class="mb-4 flex justify-end">
+      <TableFilters
+        :filters="filters"
+        :has-active-filters="hasActiveFilters"
+        @reset="resetFilters"
+      />
+    </div>
+
     <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
         <h2 class="text-base font-semibold text-slate-800 sm:text-lg">
@@ -20,7 +28,15 @@
         </h2>
       </div>
 
-      <div class="overflow-x-auto">
+      <div v-if="isLoading" class="px-4 py-10 text-center text-sm text-slate-500">
+        {{ t('journals.loading') }}
+      </div>
+
+      <div v-else-if="!rows.length" class="px-4 py-10 text-center text-sm text-slate-500">
+        {{ t('journals.empty_note') }}
+      </div>
+
+      <div v-else class="overflow-x-auto">
         <table class="min-w-full border-collapse text-sm">
           <thead>
             <tr class="bg-[#1e4b8c] text-left text-white">
@@ -97,6 +113,17 @@
         </table>
       </div>
     </div>
+
+    <div v-if="!isLoading" class="mt-4">
+      <BasePagination
+        :total="total"
+        :showing="showing"
+        :links="links"
+        :per-page="perPage"
+        @update:page="setPage"
+        @update:perPage="setPerPage"
+      />
+    </div>
   </SectionHeader>
 </template>
 
@@ -104,12 +131,29 @@
 import { computed } from 'vue'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
+import TableFilters from '@/shared/components/ui/TableFilters.vue'
 import { useTranslate } from '@/shared/composables/useTranslate'
-import { sampleJournalEntries } from '../data/sampleJournalEntries'
+import { usePagination } from '@/shared/composables/usePagination'
+import { useTableFilters } from '@/shared/composables/useTableFilters'
+import { flattenJournalRows } from '../data/postJournalStatic'
+import { useJournalsQuery } from '../queries/useJournalsQuery'
 
 const { t } = useTranslate()
 
-const rows = computed(() => sampleJournalEntries)
+const { filters, hasActiveFilters, resetFilters } = useTableFilters({
+  searchQuery: '',
+  from_date: '',
+  to_date: '',
+})
+
+const pagination = usePagination({ perPage: 25 })
+const { page, perPage, total, showing, links, setPage, setPerPage } = pagination
+
+const { data, isLoading } = useJournalsQuery(page, perPage, filters)
+pagination.bindMeta(data)
+
+const journals = computed(() => data.value?.data?.data ?? [])
+const rows = computed(() => flattenJournalRows(journals.value))
 
 const isFirstLineOfJe = (index) => {
   if (index === 0) return true

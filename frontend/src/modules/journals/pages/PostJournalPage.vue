@@ -26,7 +26,8 @@
         </p>
         <p class="mt-1">
           <span
-            class="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200"
+            class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
+            :class="statusBadgeClass"
           >
             {{ form.status }}
           </span>
@@ -278,11 +279,28 @@
     </div>
 
     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <BaseButton className="border border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50">
-        {{ t('journals.submit_approval') }}
+      <p v-if="validationMessage" class="w-full text-sm text-red-600 sm:mr-auto sm:self-center">
+        {{ validationMessage }}
+      </p>
+      <BaseButton
+        className="border border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50"
+        :disabled="isSubmitting"
+        @click="handleSubmit('pending_approval')"
+      >
+        <span v-if="isSubmitting && pendingStatus === 'pending_approval'">
+          {{ t('journals.submitting') }}
+        </span>
+        <span v-else>{{ t('journals.submit_approval') }}</span>
       </BaseButton>
-      <BaseButton className="bg-indigo-600 text-white hover:bg-indigo-700">
-        {{ t('journals.post_journal') }}
+      <BaseButton
+        className="bg-indigo-600 text-white hover:bg-indigo-700"
+        :disabled="isSubmitting"
+        @click="handleSubmit('posted')"
+      >
+        <span v-if="isSubmitting && pendingStatus === 'posted'">
+          {{ t('journals.posting') }}
+        </span>
+        <span v-else>{{ t('journals.post_journal') }}</span>
       </BaseButton>
     </div>
   </SectionHeader>
@@ -293,10 +311,13 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
+import { toast } from '@/shared/config/toastConfig'
 import { useTranslate } from '@/shared/composables/useTranslate'
 import { useAccountOptionsQuery } from '../queries/useAccountOptionsQuery'
+import { useJournalMutations } from '../queries/useJournalMutations'
 import { usePartyLedgerOptionsQuery } from '../queries/usePartyLedgerOptionsQuery'
 import {
+  buildJournalPayload,
   costTypeOptions,
   createEmptyJournalLine,
   defaultJournalForm,
@@ -305,6 +326,7 @@ import {
   projectOptions,
   todayIsoDate,
   transactionTypeOptions,
+  validateJournalForm,
 } from '../data/postJournalStatic'
 
 const { t } = useTranslate()
@@ -312,7 +334,29 @@ const router = useRouter()
 
 const form = ref({ ...defaultJournalForm, voucher_date: todayIsoDate() })
 const lines = ref(defaultJournalLines.map((line) => ({ ...line })))
+const validationMessage = ref('')
+const pendingStatus = ref('')
 let nextLineId = Math.max(...lines.value.map((line) => Number(line.id) || 0), 0) + 1
+
+const { submit, submitLoading: isSubmitting } = useJournalMutations({
+  onSuccess(result) {
+    const voucher = result?.data?.voucher_no || result?.voucher_no || ''
+    const status = result?.data?.status_raw || pendingStatus.value
+    toast.success(
+      status === 'pending_approval'
+        ? t('journals.submitted_success', { voucher })
+        : t('journals.posted_success', { voucher }),
+    )
+    router.push({ name: 'Journal Management' })
+  },
+})
+
+const statusBadgeClass = computed(() => {
+  const status = String(form.value.status || '').toLowerCase()
+  if (status === 'posted') return 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+  if (status.includes('pending')) return 'bg-blue-50 text-blue-700 ring-blue-200'
+  return 'bg-amber-50 text-amber-700 ring-amber-200'
+})
 
 const addLine = () => {
   lines.value.push(createEmptyJournalLine(nextLineId++))
@@ -430,5 +474,30 @@ const postingPreview = computed(() => {
 
 const goBack = () => {
   router.push({ name: 'Journal Management' })
+}
+
+const handleSubmit = async (status) => {
+  validationMessage.value = ''
+  pendingStatus.value = status
+
+  const errors = validateJournalForm(form.value, lines.value)
+  if (errors.length) {
+    const firstError = errors[0]
+    const message = t(firstError.key, firstError.params || {})
+    validationMessage.value = message
+    toast.error(message)
+    return
+  }
+
+  try {
+    await submit.mutateAsync(buildJournalPayload(form.value, lines.value, status))
+  } catch (error) {
+    const message =
+      error?.message ||
+      error?.errors?.lines?.[0] ||
+      Object.values(error?.errors ?? {})[0]?.[0] ||
+      t('journals.error_unbalanced')
+    validationMessage.value = message
+  }
 }
 </script>
