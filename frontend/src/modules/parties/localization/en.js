@@ -14,5 +14,13 @@ export default {
     remarks: 'Remarks',
     all_types: 'All Types',
     all_statuses: 'All Statuses',
+    select_client: 'Select Client',
+    select_principal: 'Select Principal',
+    select_agent: 'Select Agent',
+    select_candidate: 'Select Candidate',
+    select_vendor: 'Select Vendor',
+    select_staff: 'Select Staff',
+    loading_source: 'Loading list...',
+    search_source: 'Search by code or name',
   },
 }

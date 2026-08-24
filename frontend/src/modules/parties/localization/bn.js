@@ -14,5 +14,13 @@ export default {
     remarks: 'মন্তব্য',
     all_types: 'সব ধরন',
     all_statuses: 'সব স্ট্যাটাস',
+    select_client: 'ক্লায়েন্ট নির্বাচন করুন',
+    select_principal: 'প্রিন্সিপাল নির্বাচন করুন',
+    select_agent: 'এজেন্ট নির্বাচন করুন',
+    select_candidate: 'ক্যান্ডিডেট নির্বাচন করুন',
+    select_vendor: 'ভেন্ডর নির্বাচন করুন',
+    select_staff: 'স্টাফ নির্বাচন করুন',
+    loading_source: 'তালিকা লোড হচ্ছে...',
+    search_source: 'কোড বা নাম দিয়ে খুঁজুন',
   },
 }

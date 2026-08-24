@@ -16,6 +16,19 @@
         />
       </div>
 
+      <div v-if="showSourceSelect" class="space-y-2">
+        <BaseLabel for="source_id">{{ sourceSelectLabel }}</BaseLabel>
+        <BaseSearchSelect
+          id="source_id"
+          v-model="sourceId"
+          :options="sourceOptions"
+          :placeholder="sourcePlaceholder"
+          :disabled="isSourceLoading"
+          :filter-fn="filterByCodeOrName"
+          :required="true"
+        />
+      </div>
+
       <div class="space-y-2">
         <BaseLabel for="code">{{ t('parties.party_id') }}</BaseLabel>
         <BaseInput
@@ -98,14 +111,19 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import BaseForm from '@/shared/components/base/BaseForm.vue'
+import BaseSearchSelect from '@/shared/components/base/BaseSearchSelect.vue'
 import app from '@/shared/config/appConfig'
 import { usePartyMutations } from '@/modules/parties/queries/usePartyMutations'
+import { usePartySourceOptionsQuery } from '@/modules/parties/queries/usePartySourceOptionsQuery'
 import { usePartyStore } from '@/modules/parties/store/partyStore'
 import { useTranslate } from '@/shared/composables/useTranslate'
+import { getPartySourceConfig, hasPartySource } from '../../data/partySourceConfig'
 import { partyTypeOptions, statusOptions } from '../../data/partyOptions'
 
 const { t } = useTranslate()
 const store = usePartyStore()
+
+const sourceId = ref('')
 
 const emptyFormData = {
   code: '',
@@ -132,6 +150,37 @@ const createDefaultForm = () =>
 
 const formData = ref(createDefaultForm())
 
+const partyTypeRef = computed(() => formData.value.type)
+const { data: sourceData, isLoading: isSourceLoading } = usePartySourceOptionsQuery(partyTypeRef)
+
+const showSourceSelect = computed(
+  () => store.isModal && !store.isEditModal && hasPartySource(formData.value.type),
+)
+
+const sourceSelectLabel = computed(() => {
+  const config = getPartySourceConfig(formData.value.type)
+  return config ? t(config.selectLabelKey) : ''
+})
+
+const sourceOptions = computed(() => {
+  const items = sourceData.value ?? []
+  return items.map((item) => ({
+    id: item.id,
+    name: `${item.code} – ${item.name}`,
+    code: item.code,
+  }))
+})
+
+const sourcePlaceholder = computed(() =>
+  isSourceLoading.value ? t('parties.loading_source') : t('parties.search_source'),
+)
+
+const filterByCodeOrName = (option, query) => {
+  const label = String(option?.name ?? '').toLowerCase()
+  const code = String(option?.code ?? '').toLowerCase()
+  return label.includes(query) || code.includes(query)
+}
+
 const modalTitle = computed(() =>
   store.isEditModal ? t('parties.edit') : t('parties.add'),
 )
@@ -140,12 +189,35 @@ const isSaving = computed(() => submitLoading.value || updateLoading.value)
 
 const resetForm = () => {
   formData.value = createDefaultForm()
+  sourceId.value = ''
 }
+
+watch(
+  () => formData.value.type,
+  (newType, oldType) => {
+    if (!store.isModal || store.isEditModal) return
+    if (!oldType || newType === oldType) return
+    sourceId.value = ''
+    formData.value.code = ''
+    formData.value.name = ''
+  },
+)
+
+watch(sourceId, (value) => {
+  if (!value) return
+
+  const selected = (sourceData.value ?? []).find((item) => String(item.id) === String(value))
+  if (!selected) return
+
+  formData.value.code = selected.code ?? ''
+  formData.value.name = selected.name ?? ''
+})
 
 watch(
   () => [store.isModal, store.isEditModal, store.item],
   () => {
     if (store.isEditModal && store.item) {
+      sourceId.value = ''
       formData.value = {
         code: store.item.code ?? '',
         type: store.item.type ?? '',
