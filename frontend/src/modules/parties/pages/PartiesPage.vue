@@ -58,7 +58,7 @@
 
     <div class="rounded-lg bg-white shadow-sm">
       <div>
-        <BaseTableSkeleton v-if="isLoading" :columns="columns" selectable show-actions />
+        <BaseTableSkeleton v-if="isLoading" :columns="columns" selectable show-actions :show-serial="false" />
 
         <BaseTable
           v-else
@@ -68,6 +68,7 @@
           :per-page="perPage"
           show-actions
           selectable
+          :show-serial="false"
           :selected-ids="selectedIds"
           @toggleAll="(checked) => toggleAll(rows, checked)"
           @toggleRow="toggleRow"
