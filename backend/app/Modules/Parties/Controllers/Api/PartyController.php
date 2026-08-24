@@ -69,4 +69,14 @@ class PartyController extends Controller
 
         return apiSuccess(null, 'deleted', 200, 'Records');
     }
+
+    public function sourceOptions(string $type): JsonResponse
+    {
+        return apiSuccess(
+            $this->service->getSourceOptions($type),
+            'fetched',
+            200,
+            'Party source options'
+        );
+    }
 }

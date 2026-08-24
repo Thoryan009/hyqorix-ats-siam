@@ -2,10 +2,13 @@
 
 namespace App\Modules\Parties\Services;
 
+use App\Modules\Application\Models\Application;
 use App\Modules\Parties\Models\Party;
 use App\Modules\Parties\Repositories\PartyRepository;
+use App\Modules\Parties\Resources\PartyCandidateSourceResource;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use InvalidArgumentException;
 
 class PartyService
 {
@@ -49,5 +52,24 @@ class PartyService
     public function getByIds(array $ids): Collection
     {
         return $this->model->whereIn('id', $ids)->get();
+    }
+
+    public function getSourceOptions(string $type): array
+    {
+        return match ($type) {
+            'Candidate' => PartyCandidateSourceResource::collection($this->getCandidateSourceOptions())->resolve(),
+            default => throw new InvalidArgumentException("Party source options are not available for type [{$type}]."),
+        };
+    }
+
+    private function getCandidateSourceOptions(): Collection
+    {
+        return Application::query()
+            ->select(['id', 'given_name', 'sur_name', 'application_id', 'passport_no'])
+            ->whereNotNull('passport_no')
+            ->where('passport_no', '!=', '')
+            ->orderByDesc('id')
+            ->limit(500)
+            ->get();
     }
 }

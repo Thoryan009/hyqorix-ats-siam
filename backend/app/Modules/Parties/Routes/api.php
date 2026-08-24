@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('parties')->group(function () {
     Route::get('/', [PartyController::class, 'index']);
+    Route::get('source-options/{type}', [PartyController::class, 'sourceOptions']);
     Route::post('/', [PartyController::class, 'store']);
     Route::post('bulk-delete', [PartyController::class, 'bulkDelete']);
     Route::get('{party}', [PartyController::class, 'show']);

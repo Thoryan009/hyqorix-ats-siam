@@ -3,7 +3,7 @@ import { fetchAll as fetchAgents } from '@/modules/agent/services/agentService'
 import { fetchAll as fetchPrincipals } from '@/modules/principal/services/principalService'
 import { fetchAll as fetchVendors } from '@/modules/vendor/services/vendorService'
 import { fetchAll as fetchEmployees } from '@/modules/work_order/services/employeeService'
-import { fetchAll as fetchApplications } from '@/modules/application/services/applicationService'
+import { fetchPartySourceOptions } from '@/modules/parties/services/partyService'
 
 export const partySourceConfigs = {
   Client: {
@@ -35,11 +35,12 @@ export const partySourceConfigs = {
   },
   Candidate: {
     selectLabelKey: 'parties.select_candidate',
-    fetch: () => fetchApplications(1, 500, {}),
+    fetch: () => fetchPartySourceOptions('Candidate'),
     mapItem: (row) => ({
       id: row.id,
-      code: row.application_id,
+      code: row.passport_no,
       name: row.full_name,
+      applicationId: row.application_id,
     }),
   },
   Vendor: {
