@@ -4,9 +4,17 @@
       <div>
         <PageTitle>{{ t('parties.management') }}</PageTitle>
       </div>
-      <BaseButton @click="store.handleToggleModal('add')">
-        {{ t('shared.actions.add') }} {{ t('parties.module') }}
-      </BaseButton>
+      <div class="flex flex-wrap gap-2">
+        <BaseButton @click="store.handleToggleModal('add')">
+          {{ t('shared.actions.add') }} {{ t('parties.module') }}
+        </BaseButton>
+        <BaseButton
+          className="border border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50"
+          @click="store.handleOpenBulkModal()"
+        >
+          {{ t('parties.add_multiple') }}
+        </BaseButton>
+      </div>
     </PageHeader>
 
     <div class="mb-4 flex flex-col items-start justify-between gap-4 underline sm:flex-row sm:items-center">
@@ -97,6 +105,7 @@
         />
 
         <FormModal />
+        <BulkAddPartyModal />
         <ViewModal />
       </div>
     </div>
@@ -123,6 +132,7 @@ const { t } = useTranslate()
 
 const ViewModal = defineAsyncComponent(() => import('./components/ViewModal.vue'))
 const FormModal = defineAsyncComponent(() => import('./components/FormModal.vue'))
+const BulkAddPartyModal = defineAsyncComponent(() => import('./components/BulkAddPartyModal.vue'))
 
 const store = usePartyStore()
 
