@@ -5,6 +5,7 @@ namespace App\Modules\Parties\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Modules\Parties\Models\Party;
 use App\Modules\Parties\Requests\PartyBulkDeleteRequest;
+use App\Modules\Parties\Requests\PartyBulkStoreRequest;
 use App\Modules\Parties\Requests\PartyIndexRequest;
 use App\Modules\Parties\Requests\PartyRequest;
 use App\Modules\Parties\Resources\PartyResource;
@@ -35,6 +36,18 @@ class PartyController extends Controller
             'created',
             201,
             'Party'
+        );
+    }
+
+    public function bulkStore(PartyBulkStoreRequest $request): JsonResponse
+    {
+        $parties = $this->service->bulkCreate($request->validated('parties'));
+
+        return apiSuccess(
+            PartyResource::collection($parties),
+            'created',
+            201,
+            'Parties'
         );
     }
 

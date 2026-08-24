@@ -191,6 +191,7 @@ import { computed, ref, watch } from 'vue'
 import BaseForm from '@/shared/components/base/BaseForm.vue'
 import BaseSearchSelect from '@/shared/components/base/BaseSearchSelect.vue'
 import { toast } from '@/shared/config/toastConfig'
+import { usePartyMutations } from '@/modules/parties/queries/usePartyMutations'
 import { usePartySourceOptionsQuery } from '@/modules/parties/queries/usePartySourceOptionsQuery'
 import { usePartyJobOptionsQuery } from '@/modules/parties/queries/usePartyJobOptionsQuery'
 import { usePartyStore } from '@/modules/parties/store/partyStore'
@@ -211,8 +212,13 @@ const partyType = ref('')
 const jobId = ref('')
 const rows = ref(createDefaultPartyRows())
 const validationMessage = ref('')
-const isSubmitting = ref(false)
 let nextRowId = rows.value.length + 1
+
+const { bulkSubmit, bulkSubmitLoading: isSubmitting } = usePartyMutations(store.moduleName, {
+  onSuccess() {
+    closeModal()
+  },
+})
 
 const partyTypeRef = computed(() => partyType.value)
 const sourceFiltersRef = computed(() =>
@@ -363,18 +369,16 @@ const handleSubmit = async () => {
     return
   }
 
-  isSubmitting.value = true
+  const payload = buildBulkPartyPayload(partyType.value, rows.value)
 
   try {
-    const payload = buildBulkPartyPayload(partyType.value, rows.value)
-
-    // Frontend-only for now. Backend bulk endpoint will consume this payload later.
-    console.info('[parties:bulk-add] payload ready for backend', payload)
-
-    toast.success(t('parties.bulk_ready', { count: payload.length }))
-    closeModal()
-  } finally {
-    isSubmitting.value = false
+    await bulkSubmit.mutateAsync(payload)
+  } catch (error) {
+    const message =
+      error?.response?.data?.message ||
+      error?.message ||
+      t('parties.bulk_validation_failed')
+    validationMessage.value = message
   }
 }
 </script>

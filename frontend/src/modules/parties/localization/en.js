@@ -30,7 +30,7 @@ export default {
     bulk_add_hint: 'Select a party type, then add one or more rows. Source selection auto-fills party ID and name.',
     add_row: 'Add Row',
     save_all: 'Save All Parties',
-    bulk_ready: '{count} parties are ready to save. Backend connection pending.',
+    bulk_ready: '{count} parties saved successfully.',
     bulk_validation_failed: 'Please fix the highlighted issues before saving.',
     action: 'Action',
     copy: 'Copy',

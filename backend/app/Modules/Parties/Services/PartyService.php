@@ -15,6 +15,7 @@ use App\Modules\Vendor\Models\Vendor;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class PartyService
@@ -37,6 +38,19 @@ class PartyService
     public function create(array $data): Party
     {
         return $this->model->create($data);
+    }
+
+    public function bulkCreate(array $parties): Collection
+    {
+        return DB::transaction(function () use ($parties) {
+            $created = collect();
+
+            foreach ($parties as $partyData) {
+                $created->push($this->model->create($partyData));
+            }
+
+            return $created;
+        });
     }
 
     public function update(Party $party, array $data): Party

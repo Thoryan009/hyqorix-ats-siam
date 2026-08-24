@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
-import { bulkDelete, deleteItem, submitData, updateData } from '../services/partyService'
+import { bulkDelete, bulkSubmitData, deleteItem, submitData, updateData } from '../services/partyService'
 import { toast } from '@/shared/config/toastConfig'
 
 export function usePartyMutations(moduleName, options = {}) {
@@ -19,6 +19,12 @@ export function usePartyMutations(moduleName, options = {}) {
 
   const submit = useMutation({
     mutationFn: submitData,
+    onSuccess: handleSuccess,
+    onError: handleError,
+  })
+
+  const bulkSubmit = useMutation({
+    mutationFn: bulkSubmitData,
     onSuccess: handleSuccess,
     onError: handleError,
   })
@@ -44,6 +50,8 @@ export function usePartyMutations(moduleName, options = {}) {
   return {
     submit,
     submitLoading: submit.isPending,
+    bulkSubmit,
+    bulkSubmitLoading: bulkSubmit.isPending,
     update,
     updateLoading: update.isPending,
     remove,

@@ -37,6 +37,16 @@ export async function submitData(payload) {
   return api.data.value
 }
 
+export async function bulkSubmitData(parties) {
+  const api = useApi()
+  await api.sendRequest(`${BASE_URL}/bulk`, 'POST', { parties })
+  if (api.error.value) {
+    throw api.error.value
+  }
+
+  return api.data.value
+}
+
 export async function updateData(payload) {
   const api = useApi()
   await api.sendRequest(`${BASE_URL}/${payload.id}`, 'POST', payload.data, {
