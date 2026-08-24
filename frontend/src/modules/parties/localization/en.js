@@ -21,6 +21,7 @@ export default {
     select_vendor: 'Select Vendor',
     select_staff: 'Select Staff',
     loading_source: 'Loading list...',
+    search_source: 'Search by code or name',
     select_job: 'Select Job',
     search_job: 'Search by job name or code',
     select_job_to_load_candidates: 'Select a job to load candidates',
