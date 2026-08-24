@@ -1,35 +1,30 @@
-import { fetchAll as fetchClients } from '@/modules/client/services/clientService'
-import { fetchAll as fetchAgents } from '@/modules/agent/services/agentService'
-import { fetchAll as fetchPrincipals } from '@/modules/principal/services/principalService'
-import { fetchAll as fetchVendors } from '@/modules/vendor/services/vendorService'
-import { fetchAll as fetchEmployees } from '@/modules/work_order/services/employeeService'
 import { fetchPartySourceOptions } from '@/modules/parties/services/partyService'
 
 export const partySourceConfigs = {
   Client: {
     selectLabelKey: 'parties.select_client',
-    fetch: () => fetchClients(1, 500, {}),
+    fetch: (filters = {}) => fetchPartySourceOptions('Client', filters),
     mapItem: (row) => ({
       id: row.id,
-      code: row.client_id,
+      code: row.code,
       name: row.name,
     }),
   },
   Principal: {
     selectLabelKey: 'parties.select_principal',
-    fetch: () => fetchPrincipals(1, 500, {}),
+    fetch: (filters = {}) => fetchPartySourceOptions('Principal', filters),
     mapItem: (row) => ({
       id: row.id,
-      code: row.principal_id,
-      name: row.organization_name,
+      code: row.code,
+      name: row.name,
     }),
   },
   Agent: {
     selectLabelKey: 'parties.select_agent',
-    fetch: () => fetchAgents(1, 500, {}),
+    fetch: (filters = {}) => fetchPartySourceOptions('Agent', filters),
     mapItem: (row) => ({
       id: row.id,
-      code: row.agent_id,
+      code: row.code,
       name: row.name,
     }),
   },
@@ -46,19 +41,19 @@ export const partySourceConfigs = {
   },
   Vendor: {
     selectLabelKey: 'parties.select_vendor',
-    fetch: () => fetchVendors(1, 500, {}),
+    fetch: (filters = {}) => fetchPartySourceOptions('Vendor', filters),
     mapItem: (row) => ({
       id: row.id,
-      code: row.vendor_id,
-      name: row.organization_name ?? row.name,
+      code: row.code,
+      name: row.name,
     }),
   },
   Staff: {
     selectLabelKey: 'parties.select_staff',
-    fetch: () => fetchEmployees(1, 500, {}),
+    fetch: (filters = {}) => fetchPartySourceOptions('Staff', filters),
     mapItem: (row) => ({
       id: row.id,
-      code: row.username,
+      code: row.code,
       name: row.name,
     }),
   },

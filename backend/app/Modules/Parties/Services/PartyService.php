@@ -2,11 +2,18 @@
 
 namespace App\Modules\Parties\Services;
 
+use App\Modules\Agent\Models\Agent;
 use App\Modules\Application\Models\Application;
+use App\Modules\Client\Models\Client;
+use App\Modules\Employee\Models\Employee;
 use App\Modules\Parties\Models\Party;
 use App\Modules\Parties\Repositories\PartyRepository;
 use App\Modules\Parties\Resources\PartyCandidateSourceResource;
+use App\Modules\Parties\Resources\PartySourceOptionResource;
+use App\Modules\Principal\Models\Principal;
+use App\Modules\Vendor\Models\Vendor;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
@@ -57,11 +64,96 @@ class PartyService
     public function getSourceOptions(string $type, array $filters = []): array
     {
         return match ($type) {
+            'Client' => PartySourceOptionResource::collection($this->getClientSourceOptions())->resolve(),
+            'Principal' => PartySourceOptionResource::collection($this->getPrincipalSourceOptions())->resolve(),
+            'Agent' => PartySourceOptionResource::collection($this->getAgentSourceOptions())->resolve(),
             'Candidate' => PartyCandidateSourceResource::collection(
                 $this->getCandidateSourceOptions($filters)
             )->resolve(),
+            'Vendor' => PartySourceOptionResource::collection($this->getVendorSourceOptions())->resolve(),
+            'Staff' => PartySourceOptionResource::collection($this->getStaffSourceOptions())->resolve(),
             default => throw new InvalidArgumentException("Party source options are not available for type [{$type}]."),
         };
+    }
+
+    private function getClientSourceOptions(): Collection
+    {
+        return Client::query()
+            ->select(['id', 'client_id', 'user_id'])
+            ->with(['user:id,name,status'])
+            ->tap(fn (Builder $query) => $this->applyActiveUserFilter($query))
+            ->orderBy('id')
+            ->limit(500)
+            ->get()
+            ->map(fn (Client $client) => [
+                'id' => $client->id,
+                'code' => $client->client_id,
+                'name' => $client->user?->name,
+            ]);
+    }
+
+    private function getPrincipalSourceOptions(): Collection
+    {
+        return Principal::query()
+            ->select(['id', 'principal_id', 'user_id'])
+            ->with(['user:id,name,status'])
+            ->tap(fn (Builder $query) => $this->applyActiveUserFilter($query))
+            ->orderBy('id')
+            ->limit(500)
+            ->get()
+            ->map(fn (Principal $principal) => [
+                'id' => $principal->id,
+                'code' => $principal->principal_id,
+                'name' => $principal->user?->name,
+            ]);
+    }
+
+    private function getAgentSourceOptions(): Collection
+    {
+        return Agent::query()
+            ->select(['id', 'agent_id', 'user_id'])
+            ->with(['user:id,name,status'])
+            ->tap(fn (Builder $query) => $this->applyActiveUserFilter($query))
+            ->orderBy('id')
+            ->limit(500)
+            ->get()
+            ->map(fn (Agent $agent) => [
+                'id' => $agent->id,
+                'code' => $agent->agent_id,
+                'name' => $agent->user?->name,
+            ]);
+    }
+
+    private function getVendorSourceOptions(): Collection
+    {
+        return Vendor::query()
+            ->select(['id', 'vendor_id', 'organization_name', 'user_id'])
+            ->with(['user:id,name,status'])
+            ->tap(fn (Builder $query) => $this->applyActiveUserFilter($query))
+            ->orderBy('id')
+            ->limit(500)
+            ->get()
+            ->map(fn (Vendor $vendor) => [
+                'id' => $vendor->id,
+                'code' => $vendor->vendor_id,
+                'name' => $vendor->organization_name,
+            ]);
+    }
+
+    private function getStaffSourceOptions(): Collection
+    {
+        return Employee::query()
+            ->select(['id', 'username', 'user_id'])
+            ->with(['user:id,name,status'])
+            ->tap(fn (Builder $query) => $this->applyActiveUserFilter($query))
+            ->orderBy('id')
+            ->limit(500)
+            ->get()
+            ->map(fn (Employee $employee) => [
+                'id' => $employee->id,
+                'code' => $employee->username,
+                'name' => $employee->user?->name,
+            ]);
     }
 
     private function getCandidateSourceOptions(array $filters = []): Collection
@@ -80,5 +172,17 @@ class PartyService
             ->orderByDesc('id')
             ->limit(500)
             ->get();
+    }
+
+    private function applyActiveUserFilter(Builder $query): void
+    {
+        $query->whereHas('user', function (Builder $userQuery) {
+            $userQuery->where(function (Builder $statusQuery) {
+                $statusQuery
+                    ->where('status', 1)
+                    ->orWhere('status', '1')
+                    ->orWhere('status', 'active');
+            });
+        });
     }
 }
