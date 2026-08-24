@@ -115,9 +115,10 @@ class PartyService
             ->orderBy('id')
             ->limit(500)
             ->get()
-            ->map(fn (Principal $principal) => [
+            ->values()
+            ->map(fn (Principal $principal, int $index) => [
                 'id' => $principal->id,
-                'code' => $principal->principal_id,
+                'code' => $this->normalizeShortCode('PR', $principal->principal_id, $index + 1),
                 'name' => $principal->user?->name,
             ]);
     }
@@ -131,9 +132,10 @@ class PartyService
             ->orderBy('id')
             ->limit(500)
             ->get()
-            ->map(fn (Agent $agent) => [
+            ->values()
+            ->map(fn (Agent $agent, int $index) => [
                 'id' => $agent->id,
-                'code' => $agent->agent_id,
+                'code' => $this->normalizeShortCode('AG', $agent->agent_id, $index + 1),
                 'name' => $agent->user?->name,
             ]);
     }
@@ -166,7 +168,7 @@ class PartyService
             ->values()
             ->map(fn (Employee $employee, int $index) => [
                 'id' => $employee->id,
-                'code' => 'ST'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT),
+                'code' => $this->normalizeShortCode('ST', null, $index + 1),
                 'name' => $employee->user?->name,
             ]);
     }
@@ -199,5 +201,26 @@ class PartyService
                     ->orWhere('status', 'active');
             });
         });
+    }
+
+    /**
+     * Normalize source codes to a short prefix format (e.g. AG-001, PR-001, ST-001).
+     */
+    private function normalizeShortCode(string $prefix, ?string $rawCode, ?int $fallbackNumber = null): string
+    {
+        $prefix = strtoupper(trim($prefix));
+        $rawCode = trim((string) $rawCode);
+
+        $number = null;
+
+        if ($rawCode !== '' && preg_match('/(\d+)\s*$/', $rawCode, $matches)) {
+            $number = (int) $matches[1];
+        }
+
+        if ($number === null || $number <= 0) {
+            $number = $fallbackNumber && $fallbackNumber > 0 ? $fallbackNumber : 1;
+        }
+
+        return $prefix.'-'.str_pad((string) $number, 3, '0', STR_PAD_LEFT);
     }
 }
