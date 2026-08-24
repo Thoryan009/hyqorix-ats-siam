@@ -8,6 +8,7 @@ export const transactionTypeOptions = [
   { id: 'asset_return', name: 'Asset Return' },
   { id: 'staff_advance', name: 'Staff Advance' },
   { id: 'advance_adjustment', name: 'Advance Adjustment' },
+  { id: 'owner_capital', name: 'Owner Capital' },
 ]
 
 export const partyTypeOptions = [
@@ -18,6 +19,7 @@ export const partyTypeOptions = [
   { id: 'Candidate', name: 'Candidate' },
   { id: 'Vendor', name: 'Vendor' },
   { id: 'Staff', name: 'Staff' },
+  { id: 'Owner', name: 'Owner' },
 ]
 
 export const projectOptions = [

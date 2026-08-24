@@ -5,6 +5,7 @@ export const partyTypeOptions = [
   { id: 'Candidate', name: 'Candidate' },
   { id: 'Vendor', name: 'Vendor' },
   { id: 'Staff', name: 'Staff' },
+  { id: 'Owner', name: 'Owner' },
 ]
 
 export const statusOptions = [
