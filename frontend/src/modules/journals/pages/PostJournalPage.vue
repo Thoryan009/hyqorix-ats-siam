@@ -276,9 +276,6 @@
     </div>
 
     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <BaseButton className="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
-        {{ t('journals.save_draft') }}
-      </BaseButton>
       <BaseButton className="border border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50">
         {{ t('journals.submit_approval') }}
       </BaseButton>
