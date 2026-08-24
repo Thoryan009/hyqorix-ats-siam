@@ -22,6 +22,7 @@ export default {
     select_staff: 'Select Staff',
     loading_source: 'Loading list...',
     search_source: 'Search by code or name',
+    no_source_options: 'No available records (all already added as parties)',
     select_job: 'Select Job',
     search_job: 'Search by job name or code',
     select_job_to_load_candidates: 'Select a job to load candidates',

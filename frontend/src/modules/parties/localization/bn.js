@@ -22,6 +22,7 @@ export default {
     select_staff: 'স্টাফ নির্বাচন করুন',
     loading_source: 'তালিকা লোড হচ্ছে...',
     search_source: 'কোড বা নাম দিয়ে খুঁজুন',
+    no_source_options: 'কোনো উপলব্ধ রেকর্ড নেই (সব ইতিমধ্যে পার্টি হিসেবে যোগ করা হয়েছে)',
     select_job: 'জব নির্বাচন করুন',
     search_job: 'জবের নাম বা কোড দিয়ে খুঁজুন',
     select_job_to_load_candidates: 'ক্যান্ডিডেট লোড করতে একটি জব নির্বাচন করুন',

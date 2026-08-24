@@ -85,7 +85,7 @@
                   v-model="row.source_id"
                   :options="getSourceOptionsForRow(row)"
                   :placeholder="sourcePlaceholder"
-                  :disabled="isSourceLoading"
+                  :disabled="(isSourceLoading || isSourceFetching) && !sourceOptions.length"
                   :filter-fn="filterByCodeOrName"
                   :required="true"
                   teleport-dropdown
@@ -225,11 +225,10 @@ const sourceFiltersRef = computed(() =>
   requiresPartyJobFilter(partyType.value) ? { job_list_id: jobId.value || undefined } : {},
 )
 const showJobFilter = computed(() => partyType.value === 'Candidate')
+const isBulkModalOpen = computed(() => store.isBulkModal)
 const { data: jobOptionsData, isLoading: isJobLoading } = usePartyJobOptionsQuery(showJobFilter)
-const { data: sourceData, isLoading: isSourceLoading } = usePartySourceOptionsQuery(
-  partyTypeRef,
-  sourceFiltersRef,
-)
+const { data: sourceData, isLoading: isSourceLoading, isFetching: isSourceFetching } =
+  usePartySourceOptionsQuery(partyTypeRef, sourceFiltersRef, isBulkModalOpen)
 
 const jobOptions = computed(() => jobOptionsData.value ?? [])
 
@@ -262,7 +261,13 @@ const sourcePlaceholder = computed(() => {
   if (requiresPartyJobFilter(partyType.value) && !jobId.value) {
     return t('parties.select_job_to_load_candidates')
   }
-  return isSourceLoading.value ? t('parties.loading_source') : t('parties.search_source')
+  if (isSourceLoading.value || isSourceFetching.value) {
+    return t('parties.loading_source')
+  }
+  if (showSourceSelect.value && !(sourceOptions.value?.length)) {
+    return t('parties.no_source_options')
+  }
+  return t('parties.search_source')
 })
 
 const filterJobByNameOrCode = (option, query) => {

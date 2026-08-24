@@ -7,8 +7,8 @@ export function usePartyMutations(moduleName, options = {}) {
 
   const handleSuccess = (data, variables) => {
     toast.success(`${moduleName} operation successful`)
-    queryClient.invalidateQueries(['parties'])
-    queryClient.invalidateQueries(['party-source-options'])
+    queryClient.invalidateQueries({ queryKey: ['parties'] })
+    queryClient.removeQueries({ queryKey: ['party-source-options'] })
     options.onSuccess?.(data, variables)
   }
 
