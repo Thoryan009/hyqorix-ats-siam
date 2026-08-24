@@ -92,6 +92,8 @@ class PartyService
 
     private function getClientSourceOptions(): Collection
     {
+        $existingCodes = $this->getExistingPartyCodeSet('Client');
+
         return Client::query()
             ->select(['id', 'client_id', 'user_id'])
             ->with(['user:id,name,status'])
@@ -103,11 +105,15 @@ class PartyService
                 'id' => $client->id,
                 'code' => $client->client_id,
                 'name' => $client->user?->name,
-            ]);
+            ])
+            ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes))
+            ->values();
     }
 
     private function getPrincipalSourceOptions(): Collection
     {
+        $existingCodes = $this->getExistingPartyCodeSet('Principal', 'PR');
+
         return Principal::query()
             ->select(['id', 'principal_id', 'user_id'])
             ->with(['user:id,name,status'])
@@ -120,11 +126,15 @@ class PartyService
                 'id' => $principal->id,
                 'code' => $this->normalizeShortCode('PR', $principal->principal_id, $index + 1),
                 'name' => $principal->user?->name,
-            ]);
+            ])
+            ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes))
+            ->values();
     }
 
     private function getAgentSourceOptions(): Collection
     {
+        $existingCodes = $this->getExistingPartyCodeSet('Agent', 'AG');
+
         return Agent::query()
             ->select(['id', 'agent_id', 'user_id'])
             ->with(['user:id,name,status'])
@@ -137,11 +147,15 @@ class PartyService
                 'id' => $agent->id,
                 'code' => $this->normalizeShortCode('AG', $agent->agent_id, $index + 1),
                 'name' => $agent->user?->name,
-            ]);
+            ])
+            ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes))
+            ->values();
     }
 
     private function getVendorSourceOptions(): Collection
     {
+        $existingCodes = $this->getExistingPartyCodeSet('Vendor');
+
         return Vendor::query()
             ->select(['id', 'vendor_id', 'organization_name', 'user_id'])
             ->with(['user:id,name,status'])
@@ -153,11 +167,16 @@ class PartyService
                 'id' => $vendor->id,
                 'code' => $vendor->vendor_id,
                 'name' => $vendor->organization_name,
-            ]);
+            ])
+            ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes))
+            ->values();
     }
 
     private function getStaffSourceOptions(): Collection
     {
+        $existingCodes = $this->getExistingPartyCodeSet('Staff', 'ST');
+        $existingNames = $this->getExistingPartyNameSet('Staff');
+
         return Employee::query()
             ->select(['id', 'user_id'])
             ->with(['user:id,name,status'])
@@ -170,7 +189,17 @@ class PartyService
                 'id' => $employee->id,
                 'code' => $this->normalizeShortCode('ST', null, $index + 1),
                 'name' => $employee->user?->name,
-            ]);
+            ])
+            ->reject(function (array $item) use ($existingCodes, $existingNames) {
+                if ($this->isExistingPartyCode($item['code'] ?? '', $existingCodes)) {
+                    return true;
+                }
+
+                $name = strtoupper(trim((string) ($item['name'] ?? '')));
+
+                return $name !== '' && isset($existingNames[$name]);
+            })
+            ->values();
     }
 
     private function getCandidateSourceOptions(array $filters = []): Collection
@@ -181,6 +210,8 @@ class PartyService
             return collect();
         }
 
+        $existingCodes = $this->getExistingPartyCodeSet('Candidate');
+
         return Application::query()
             ->select(['id', 'given_name', 'sur_name', 'application_id', 'passport_no', 'job_list_id'])
             ->where('job_list_id', $jobListId)
@@ -188,7 +219,70 @@ class PartyService
             ->where('passport_no', '!=', '')
             ->orderByDesc('id')
             ->limit(500)
-            ->get();
+            ->get()
+            ->reject(fn (Application $application) => $this->isExistingPartyCode(
+                $application->passport_no,
+                $existingCodes
+            ))
+            ->values();
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    private function getExistingPartyCodeSet(string $type, ?string $shortPrefix = null): array
+    {
+        $set = [];
+
+        $codes = $this->model->newQuery()
+            ->where('type', $type)
+            ->pluck('code');
+
+        foreach ($codes as $code) {
+            $normalized = strtoupper(trim((string) $code));
+            if ($normalized === '') {
+                continue;
+            }
+
+            $set[$normalized] = true;
+
+            if ($shortPrefix) {
+                $set[$this->normalizeShortCode($shortPrefix, $normalized)] = true;
+            }
+        }
+
+        return $set;
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    private function getExistingPartyNameSet(string $type): array
+    {
+        $set = [];
+
+        $names = $this->model->newQuery()
+            ->where('type', $type)
+            ->pluck('name');
+
+        foreach ($names as $name) {
+            $normalized = strtoupper(trim((string) $name));
+            if ($normalized !== '') {
+                $set[$normalized] = true;
+            }
+        }
+
+        return $set;
+    }
+
+    /**
+     * @param  array<string, true>  $existingCodes
+     */
+    private function isExistingPartyCode(?string $code, array $existingCodes): bool
+    {
+        $normalized = strtoupper(trim((string) $code));
+
+        return $normalized !== '' && isset($existingCodes[$normalized]);
     }
 
     private function applyActiveUserFilter(Builder $query): void
