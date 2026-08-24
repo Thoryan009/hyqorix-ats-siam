@@ -26,10 +26,18 @@ export const costTypeOptions = [
   { id: 'operating', name: 'Operating Expense' },
 ]
 
+export const todayIsoDate = () => {
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export const defaultJournalForm = {
   voucher_no: '—',
   status: 'Draft',
-  voucher_date: '',
+  voucher_date: todayIsoDate(),
   transaction_type: '',
   reference_no: '',
   party_type: '',

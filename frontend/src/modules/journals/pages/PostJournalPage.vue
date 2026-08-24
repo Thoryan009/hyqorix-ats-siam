@@ -304,13 +304,14 @@ import {
   defaultJournalLines,
   partyTypeOptions,
   projectOptions,
+  todayIsoDate,
   transactionTypeOptions,
 } from '../data/postJournalStatic'
 
 const { t } = useTranslate()
 const router = useRouter()
 
-const form = ref({ ...defaultJournalForm })
+const form = ref({ ...defaultJournalForm, voucher_date: todayIsoDate() })
 const lines = ref(defaultJournalLines.map((line) => ({ ...line })))
 let nextLineId = Math.max(...lines.value.map((line) => Number(line.id) || 0), 0) + 1
 
