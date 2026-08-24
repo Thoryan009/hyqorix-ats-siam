@@ -132,23 +132,14 @@
                 />
               </td>
               <td class="whitespace-nowrap border-b border-slate-100 px-3 py-2">
-                <div class="flex flex-nowrap items-center gap-1">
-                  <button
-                    type="button"
-                    class="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
-                    @click="copyRow(index)"
-                  >
-                    {{ t('parties.copy') }}
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-                    :disabled="rows.length <= 1"
-                    @click="deleteRow(index)"
-                  >
-                    {{ t('parties.delete') }}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  class="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="rows.length <= 1"
+                  @click="deleteRow(index)"
+                >
+                  {{ t('parties.delete') }}
+                </button>
               </td>
             </tr>
           </tbody>
@@ -262,18 +253,6 @@ const resetForm = () => {
 
 const addRow = () => {
   rows.value.push(createEmptyPartyRow(nextRowId++))
-}
-
-const copyRow = (index) => {
-  const source = rows.value[index]
-  if (!source) return
-
-  const copied = {
-    ...source,
-    id: nextRowId++,
-    source_id: '',
-  }
-  rows.value.splice(index + 1, 0, copied)
 }
 
 const deleteRow = (index) => {
