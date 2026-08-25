@@ -50,4 +50,15 @@ export default {
     delete: 'ডিলিট',
     total_rows: 'মোট সারি',
   },
+  party_types: {
+    module: 'পার্টি টাইপ',
+    management: 'পার্টি টাইপ ব্যবস্থাপনা',
+    add: 'পার্টি টাইপ যোগ করুন',
+    edit: 'পার্টি টাইপ সম্পাদনা',
+    view: 'পার্টি টাইপ দেখুন',
+    information: 'পার্টি টাইপ তথ্য',
+    code: 'কোড',
+    name: 'নাম',
+    sort_order: 'ক্রম',
+  },
 }

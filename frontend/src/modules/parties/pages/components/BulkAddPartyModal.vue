@@ -197,7 +197,8 @@ import {
   validateBulkPartyRows,
 } from '../../data/partyFormHelpers'
 import { getPartySourceConfig, hasPartySource, requiresPartyJobFilter } from '../../data/partySourceConfig'
-import { partyTypeOptions, statusOptions } from '../../data/partyOptions'
+import { statusOptions } from '../../data/partyOptions'
+import { usePartyTypeOptionsQuery } from '../../queries/usePartyTypeOptionsQuery'
 
 const { t } = useTranslate()
 const store = usePartyStore()
@@ -207,6 +208,14 @@ const jobId = ref('')
 const rows = ref(createDefaultPartyRows())
 const validationMessage = ref('')
 let nextRowId = rows.value.length + 1
+
+const { data: partyTypeOptionsData } = usePartyTypeOptionsQuery('active')
+const partyTypeOptions = computed(() =>
+  (partyTypeOptionsData.value ?? []).map((item) => ({
+    id: item.id ?? item.code,
+    name: item.name,
+  })),
+)
 
 const { bulkSubmit, bulkSubmitLoading: isSubmitting } = usePartyMutations(store.moduleName, {
   onSuccess() {

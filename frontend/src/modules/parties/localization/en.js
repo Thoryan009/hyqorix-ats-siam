@@ -50,4 +50,15 @@ export default {
     delete: 'Delete',
     total_rows: 'Total Rows',
   },
+  party_types: {
+    module: 'Party Type',
+    management: 'Party Type Management',
+    add: 'Add Party Type',
+    edit: 'Edit Party Type',
+    view: 'View Party Type',
+    information: 'Party Type Information',
+    code: 'Code',
+    name: 'Name',
+    sort_order: 'Sort Order',
+  },
 }

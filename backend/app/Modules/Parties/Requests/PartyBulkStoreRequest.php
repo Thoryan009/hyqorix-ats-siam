@@ -61,7 +61,12 @@ class PartyBulkStoreRequest extends FormRequest
                 Rule::unique('parties', 'code'),
             ],
             'parties.*.name' => ['required', 'string', 'max:255'],
-            'parties.*.type' => ['required', 'string', 'max:50'],
+            'parties.*.type' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::exists('party_types', 'code')->where(fn ($query) => $query->where('status', 'active')),
+            ],
             'parties.*.opening_debit' => ['nullable', 'numeric', 'min:0'],
             'parties.*.opening_credit' => ['nullable', 'numeric', 'min:0'],
             'parties.*.remarks' => ['nullable', 'string'],

@@ -136,13 +136,29 @@ import { usePartyJobOptionsQuery } from '@/modules/parties/queries/usePartyJobOp
 import { usePartyStore } from '@/modules/parties/store/partyStore'
 import { useTranslate } from '@/shared/composables/useTranslate'
 import { getPartySourceConfig, hasPartySource, requiresPartyJobFilter } from '../../data/partySourceConfig'
-import { partyTypeOptions, statusOptions } from '../../data/partyOptions'
+import { statusOptions } from '../../data/partyOptions'
+import { usePartyTypeOptionsQuery } from '../../queries/usePartyTypeOptionsQuery'
 
 const { t } = useTranslate()
 const store = usePartyStore()
 
 const sourceId = ref('')
 const jobId = ref('')
+
+const { data: partyTypeOptionsData } = usePartyTypeOptionsQuery('active')
+const partyTypeOptions = computed(() => {
+  const options = (partyTypeOptionsData.value ?? []).map((item) => ({
+    id: item.id ?? item.code,
+    name: item.name,
+  }))
+
+  const currentType = store.isEditModal ? store.item?.type : null
+  if (currentType && !options.some((option) => String(option.id) === String(currentType))) {
+    options.unshift({ id: currentType, name: currentType })
+  }
+
+  return options
+})
 
 const emptyFormData = {
   code: '',

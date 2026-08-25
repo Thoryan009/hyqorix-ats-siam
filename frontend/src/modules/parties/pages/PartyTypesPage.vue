@@ -2,19 +2,11 @@
   <SectionHeader>
     <PageHeader>
       <div>
-        <PageTitle>{{ t('parties.management') }}</PageTitle>
+        <PageTitle>{{ t('party_types.management') }}</PageTitle>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <BaseButton @click="store.handleToggleModal('add')">
-          {{ t('shared.actions.add') }} {{ t('parties.module') }}
-        </BaseButton>
-        <BaseButton
-          className="border border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50"
-          @click="store.handleOpenBulkModal()"
-        >
-          {{ t('parties.add_multiple') }}
-        </BaseButton>
-      </div>
+      <BaseButton @click="store.handleToggleModal('add')">
+        {{ t('shared.actions.add') }} {{ t('party_types.module') }}
+      </BaseButton>
     </PageHeader>
 
     <div class="mb-4 flex flex-col items-start justify-between gap-4 underline sm:flex-row sm:items-center">
@@ -37,14 +29,6 @@
         :to-date="false"
         @reset="resetFilters"
       >
-        <div class="flex flex-col w-full sm:w-auto sm:min-w-[160px]">
-          <label class="text-gray-800 text-sm sm:text-[15px] mb-1">{{ t('parties.party_type') }}</label>
-          <BaseSelect
-            v-model="filters.type"
-            :options="partyTypeOptions"
-            :placeholder="t('parties.all_types')"
-          />
-        </div>
         <div class="flex flex-col w-full sm:w-auto sm:min-w-[140px]">
           <label class="text-gray-800 text-sm sm:text-[15px] mb-1">{{ t('shared.labels.status') }}</label>
           <BaseSelect
@@ -105,9 +89,8 @@
           @update:perPage="setPerPage"
         />
 
-        <FormModal />
-        <BulkAddPartyModal />
-        <ViewModal />
+        <PartyTypeFormModal />
+        <PartyTypeViewModal />
       </div>
     </div>
   </SectionHeader>
@@ -115,9 +98,9 @@
 
 <script setup>
 import { computed, defineAsyncComponent } from 'vue'
-import { usePartiesQuery } from '../queries/usePartiesQuery'
-import { usePartyMutations } from '../queries/usePartyMutations'
-import { usePartyStore } from '../store/partyStore'
+import { usePartyTypesQuery } from '../queries/usePartyTypesQuery'
+import { usePartyTypeMutations } from '../queries/usePartyTypeMutations'
+import { usePartyTypeStore } from '../store/partyTypeStore'
 import { usePagination } from '@/shared/composables/usePagination'
 import { useBulkDelete } from '@/shared/composables/useBulkDelete'
 import { useCrudTable } from '@/shared/composables/useCrudTable'
@@ -128,37 +111,26 @@ import TableFilters from '@/shared/components/ui/TableFilters.vue'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
 import { statusOptions } from '../data/partyOptions'
-import { usePartyTypeOptionsQuery } from '../queries/usePartyTypeOptionsQuery'
 
 const { t } = useTranslate()
 
-const ViewModal = defineAsyncComponent(() => import('./components/ViewModal.vue'))
-const FormModal = defineAsyncComponent(() => import('./components/FormModal.vue'))
-const BulkAddPartyModal = defineAsyncComponent(() => import('./components/BulkAddPartyModal.vue'))
+const PartyTypeFormModal = defineAsyncComponent(() => import('./components/PartyTypeFormModal.vue'))
+const PartyTypeViewModal = defineAsyncComponent(() => import('./components/PartyTypeViewModal.vue'))
 
-const store = usePartyStore()
+const store = usePartyTypeStore()
 
 const { filters, hasActiveFilters, resetFilters } = useTableFilters({
   searchQuery: '',
-  type: '',
   status: '',
 })
 
 const pagination = usePagination({ perPage: 25 })
 const { page, perPage, total, showing, links, setPage, setPerPage } = pagination
 
-const { data: partyTypeOptionsData } = usePartyTypeOptionsQuery('active')
-const partyTypeOptions = computed(() =>
-  (partyTypeOptionsData.value ?? []).map((item) => ({
-    id: item.id ?? item.code,
-    name: item.name,
-  })),
-)
-
-const { data, isLoading } = usePartiesQuery(page, perPage, filters)
+const { data, isLoading } = usePartyTypesQuery(page, perPage, filters)
 pagination.bindMeta(data)
 
-const { remove, removeItems, removeItemsLoading } = usePartyMutations(store.moduleName)
+const { remove, removeItems, removeItemsLoading } = usePartyTypeMutations(store.moduleName)
 
 const { selectedIds, toggleAll, toggleRow, bulkDelete } = useBulkDelete(removeItems, {
   confirmText: t('shared.messages.delete_confirmation'),
@@ -167,12 +139,9 @@ const { selectedIds, toggleAll, toggleRow, bulkDelete } = useBulkDelete(removeIt
 const { confirmDelete } = useDeleteWithConfirm(remove)
 
 const columnsTemp = computed(() => [
-  { key: 'code', label: t('parties.party_id') },
-  { key: 'type', label: t('parties.party_type') },
-  { key: 'name', label: t('parties.name') },
-  { key: 'opening_debit', label: t('parties.opening_debit') },
-  { key: 'opening_credit', label: t('parties.opening_credit') },
-  { key: 'remarks', label: t('parties.remarks') },
+  { key: 'code', label: t('party_types.code') },
+  { key: 'name', label: t('party_types.name') },
+  { key: 'sort_order', label: t('party_types.sort_order') },
   { key: 'status', label: t('shared.labels.status') },
 ])
 

@@ -1,4 +1,5 @@
 import PartiesPage from './pages/PartiesPage.vue'
+import PartyTypesPage from './pages/PartyTypesPage.vue'
 import DashboardLayout from '@/shared/layouts/DashboardLayout.vue'
 
 export default [
@@ -11,6 +12,18 @@ export default [
         path: '',
         name: 'Party Management',
         component: PartiesPage,
+      },
+    ],
+  },
+  {
+    path: '/party-types',
+    component: DashboardLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'Party Type Management',
+        component: PartyTypesPage,
       },
     ],
   },

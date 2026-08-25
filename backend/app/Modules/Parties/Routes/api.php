@@ -1,7 +1,18 @@
 <?php
 
 use App\Modules\Parties\Controllers\Api\PartyController;
+use App\Modules\Parties\Controllers\Api\PartyTypeController;
 use Illuminate\Support\Facades\Route;
+
+Route::prefix('party-types')->group(function () {
+    Route::get('/', [PartyTypeController::class, 'index']);
+    Route::get('options', [PartyTypeController::class, 'options']);
+    Route::post('/', [PartyTypeController::class, 'store']);
+    Route::post('bulk-delete', [PartyTypeController::class, 'bulkDelete']);
+    Route::get('{partyType}', [PartyTypeController::class, 'show']);
+    Route::put('{partyType}', [PartyTypeController::class, 'update']);
+    Route::delete('{partyType}', [PartyTypeController::class, 'destroy']);
+});
 
 Route::prefix('parties')->group(function () {
     Route::get('/', [PartyController::class, 'index']);

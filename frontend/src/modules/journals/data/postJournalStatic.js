@@ -11,17 +11,6 @@ export const transactionTypeOptions = [
   { id: 'owner_capital', name: 'Owner Capital' },
 ]
 
-export const partyTypeOptions = [
-  { id: '', name: 'None' },
-  { id: 'Client', name: 'Client' },
-  { id: 'Principal', name: 'Principal' },
-  { id: 'Agent', name: 'Agent' },
-  { id: 'Candidate', name: 'Candidate' },
-  { id: 'Vendor', name: 'Vendor' },
-  { id: 'Staff', name: 'Staff' },
-  { id: 'Owner', name: 'Owner' },
-]
-
 export const projectOptions = [
   { id: 'general', name: 'General / No Project' },
   { id: 'CL001', name: 'CL001 – Client Project' },

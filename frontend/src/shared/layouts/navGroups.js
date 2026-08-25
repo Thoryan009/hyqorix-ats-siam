@@ -274,6 +274,11 @@ export const navGroups = [
         icon: 'fa fa-list-alt',
       },
       {
+        name: 'Party Type Management',
+        path: '/party-types',
+        icon: 'fa fa-tags',
+      },
+      {
         name: 'Party Management',
         path: '/parties',
         icon: 'fa fa-handshake-o',

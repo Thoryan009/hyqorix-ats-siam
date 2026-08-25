@@ -5,7 +5,7 @@ namespace App\Modules\Parties\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class PartyRequest extends FormRequest
+class PartyTypeRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -26,44 +26,34 @@ class PartyRequest extends FormRequest
             ]);
         }
 
-        if ($this->has('opening_debit')) {
+        if ($this->has('name')) {
             $this->merge([
-                'opening_debit' => $this->input('opening_debit') === null || $this->input('opening_debit') === ''
-                    ? 0
-                    : $this->input('opening_debit'),
+                'name' => trim((string) $this->input('name')),
             ]);
         }
 
-        if ($this->has('opening_credit')) {
+        if ($this->has('sort_order')) {
             $this->merge([
-                'opening_credit' => $this->input('opening_credit') === null || $this->input('opening_credit') === ''
+                'sort_order' => $this->input('sort_order') === null || $this->input('sort_order') === ''
                     ? 0
-                    : $this->input('opening_credit'),
+                    : $this->input('sort_order'),
             ]);
         }
     }
 
     public function rules(): array
     {
-        $partyId = $this->route('party')?->id ?? $this->input('id');
+        $partyTypeId = $this->route('partyType')?->id ?? $this->input('id');
 
         return [
             'code' => [
                 'required',
                 'string',
-                'max:20',
-                Rule::unique('parties', 'code')->ignore($partyId),
+                'max:50',
+                Rule::unique('party_types', 'code')->ignore($partyTypeId),
             ],
             'name' => ['required', 'string', 'max:255'],
-            'type' => [
-                'required',
-                'string',
-                'max:50',
-                Rule::exists('party_types', 'code'),
-            ],
-            'opening_debit' => ['nullable', 'numeric', 'min:0'],
-            'opening_credit' => ['nullable', 'numeric', 'min:0'],
-            'remarks' => ['nullable', 'string'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
         ];
     }
