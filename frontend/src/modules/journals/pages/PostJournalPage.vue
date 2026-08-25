@@ -69,11 +69,14 @@
 
         <div class="space-y-1.5">
           <BaseLabel for="transaction_type">{{ t('journals.transaction_type') }}</BaseLabel>
-          <BaseSelect
+          <BaseSearchSelect
             id="transaction_type"
             v-model="form.transaction_type"
             :options="transactionTypeOptions"
             :placeholder="t('journals.select_transaction_type')"
+            :filter-fn="filterByNameOrCode"
+            teleport-dropdown
+            list-class-name="max-h-72"
           />
         </div>
 
@@ -89,7 +92,15 @@
 
         <div class="space-y-1.5">
           <BaseLabel for="party_type">{{ t('journals.party_type') }}</BaseLabel>
-          <BaseSelect id="party_type" v-model="form.party_type" :options="partyTypeOptions" />
+          <BaseSearchSelect
+            id="party_type"
+            v-model="form.party_type"
+            :options="partyTypeOptions"
+            :placeholder="t('journals.select_party_type')"
+            :filter-fn="filterByNameOrCode"
+            teleport-dropdown
+            list-class-name="max-h-72"
+          />
         </div>
 
         <div class="space-y-1.5">
@@ -342,15 +353,17 @@ const { data: transactionTypeOptionsData } = useJournalTransactionTypeOptionsQue
 const transactionTypeOptions = computed(() =>
   (transactionTypeOptionsData.value ?? []).map((item) => ({
     id: item.id ?? item.code,
+    code: item.code ?? item.id,
     name: item.name,
   })),
 )
 
 const { data: partyTypeOptionsData } = usePartyTypeOptionsQuery('active')
 const partyTypeOptions = computed(() => [
-  { id: '', name: 'None' },
+  { id: '', code: '', name: 'None' },
   ...(partyTypeOptionsData.value ?? []).map((item) => ({
     id: item.id ?? item.code,
+    code: item.code ?? item.id,
     name: item.name,
   })),
 ])
@@ -433,6 +446,12 @@ const accountPlaceholder = computed(() =>
 const filterByCodeOrName = (option, query) => {
   const label = String(option?.name ?? '').toLowerCase()
   const code = String(option?.code ?? '').toLowerCase()
+  return label.includes(query) || code.includes(query)
+}
+
+const filterByNameOrCode = (option, query) => {
+  const label = String(option?.name ?? '').toLowerCase()
+  const code = String(option?.code ?? option?.id ?? '').toLowerCase()
   return label.includes(query) || code.includes(query)
 }
 
