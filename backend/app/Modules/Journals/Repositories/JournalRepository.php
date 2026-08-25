@@ -38,6 +38,7 @@ class JournalRepository extends BaseRepository
     {
         $query->with([
             'party:id,code,name,type',
+            'transactionType:id,code,name',
             'createdBy:id,name',
             'lines' => function ($lineQuery) {
                 $lineQuery->orderBy('sort_order')->orderBy('id');

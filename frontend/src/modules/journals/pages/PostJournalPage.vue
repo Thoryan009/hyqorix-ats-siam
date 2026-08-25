@@ -324,10 +324,10 @@ import {
   defaultJournalLines,
   projectOptions,
   todayIsoDate,
-  transactionTypeOptions,
   validateJournalForm,
 } from '../data/postJournalStatic'
 import { usePartyTypeOptionsQuery } from '@/modules/parties/queries/usePartyTypeOptionsQuery'
+import { useJournalTransactionTypeOptionsQuery } from '../queries/useJournalTransactionTypeOptionsQuery'
 
 const { t } = useTranslate()
 const router = useRouter()
@@ -337,6 +337,14 @@ const lines = ref(defaultJournalLines.map((line) => ({ ...line })))
 const validationMessage = ref('')
 const pendingStatus = ref('')
 let nextLineId = Math.max(...lines.value.map((line) => Number(line.id) || 0), 0) + 1
+
+const { data: transactionTypeOptionsData } = useJournalTransactionTypeOptionsQuery('active')
+const transactionTypeOptions = computed(() =>
+  (transactionTypeOptionsData.value ?? []).map((item) => ({
+    id: item.id ?? item.code,
+    name: item.name,
+  })),
+)
 
 const { data: partyTypeOptionsData } = usePartyTypeOptionsQuery('active')
 const partyTypeOptions = computed(() => [

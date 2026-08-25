@@ -21,6 +21,7 @@ class JournalResource extends JsonResource
             'voucher_date' => optional($this->voucher_date)?->format('Y-m-d'),
             'voucher_date_label' => DateTimeFormatter::formatDate($this->voucher_date),
             'transaction_type' => $this->transaction_type,
+            'transaction_type_name' => $this->transactionType?->name ?? $this->transaction_type,
             'reference_no' => $this->reference_no,
             'party_type' => $this->party_type,
             'party_id' => $this->party_id,

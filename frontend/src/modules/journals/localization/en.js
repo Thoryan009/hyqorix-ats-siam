@@ -85,4 +85,15 @@ export default {
     dr: 'Dr',
     cr: 'Cr',
   },
+  journal_transaction_types: {
+    module: 'Transaction Type',
+    management: 'Transaction Type Management',
+    add: 'Add Transaction Type',
+    edit: 'Edit Transaction Type',
+    view: 'View Transaction Type',
+    information: 'Transaction Type Information',
+    code: 'Code',
+    name: 'Name',
+    sort_order: 'Sort Order',
+  },
 }

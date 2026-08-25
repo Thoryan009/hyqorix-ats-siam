@@ -85,4 +85,15 @@ export default {
     dr: 'ডেবিট',
     cr: 'ক্রেডিট',
   },
+  journal_transaction_types: {
+    module: 'লেনদেনের ধরন',
+    management: 'লেনদেনের ধরন ব্যবস্থাপনা',
+    add: 'লেনদেনের ধরন যোগ করুন',
+    edit: 'লেনদেনের ধরন সম্পাদনা',
+    view: 'লেনদেনের ধরন দেখুন',
+    information: 'লেনদেনের ধরন তথ্য',
+    code: 'কোড',
+    name: 'নাম',
+    sort_order: 'ক্রম',
+  },
 }

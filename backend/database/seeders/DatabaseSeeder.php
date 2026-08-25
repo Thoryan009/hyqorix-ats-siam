@@ -27,6 +27,7 @@ use App\Modules\WorkOrder\Seeders\WorkOrderSeeder;
 use App\Modules\Accounts\Seeders\ChartOfAccountSeeder;
 use App\Modules\Parties\Seeders\PartySeeder;
 use App\Modules\Parties\Seeders\PartyTypeSeeder;
+use App\Modules\Journals\Seeders\JournalTransactionTypeSeeder;
 use App\Modules\Finance\Seeders\ExpenseCategorySeeder;
 use App\Modules\Finance\Seeders\IncomeCategorySeeder;
 use App\Modules\JobList\Seeders\JobListDetailSeeder;
@@ -73,6 +74,7 @@ class DatabaseSeeder extends Seeder
             ChartOfAccountSeeder::class,
             PartyTypeSeeder::class,
             PartySeeder::class,
+            JournalTransactionTypeSeeder::class,
             JobListDetailSeeder::class,
             ApplicationExperienceSeeder::class,
             ActivityLogSeeder::class,

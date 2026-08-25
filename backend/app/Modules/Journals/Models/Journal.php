@@ -17,19 +17,6 @@ class Journal extends Model
 
     public const STATUSES = ['draft', 'pending_approval', 'posted'];
 
-    public const TRANSACTION_TYPES = [
-        'journal_voucher',
-        'direct_expense',
-        'operating_expense',
-        'recruitment_revenue',
-        'recruitment_refund',
-        'asset_purchase',
-        'asset_return',
-        'staff_advance',
-        'advance_adjustment',
-        'owner_capital',
-    ];
-
     public const COST_TYPES = [
         'general',
         'direct_cost',
@@ -58,6 +45,11 @@ class Journal extends Model
     public function party(): BelongsTo
     {
         return $this->belongsTo(Party::class);
+    }
+
+    public function transactionType(): BelongsTo
+    {
+        return $this->belongsTo(JournalTransactionType::class, 'transaction_type', 'code');
     }
 
     public function createdBy(): BelongsTo

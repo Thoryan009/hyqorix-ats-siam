@@ -24,6 +24,7 @@ class JournalService
     {
         return $journal->load([
             'party:id,code,name,type',
+            'transactionType:id,code,name',
             'createdBy:id,name',
             'updatedBy:id,name',
             'lines.account:id,code,name',

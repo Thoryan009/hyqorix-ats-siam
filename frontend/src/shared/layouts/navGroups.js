@@ -284,6 +284,11 @@ export const navGroups = [
         icon: 'fa fa-handshake-o',
       },
       {
+        name: 'Transaction Type Management',
+        path: '/journal-transaction-types',
+        icon: 'fa fa-exchange',
+      },
+      {
         name: 'Journal Management',
         path: '/journals',
         icon: 'fa fa-book',

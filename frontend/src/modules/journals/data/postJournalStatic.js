@@ -1,16 +1,3 @@
-export const transactionTypeOptions = [
-  { id: 'journal_voucher', name: 'Journal Voucher' },
-  { id: 'direct_expense', name: 'Direct Expense' },
-  { id: 'operating_expense', name: 'Operating Expense' },
-  { id: 'recruitment_revenue', name: 'Recruitment Revenue' },
-  { id: 'recruitment_refund', name: 'Recruitment Refund' },
-  { id: 'asset_purchase', name: 'Asset Purchase' },
-  { id: 'asset_return', name: 'Asset Return' },
-  { id: 'staff_advance', name: 'Staff Advance' },
-  { id: 'advance_adjustment', name: 'Advance Adjustment' },
-  { id: 'owner_capital', name: 'Owner Capital' },
-]
-
 export const projectOptions = [
   { id: 'general', name: 'General / No Project' },
   { id: 'CL001', name: 'CL001 – Client Project' },
@@ -64,7 +51,11 @@ export function getOptionLabel(options, id) {
 }
 
 export function getTransactionTypeLabel(id) {
-  return getOptionLabel(transactionTypeOptions, id)
+  if (!id) return ''
+  return String(id)
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
 }
 
 export function getCostTypeLabel(id) {
@@ -197,7 +188,7 @@ export function flattenJournalRows(journals = []) {
       id: `${journal.id}-${line.id ?? index}`,
       je_no: journal.voucher_no,
       date: journal.voucher_date_label || journal.voucher_date,
-      transaction: journal.narration || getTransactionTypeLabel(journal.transaction_type),
+      transaction: journal.narration || journal.transaction_type_name || getTransactionTypeLabel(journal.transaction_type),
       account_code: line.account_code || '',
       account_name: line.account_name || '',
       party_ref: journal.party_code || journal.party_name || journal.reference_no || '',

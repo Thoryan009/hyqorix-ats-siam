@@ -55,7 +55,14 @@ class JournalStoreRequest extends FormRequest
     {
         return [
             'voucher_date' => ['required', 'date'],
-            'transaction_type' => ['required', 'string', Rule::in(Journal::TRANSACTION_TYPES)],
+            'transaction_type' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::exists('journal_transaction_types', 'code')->where(
+                    fn ($query) => $query->where('status', 'active')
+                ),
+            ],
             'reference_no' => ['nullable', 'string', 'max:100'],
             'party_type' => ['nullable', 'string', 'max:50'],
             'party_id' => ['nullable', 'integer', 'exists:parties,id'],
