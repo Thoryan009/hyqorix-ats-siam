@@ -19,6 +19,11 @@ export default {
 
     post_title: 'জার্নাল পোস্ট',
     post_static_note: 'জার্নাল তথ্য ও লাইন পূরণ করে লেজারে পোস্ট করুন।',
+    tab_bill_entry: 'বিল এন্ট্রি',
+    tab_approval: 'অনুমোদন',
+    tab_payment: 'পেমেন্ট',
+    approval_tab_placeholder: 'অনুমোদন ওয়ার্কফ্লো কন্টেন্ট এখানে দেখা যাবে।',
+    payment_tab_placeholder: 'পেমেন্ট কন্টেন্ট এখানে দেখা যাবে।',
     back_to_list: 'জার্নাল তালিকায় ফিরে যান',
     voucher_no: 'ভাউচার নং',
     status: 'স্ট্যাটাস',

@@ -13,6 +13,24 @@
       </BaseButton>
     </PageHeader>
 
+    <div class="mb-6 flex flex-wrap gap-2">
+      <button
+        v-for="tab in pageTabs"
+        :key="tab.id"
+        type="button"
+        class="rounded-lg border px-4 py-2 text-sm font-semibold transition-all"
+        :class="
+          activeTab === tab.id
+            ? 'border-primary bg-primary-light! text-primary ring-1 ring-primary'
+            : 'border-gray-200 bg-white text-gray-700 hover:border-primary hover:bg-primary-light!'
+        "
+        @click="activeTab = tab.id"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <div v-if="activeTab === 'bill_entry'">
     <div class="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
       <div>
         <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -314,6 +332,21 @@
         <span v-else>{{ t('journals.post_journal') }}</span>
       </BaseButton>
     </div>
+    </div>
+
+    <div
+      v-else-if="activeTab === 'approval'"
+      class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+    >
+      <p class="text-sm text-slate-600">{{ t('journals.approval_tab_placeholder') }}</p>
+    </div>
+
+    <div
+      v-else-if="activeTab === 'payment'"
+      class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+    >
+      <p class="text-sm text-slate-600">{{ t('journals.payment_tab_placeholder') }}</p>
+    </div>
   </SectionHeader>
 </template>
 
@@ -342,6 +375,13 @@ import { useJournalTransactionTypeOptionsQuery } from '../queries/useJournalTran
 
 const { t } = useTranslate()
 const router = useRouter()
+
+const activeTab = ref('bill_entry')
+const pageTabs = computed(() => [
+  { id: 'bill_entry', label: t('journals.tab_bill_entry') },
+  { id: 'approval', label: t('journals.tab_approval') },
+  { id: 'payment', label: t('journals.tab_payment') },
+])
 
 const form = ref({ ...defaultJournalForm, voucher_date: todayIsoDate() })
 const lines = ref(defaultJournalLines.map((line) => ({ ...line })))

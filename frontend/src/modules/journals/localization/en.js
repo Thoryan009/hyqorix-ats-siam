@@ -19,6 +19,11 @@ export default {
 
     post_title: 'Post Journal',
     post_static_note: 'Enter journal information and lines, then post to the ledger.',
+    tab_bill_entry: 'Bill Entry',
+    tab_approval: 'Approval',
+    tab_payment: 'Payment',
+    approval_tab_placeholder: 'Approval workflow content will appear here.',
+    payment_tab_placeholder: 'Payment content will appear here.',
     back_to_list: 'Back to Journals',
     voucher_no: 'Voucher No.',
     status: 'Status',
