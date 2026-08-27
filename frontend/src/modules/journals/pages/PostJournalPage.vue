@@ -400,19 +400,46 @@
         </p>
       </div>
 
-      <JournalApprovalPreview
-        v-else
-        :key="selectedApprovalJournal.id"
-        :journal="selectedApprovalJournal"
-      />
+      <template v-else>
+        <div class="space-y-4">
+          <JournalApprovalPreview
+            :key="selectedApprovalJournal.id"
+            :journal="selectedApprovalJournal"
+          />
+
+          <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <BaseLabel for="manager_comment">{{ t('journals.manager_comment') }}</BaseLabel>
+            <BaseTextArea
+              id="manager_comment"
+              v-model="managerComment"
+              :rows="3"
+              className="mt-1.5 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              :placeholder="t('journals.manager_comment_placeholder')"
+            />
+            <p v-if="approveValidationMessage" class="mt-2 text-sm text-red-600">
+              {{ approveValidationMessage }}
+            </p>
+            <div class="mt-4 flex justify-end">
+              <BaseButton
+                className="bg-indigo-600 text-white hover:bg-indigo-700"
+                :disabled="isApproving"
+                @click="handleApprove"
+              >
+                <span v-if="isApproving">{{ t('journals.approving') }}</span>
+                <span v-else>{{ t('journals.approve_journal') }}</span>
+              </BaseButton>
+            </div>
+          </div>
+        </div>
+      </template>
     </div>
 
-    <div
+    <JournalPaymentPanel
       v-else-if="activeTab === 'payment'"
-      class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
-    >
-      <p class="text-sm text-slate-600">{{ t('journals.payment_tab_placeholder') }}</p>
-    </div>
+      :active="activeTab === 'payment'"
+      :initial-journal-id="selectedPaymentJournalId"
+      @paid="handlePaid"
+    />
   </SectionHeader>
 </template>
 
@@ -428,6 +455,7 @@ import { useJournalMutations } from '../queries/useJournalMutations'
 import { usePartyLedgerOptionsQuery } from '../queries/usePartyLedgerOptionsQuery'
 import { usePendingApprovalJournalsQuery } from '../queries/usePendingApprovalJournalsQuery'
 import JournalApprovalPreview from './components/JournalApprovalPreview.vue'
+import JournalPaymentPanel from './components/JournalPaymentPanel.vue'
 import {
   buildJournalPayload,
   costTypeOptions,
@@ -446,6 +474,9 @@ const router = useRouter()
 
 const activeTab = ref('bill_entry')
 const selectedApprovalJournalId = ref('')
+const selectedPaymentJournalId = ref('')
+const managerComment = ref('')
+const approveValidationMessage = ref('')
 const pageTabs = computed(() => [
   { id: 'bill_entry', label: t('journals.tab_bill_entry') },
   { id: 'approval', label: t('journals.tab_approval') },
@@ -551,30 +582,77 @@ const partyTypeOptions = computed(() => [
   })),
 ])
 
-const { submit, submitLoading: isSubmitting } = useJournalMutations({
-  onSuccess(result) {
-    const voucher = result?.data?.voucher_no || result?.voucher_no || ''
-    const journalId = result?.data?.id || result?.id || ''
-    const status = result?.data?.status_raw || pendingStatus.value
+const { submit, submitLoading: isSubmitting, approve, approveLoading: isApproving } =
+  useJournalMutations({
+    onSuccess(result) {
+      const voucher = result?.data?.voucher_no || result?.voucher_no || ''
+      const journalId = result?.data?.id || result?.id || ''
+      const status = result?.data?.status_raw || pendingStatus.value
 
-    if (status === 'pending_approval') {
-      toast.success(t('journals.submitted_success', { voucher }))
-      resetBillEntryForm()
-      selectedApprovalJournalId.value = journalId ? String(journalId) : ''
-      activeTab.value = 'approval'
+      if (status === 'pending_approval') {
+        toast.success(t('journals.submitted_success', { voucher }))
+        resetBillEntryForm()
+        selectedApprovalJournalId.value = journalId ? String(journalId) : ''
+        managerComment.value = ''
+        approveValidationMessage.value = ''
+        activeTab.value = 'approval'
+        refetchPendingApprovals()
+        return
+      }
+
+      toast.success(t('journals.posted_success', { voucher }))
+      router.push({ name: 'Journal Management' })
+    },
+    onApproveSuccess(result) {
+      const voucher = result?.data?.voucher_no || result?.voucher_no || ''
+      const journalId = result?.data?.id || result?.id || ''
+      toast.success(t('journals.approved_success', { voucher }))
+      selectedApprovalJournalId.value = ''
+      managerComment.value = ''
+      approveValidationMessage.value = ''
+      selectedPaymentJournalId.value = journalId ? String(journalId) : ''
+      activeTab.value = 'payment'
       refetchPendingApprovals()
-      return
-    }
+    },
+  })
 
-    toast.success(t('journals.posted_success', { voucher }))
-    router.push({ name: 'Journal Management' })
-  },
-})
+const handleApprove = async () => {
+  approveValidationMessage.value = ''
+  const comment = String(managerComment.value || '').trim()
+  if (!comment) {
+    approveValidationMessage.value = t('journals.error_manager_comment_required')
+    toast.error(approveValidationMessage.value)
+    return
+  }
+  if (!selectedApprovalJournalId.value) return
+
+  try {
+    await approve.mutateAsync({
+      id: selectedApprovalJournalId.value,
+      manager_comment: comment,
+    })
+  } catch (error) {
+    approveValidationMessage.value =
+      error?.errors?.manager_comment?.[0] ||
+      error?.message ||
+      t('journals.error_manager_comment_required')
+  }
+}
+
+const handlePaid = () => {
+  selectedPaymentJournalId.value = ''
+  router.push({ name: 'Journal Management' })
+}
 
 watch(isApprovalTab, (enabled) => {
   if (enabled) {
     refetchPendingApprovals()
   }
+})
+
+watch(selectedApprovalJournalId, () => {
+  managerComment.value = ''
+  approveValidationMessage.value = ''
 })
 
 watch(pendingApprovalOptions, (options) => {

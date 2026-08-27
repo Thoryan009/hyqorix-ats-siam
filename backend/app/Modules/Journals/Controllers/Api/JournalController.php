@@ -4,7 +4,9 @@ namespace App\Modules\Journals\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Journals\Models\Journal;
+use App\Modules\Journals\Requests\JournalApproveRequest;
 use App\Modules\Journals\Requests\JournalIndexRequest;
+use App\Modules\Journals\Requests\JournalPayRequest;
 use App\Modules\Journals\Requests\JournalStoreRequest;
 use App\Modules\Journals\Resources\JournalResource;
 use App\Modules\Journals\Services\JournalService;
@@ -40,6 +42,33 @@ class JournalController extends Controller
     {
         return new JournalResource(
             $this->service->getJournal($journal)
+        );
+    }
+
+    public function approve(JournalApproveRequest $request, Journal $journal): JsonResponse
+    {
+        $approved = $this->service->approve(
+            $journal,
+            (string) $request->validated('manager_comment')
+        );
+
+        return apiSuccess(
+            new JournalResource($approved),
+            'updated',
+            200,
+            'Journal'
+        );
+    }
+
+    public function pay(JournalPayRequest $request, Journal $journal): JsonResponse
+    {
+        $posted = $this->service->pay($journal, $request->validated());
+
+        return apiSuccess(
+            new JournalResource($posted),
+            'updated',
+            200,
+            'Journal'
         );
     }
 }

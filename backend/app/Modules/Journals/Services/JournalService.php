@@ -7,6 +7,7 @@ use App\Modules\Journals\Repositories\JournalRepository;
 use App\Modules\Parties\Models\Party;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class JournalService
 {
@@ -55,19 +56,76 @@ class JournalService
                 'status' => $data['status'] ?? 'posted',
             ]);
 
-            foreach ($lines as $index => $line) {
-                $journal->lines()->create([
-                    'account_id' => $line['account_id'],
-                    'sub_ledger' => trim((string) ($line['sub_ledger'] ?? '')) ?: $partyCode,
-                    'cost_type' => $line['cost_type'] ?? null,
-                    'debit' => $line['debit'] ?? 0,
-                    'credit' => $line['credit'] ?? 0,
-                    'sort_order' => $index + 1,
-                ]);
-            }
+            $this->syncLines($journal, $lines, $partyCode);
 
             return $this->getJournal($journal);
         });
+    }
+
+    public function approve(Journal $journal, string $managerComment): Journal
+    {
+        if ($journal->status !== 'pending_approval') {
+            throw ValidationException::withMessages([
+                'status' => 'Only journals waiting for approval can be approved.',
+            ]);
+        }
+
+        $journal->update([
+            'status' => 'approved',
+            'manager_comment' => $managerComment,
+        ]);
+
+        return $this->getJournal($journal->fresh());
+    }
+
+    public function pay(Journal $journal, array $data): Journal
+    {
+        if ($journal->status !== 'approved') {
+            throw ValidationException::withMessages([
+                'status' => 'Only approved journals can be paid and posted.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($journal, $data) {
+            $lines = $data['lines'] ?? [];
+            unset($data['lines']);
+
+            $totals = $this->sumLineTotals($lines);
+            $partyId = $data['party_id'] ?? null;
+            $partyCode = $this->resolvePartyCode($partyId);
+
+            $journal->update([
+                'voucher_date' => $data['voucher_date'],
+                'transaction_type' => $data['transaction_type'],
+                'reference_no' => $data['reference_no'] ?? null,
+                'party_type' => $data['party_type'] ?? null,
+                'party_id' => $partyId,
+                'project_id' => $data['project_id'] ?? null,
+                'narration' => $data['narration'] ?? null,
+                'total_debit' => $totals['debit'],
+                'total_credit' => $totals['credit'],
+                'status' => 'posted',
+            ]);
+
+            $journal->lines()->delete();
+            $this->syncLines($journal, $lines, $partyCode);
+
+            return $this->getJournal($journal->fresh());
+        });
+    }
+
+    private function syncLines(Journal $journal, array $lines, ?string $partyCode): void
+    {
+        foreach ($lines as $index => $line) {
+            $journal->lines()->create([
+                'account_id' => $line['account_id'],
+                'sub_ledger' => trim((string) ($line['sub_ledger'] ?? '')) ?: $partyCode,
+                'cost_type' => $line['cost_type'] ?? null,
+                'debit' => $line['debit'] ?? 0,
+                'credit' => $line['credit'] ?? 0,
+                'sort_order' => $index + 1,
+            ]);
+        }
     }
 
     private function sumLineTotals(array $lines): array

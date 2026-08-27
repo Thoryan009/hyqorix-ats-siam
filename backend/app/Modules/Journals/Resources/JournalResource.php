@@ -12,6 +12,7 @@ class JournalResource extends JsonResource
         $statusLabels = [
             'draft' => 'Draft',
             'pending_approval' => 'Waiting for Approval',
+            'approved' => 'Approved',
             'posted' => 'Posted',
         ];
 
@@ -29,6 +30,7 @@ class JournalResource extends JsonResource
             'party_name' => $this->party?->name,
             'project_id' => $this->project_id,
             'narration' => $this->narration,
+            'manager_comment' => $this->manager_comment,
             'total_debit' => number_format((float) $this->total_debit, 2, '.', ''),
             'total_credit' => number_format((float) $this->total_credit, 2, '.', ''),
             'status' => $statusLabels[$this->status] ?? ucfirst((string) $this->status),

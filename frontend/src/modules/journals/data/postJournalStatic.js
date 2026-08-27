@@ -101,6 +101,43 @@ export function buildJournalPayload(form, lines, status) {
   }
 }
 
+export function buildPayPayload(form, lines) {
+  const payload = buildJournalPayload(form, lines, 'posted')
+  delete payload.status
+  return payload
+}
+
+export function mapJournalToForm(journal) {
+  return {
+    voucher_no: journal?.voucher_no || '—',
+    status: journal?.status || 'Approved',
+    voucher_date: journal?.voucher_date || todayIsoDate(),
+    transaction_type: journal?.transaction_type || '',
+    reference_no: journal?.reference_no || '',
+    party_type: journal?.party_type || '',
+    party_id: journal?.party_id || '',
+    project_id: journal?.project_id || '',
+    narration: journal?.narration || '',
+    manager_comment: journal?.manager_comment || '',
+  }
+}
+
+export function mapJournalToLines(journal) {
+  const sourceLines = Array.isArray(journal?.lines) ? journal.lines : []
+  if (!sourceLines.length) {
+    return defaultJournalLines.map((line) => ({ ...line }))
+  }
+
+  return sourceLines.map((line, index) => ({
+    id: line.id || index + 1,
+    account_id: line.account_id || '',
+    sub_ledger: line.sub_ledger || '',
+    cost_type: line.cost_type || '',
+    debit: Number(line.debit) > 0 ? line.debit : '',
+    credit: Number(line.credit) > 0 ? line.credit : '',
+  }))
+}
+
 export function validateJournalForm(form, lines) {
   const errors = []
 
