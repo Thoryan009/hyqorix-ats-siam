@@ -20,6 +20,16 @@ export async function fetchAll(page = 1, perPage = 10, filters = {}) {
   return response(api)
 }
 
+export async function fetchJournal(id) {
+  const api = useApi()
+  await api.sendRequest(`${BASE_URL}/${id}`)
+  if (api.error.value) {
+    throw api.error.value
+  }
+
+  return response(api)
+}
+
 export async function submitJournal(payload) {
   const api = useApi()
   await api.sendRequest(BASE_URL, 'POST', payload)

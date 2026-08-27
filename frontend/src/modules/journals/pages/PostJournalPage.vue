@@ -334,11 +334,77 @@
     </div>
     </div>
 
-    <div
-      v-else-if="activeTab === 'approval'"
-      class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
-    >
-      <p class="text-sm text-slate-600">{{ t('journals.approval_tab_placeholder') }}</p>
+    <div v-else-if="activeTab === 'approval'" class="space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-semibold text-slate-900">
+              {{ t('journals.approval_select_title') }}
+            </h3>
+            <p class="mt-0.5 text-xs text-slate-500">
+              {{ t('journals.approval_select_hint') }}
+            </p>
+          </div>
+          <span
+            v-if="pendingApprovalOptions.length"
+            class="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200"
+          >
+            {{ pendingApprovalOptions.length }} {{ t('journals.waiting_for_approval') }}
+          </span>
+        </div>
+
+        <div class="mt-3 max-w-xl">
+          <BaseLabel for="pending_journal">{{ t('journals.select_pending_journal') }}</BaseLabel>
+          <BaseSearchSelect
+            id="pending_journal"
+            v-model="selectedApprovalJournalId"
+            class="mt-1.5"
+            :options="pendingApprovalOptions"
+            :placeholder="pendingJournalPlaceholder"
+            :disabled="isPendingApprovalLoading || !pendingApprovalOptions.length"
+            :filter-fn="filterPendingJournal"
+            teleport-dropdown
+            list-class-name="max-h-72"
+          />
+        </div>
+      </div>
+
+      <div
+        v-if="isPendingApprovalLoading && !selectedApprovalJournal"
+        class="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500 shadow-sm"
+      >
+        {{ t('journals.loading_pending_journals') }}
+      </div>
+
+      <div
+        v-else-if="!isPendingApprovalLoading && !pendingApprovalOptions.length"
+        class="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm"
+      >
+        <p class="text-sm font-medium text-slate-900">
+          {{ t('journals.no_pending_journals') }}
+        </p>
+        <p class="mt-1 text-xs text-slate-500">
+          {{ t('journals.no_pending_journals_hint') }}
+        </p>
+      </div>
+
+      <div
+        v-else-if="!selectedApprovalJournal"
+        class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center"
+      >
+        <p class="text-sm font-medium text-slate-800">
+          {{ t('journals.select_journal_to_preview') }}
+        </p>
+        <p class="mt-1 text-xs text-slate-500">
+          {{ t('journals.select_journal_to_preview_hint') }}
+        </p>
+      </div>
+
+      <JournalApprovalPreview
+        v-else
+        :key="selectedApprovalJournal.id"
+        :journal="selectedApprovalJournal"
+      />
     </div>
 
     <div
@@ -360,6 +426,8 @@ import { useTranslate } from '@/shared/composables/useTranslate'
 import { useAccountOptionsQuery } from '../queries/useAccountOptionsQuery'
 import { useJournalMutations } from '../queries/useJournalMutations'
 import { usePartyLedgerOptionsQuery } from '../queries/usePartyLedgerOptionsQuery'
+import { usePendingApprovalJournalsQuery } from '../queries/usePendingApprovalJournalsQuery'
+import JournalApprovalPreview from './components/JournalApprovalPreview.vue'
 import {
   buildJournalPayload,
   costTypeOptions,
@@ -377,17 +445,92 @@ const { t } = useTranslate()
 const router = useRouter()
 
 const activeTab = ref('bill_entry')
+const selectedApprovalJournalId = ref('')
 const pageTabs = computed(() => [
   { id: 'bill_entry', label: t('journals.tab_bill_entry') },
   { id: 'approval', label: t('journals.tab_approval') },
   { id: 'payment', label: t('journals.tab_payment') },
 ])
 
+const isApprovalTab = computed(() => activeTab.value === 'approval')
+const {
+  data: pendingApprovalData,
+  isLoading: isPendingApprovalLoading,
+  refetch: refetchPendingApprovals,
+} = usePendingApprovalJournalsQuery(isApprovalTab)
+
+const pendingApprovalJournals = computed(() => pendingApprovalData.value?.data?.data ?? [])
+
+const pendingApprovalOptions = computed(() =>
+  pendingApprovalJournals.value.map((journal) => {
+    const party = journal.party_code || journal.party_name || ''
+    const amount = Number(journal.total_debit || 0).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+    const parts = [
+      journal.voucher_no,
+      journal.voucher_date_label || journal.voucher_date,
+      party,
+      amount ? `Dr ${amount}` : '',
+    ].filter(Boolean)
+
+    return {
+      id: journal.id,
+      code: journal.voucher_no,
+      name: parts.join(' · '),
+      voucher_no: journal.voucher_no,
+      party_name: journal.party_name || '',
+      party_code: journal.party_code || '',
+      narration: journal.narration || '',
+      reference_no: journal.reference_no || '',
+    }
+  }),
+)
+
+const selectedApprovalJournal = computed(() =>
+  pendingApprovalJournals.value.find(
+    (journal) => String(journal.id) === String(selectedApprovalJournalId.value),
+  ) ?? null,
+)
+
+const pendingJournalPlaceholder = computed(() =>
+  isPendingApprovalLoading.value
+    ? t('journals.loading_pending_journals')
+    : pendingApprovalOptions.value.length
+      ? t('journals.search_pending_journal')
+      : t('journals.no_pending_journals'),
+)
+
+const filterPendingJournal = (option, query) => {
+  const q = String(query || '').toLowerCase()
+  if (!q) return true
+  return [
+    option?.name,
+    option?.code,
+    option?.voucher_no,
+    option?.party_name,
+    option?.party_code,
+    option?.narration,
+    option?.reference_no,
+  ]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(q))
+}
+
 const form = ref({ ...defaultJournalForm, voucher_date: todayIsoDate() })
 const lines = ref(defaultJournalLines.map((line) => ({ ...line })))
 const validationMessage = ref('')
 const pendingStatus = ref('')
 let nextLineId = Math.max(...lines.value.map((line) => Number(line.id) || 0), 0) + 1
+
+const resetBillEntryForm = () => {
+  form.value = { ...defaultJournalForm, voucher_date: todayIsoDate() }
+  lines.value = defaultJournalLines.map((line) => ({ ...line }))
+  validationMessage.value = ''
+  pendingStatus.value = ''
+  nextLineId = Math.max(...lines.value.map((line) => Number(line.id) || 0), 0) + 1
+}
 
 const { data: transactionTypeOptionsData } = useJournalTransactionTypeOptionsQuery('active')
 const transactionTypeOptions = computed(() =>
@@ -411,14 +554,37 @@ const partyTypeOptions = computed(() => [
 const { submit, submitLoading: isSubmitting } = useJournalMutations({
   onSuccess(result) {
     const voucher = result?.data?.voucher_no || result?.voucher_no || ''
+    const journalId = result?.data?.id || result?.id || ''
     const status = result?.data?.status_raw || pendingStatus.value
-    toast.success(
-      status === 'pending_approval'
-        ? t('journals.submitted_success', { voucher })
-        : t('journals.posted_success', { voucher }),
-    )
+
+    if (status === 'pending_approval') {
+      toast.success(t('journals.submitted_success', { voucher }))
+      resetBillEntryForm()
+      selectedApprovalJournalId.value = journalId ? String(journalId) : ''
+      activeTab.value = 'approval'
+      refetchPendingApprovals()
+      return
+    }
+
+    toast.success(t('journals.posted_success', { voucher }))
     router.push({ name: 'Journal Management' })
   },
+})
+
+watch(isApprovalTab, (enabled) => {
+  if (enabled) {
+    refetchPendingApprovals()
+  }
+})
+
+watch(pendingApprovalOptions, (options) => {
+  if (!options.length || isPendingApprovalLoading.value) return
+  if (
+    selectedApprovalJournalId.value &&
+    !options.some((option) => String(option.id) === String(selectedApprovalJournalId.value))
+  ) {
+    selectedApprovalJournalId.value = ''
+  }
 })
 
 const statusBadgeClass = computed(() => {

@@ -11,7 +11,7 @@ class JournalResource extends JsonResource
     {
         $statusLabels = [
             'draft' => 'Draft',
-            'pending_approval' => 'Pending Approval',
+            'pending_approval' => 'Waiting for Approval',
             'posted' => 'Posted',
         ];
 
