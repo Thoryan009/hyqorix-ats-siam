@@ -34,9 +34,8 @@
     <JournalBillEntrySuccess
       v-if="billEntrySuccess"
       :success="billEntrySuccess"
-      @go-to-approval="handleSuccessGoToApproval"
-      @view-journals="handleSuccessViewJournals"
-      @create-new="handleSuccessCreateNew"
+      @primary="handleBillEntrySuccessPrimary"
+      @secondary="handleSuccessCreateNew"
     />
 
     <template v-else>
@@ -418,6 +417,14 @@
     </div>
 
     <div v-else-if="activeTab === 'approval'" class="space-y-5">
+    <JournalApprovalSuccess
+      v-if="approvalSuccess"
+      :success="approvalSuccess"
+      @go-to-payment="handleApprovalSuccessGoToPayment"
+      @review-more="handleApprovalSuccessReviewMore"
+    />
+
+    <template v-else>
       <div class="mx-auto w-full max-w-4xl rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ring-1 ring-slate-100">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -548,6 +555,7 @@
           </div>
         </div>
       </template>
+    </template>
     </div>
 
     <JournalPaymentPanel
@@ -571,6 +579,7 @@ import { useJournalMutations } from '../queries/useJournalMutations'
 import { usePartyLedgerOptionsQuery } from '../queries/usePartyLedgerOptionsQuery'
 import { usePendingApprovalJournalsQuery, useReturnedJournalsQuery } from '../queries/usePendingApprovalJournalsQuery'
 import JournalApprovalPreview from './components/JournalApprovalPreview.vue'
+import JournalApprovalSuccess from './components/JournalApprovalSuccess.vue'
 import JournalBillEntrySuccess from './components/JournalBillEntrySuccess.vue'
 import JournalPaymentPanel from './components/JournalPaymentPanel.vue'
 import JournalProjectSelect from './components/JournalProjectSelect.vue'
@@ -599,6 +608,7 @@ const selectedPaymentJournalId = ref('')
 const selectedReturnedJournalId = ref('')
 const editingJournalId = ref('')
 const billEntrySuccess = ref(null)
+const approvalSuccess = ref(null)
 const managerComment = ref('')
 const approveValidationMessage = ref('')
 let skipPartyClear = false
@@ -757,8 +767,27 @@ const buildBillEntrySuccessPayload = (type, result) => {
   }
 }
 
+const buildApprovalSuccessPayload = (result, comment = '') => {
+  const journal = result?.data || result || {}
+
+  return {
+    voucherNo: journal.voucher_no || '—',
+    journalId: journal.id || '',
+    status: journal.status || '—',
+    statusRaw: journal.status_raw || '',
+    totalDebit: journal.total_debit,
+    totalCredit: journal.total_credit,
+    voucherDate: journal.voucher_date_label || journal.voucher_date || '—',
+    managerComment: comment || journal.manager_comment || '',
+  }
+}
+
 const showBillEntrySuccessPage = (type, result) => {
   billEntrySuccess.value = buildBillEntrySuccessPayload(type, result)
+}
+
+const showApprovalSuccessPage = (result, comment = '') => {
+  approvalSuccess.value = buildApprovalSuccessPayload(result, comment)
 }
 
 const handleSuccessGoToApproval = () => {
@@ -768,15 +797,32 @@ const handleSuccessGoToApproval = () => {
   activeTab.value = 'approval'
 }
 
-const handleSuccessViewJournals = () => {
-  billEntrySuccess.value = null
-  router.push({ name: 'Journal Management' })
+const handleBillEntrySuccessPrimary = () => {
+  const type = billEntrySuccess.value?.type
+  if (type === 'posted') {
+    billEntrySuccess.value = null
+    router.push({ name: 'Journal Management' })
+    return
+  }
+  handleSuccessGoToApproval()
 }
 
 const handleSuccessCreateNew = () => {
   billEntrySuccess.value = null
   selectedReturnedJournalId.value = ''
   resetBillEntryForm()
+}
+
+const handleApprovalSuccessGoToPayment = () => {
+  approvalSuccess.value = null
+  activeTab.value = 'payment'
+}
+
+const handleApprovalSuccessReviewMore = () => {
+  approvalSuccess.value = null
+  selectedApprovalJournalId.value = ''
+  managerComment.value = ''
+  approveValidationMessage.value = ''
 }
 
 const { data: transactionTypeOptionsData } = useJournalTransactionTypeOptionsQuery('active')
@@ -820,15 +866,15 @@ const { submit, submitLoading: isSubmitting, approve, approveLoading: isApprovin
       showBillEntrySuccessPage('posted', result)
     },
     onApproveSuccess(result) {
-      const voucher = result?.data?.voucher_no || result?.voucher_no || ''
-      const journalId = result?.data?.id || result?.id || ''
-      toast.success(t('journals.approved_success', { voucher }))
+      const journal = result?.data || result || {}
+      const journalId = journal?.id || ''
+      selectedPaymentJournalId.value = journalId ? String(journalId) : ''
       selectedApprovalJournalId.value = ''
+      const comment = String(managerComment.value || '').trim()
       managerComment.value = ''
       approveValidationMessage.value = ''
-      selectedPaymentJournalId.value = journalId ? String(journalId) : ''
-      activeTab.value = 'payment'
       refetchPendingApprovals()
+      showApprovalSuccessPage(result, comment)
     },
     onReturnSuccess(result) {
       const voucher = result?.data?.voucher_no || result?.voucher_no || ''
