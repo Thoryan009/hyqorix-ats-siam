@@ -336,6 +336,19 @@
         />
       </div>
 
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <JournalReceiptUpload
+          :receipt-path="form.receipt_path"
+          :receipt-preview="form.receipt_preview"
+          input-id="pay_receipt_path"
+          :existing-urls="form.receipt_urls"
+          :label="t('journals.receipt_optional')"
+          :hint="t('journals.receipt_hint')"
+          @update:receipt-path="form.receipt_path = $event"
+          @update:receipt-preview="form.receipt_preview = $event"
+        />
+      </div>
+
       <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <p v-if="validationMessage" class="w-full text-sm text-red-600 sm:mr-auto sm:self-center">
           {{ validationMessage }}
@@ -364,6 +377,7 @@ import { useApprovedJournalsQuery } from '../../queries/usePendingApprovalJourna
 import { usePartyTypeOptionsQuery } from '@/modules/parties/queries/usePartyTypeOptionsQuery'
 import { useJournalTransactionTypeOptionsQuery } from '../../queries/useJournalTransactionTypeOptionsQuery'
 import JournalProjectSelect from './JournalProjectSelect.vue'
+import JournalReceiptUpload from './JournalReceiptUpload.vue'
 import {
   buildPayPayload,
   costTypeOptions,

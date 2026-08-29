@@ -34,6 +34,8 @@ class JournalResource extends JsonResource
             'project_name' => $this->resolveProjectName(),
             'narration' => $this->narration,
             'manager_comment' => $this->manager_comment,
+            'receipt_url' => $this->receipt_url,
+            'receipt_urls' => $this->receipt_urls,
             'total_debit' => number_format((float) $this->total_debit, 2, '.', ''),
             'total_credit' => number_format((float) $this->total_credit, 2, '.', ''),
             'status' => $statusLabels[$this->status] ?? ucfirst((string) $this->status),

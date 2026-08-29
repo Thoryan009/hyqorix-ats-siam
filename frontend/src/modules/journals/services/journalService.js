@@ -1,5 +1,6 @@
 import { useApi } from '@/shared/composables/useApi'
 import { buildUrl } from '@/shared/utils/buildUrl'
+import { hasUploadFile, toDynamicFormData } from '@/finance/utils/billEntryMapper'
 
 const BASE_URL = '/journals'
 
@@ -7,6 +8,13 @@ const response = (api) => ({
   data: api.data.value,
   error: api.error.value,
 })
+
+function resolveRequestBody(payload) {
+  if (hasUploadFile(payload)) {
+    return toDynamicFormData(payload)
+  }
+  return payload
+}
 
 export async function fetchAll(page = 1, perPage = 10, filters = {}) {
   const api = useApi()
@@ -52,7 +60,7 @@ export async function fetchDemandLetterOptions() {
 
 export async function submitJournal(payload) {
   const api = useApi()
-  await api.sendRequest(BASE_URL, 'POST', payload)
+  await api.sendRequest(BASE_URL, 'POST', resolveRequestBody(payload))
   if (api.error.value) {
     throw api.error.value
   }
@@ -72,7 +80,7 @@ export async function approveJournal(id, payload) {
 
 export async function payJournal(id, payload) {
   const api = useApi()
-  await api.sendRequest(`${BASE_URL}/${id}/pay`, 'POST', payload)
+  await api.sendRequest(`${BASE_URL}/${id}/pay`, 'POST', resolveRequestBody(payload))
   if (api.error.value) {
     throw api.error.value
   }

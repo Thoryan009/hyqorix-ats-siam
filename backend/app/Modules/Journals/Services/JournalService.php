@@ -91,6 +91,7 @@ class JournalService
                 'party_id' => $partyId,
                 'project_id' => $data['project_id'] ?? null,
                 'narration' => $data['narration'] ?? null,
+                'receipt_path' => $data['receipt_path'] ?? null,
                 'total_debit' => $totals['debit'],
                 'total_credit' => $totals['credit'],
                 'status' => $data['status'] ?? 'posted',
@@ -134,7 +135,7 @@ class JournalService
             $partyId = $data['party_id'] ?? null;
             $partyCode = $this->resolvePartyCode($partyId);
 
-            $journal->update([
+            $update = [
                 'voucher_date' => $data['voucher_date'],
                 'transaction_type' => $data['transaction_type'],
                 'reference_no' => $data['reference_no'] ?? null,
@@ -145,7 +146,13 @@ class JournalService
                 'total_debit' => $totals['debit'],
                 'total_credit' => $totals['credit'],
                 'status' => 'posted',
-            ]);
+            ];
+
+            if (array_key_exists('receipt_path', $data)) {
+                $update['receipt_path'] = $data['receipt_path'];
+            }
+
+            $journal->update($update);
 
             $journal->lines()->delete();
             $this->syncLines($journal, $lines, $partyCode);

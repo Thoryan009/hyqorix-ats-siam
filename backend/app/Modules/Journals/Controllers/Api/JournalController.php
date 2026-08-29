@@ -10,6 +10,7 @@ use App\Modules\Journals\Requests\JournalPayRequest;
 use App\Modules\Journals\Requests\JournalStoreRequest;
 use App\Modules\Journals\Resources\JournalResource;
 use App\Modules\Journals\Services\JournalService;
+use App\Modules\Shared\Helpers\FileHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -38,7 +39,10 @@ class JournalController extends Controller
 
     public function store(JournalStoreRequest $request): JsonResponse
     {
-        $journal = $this->service->create($request->validated());
+        $data = $request->validated();
+        $this->applyStoredReceiptPaths($request, $data);
+
+        $journal = $this->service->create($data);
 
         return apiSuccess(
             new JournalResource($journal),
@@ -72,7 +76,10 @@ class JournalController extends Controller
 
     public function pay(JournalPayRequest $request, Journal $journal): JsonResponse
     {
-        $posted = $this->service->pay($journal, $request->validated());
+        $data = $request->validated();
+        $this->applyStoredReceiptPaths($request, $data, $journal);
+
+        $posted = $this->service->pay($journal, $data);
 
         return apiSuccess(
             new JournalResource($posted),
@@ -80,5 +87,41 @@ class JournalController extends Controller
             200,
             'Journal'
         );
+    }
+
+    private function applyStoredReceiptPaths($request, array &$data, ?Journal $journal = null): void
+    {
+        if (!$request->hasFile('receipt_path')) {
+            unset($data['receipt_path']);
+
+            return;
+        }
+
+        $files = $request->file('receipt_path');
+        if (!is_array($files)) {
+            $files = [$files];
+        }
+
+        $paths = [];
+        foreach ($files as $file) {
+            if ($file) {
+                $paths[] = FileHelper::store($file, 'journal-receipts');
+            }
+        }
+
+        if ($paths === []) {
+            unset($data['receipt_path']);
+
+            return;
+        }
+
+        if ($journal) {
+            $existing = $journal->receipt_path ?? [];
+            $data['receipt_path'] = array_values(array_merge($existing, $paths));
+
+            return;
+        }
+
+        $data['receipt_path'] = $paths;
     }
 }

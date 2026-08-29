@@ -26,6 +26,8 @@ export const defaultJournalForm = {
   party_id: '',
   project_id: '',
   narration: '',
+  receipt_path: [],
+  receipt_preview: [],
 }
 
 export const createEmptyJournalLine = (id = Date.now()) => ({
@@ -147,10 +149,28 @@ export function getFilledJournalLines(lines) {
   return (lines ?? []).filter((line) => !isJournalLineEmpty(line))
 }
 
+export function normalizeReceiptFiles(value) {
+  if (Array.isArray(value)) {
+    return value.filter((item) => item instanceof File)
+  }
+  if (value instanceof File) {
+    return [value]
+  }
+  return []
+}
+
+export function appendReceiptFiles(payload, form) {
+  const files = normalizeReceiptFiles(form?.receipt_path)
+  if (files.length) {
+    payload.receipt_path = files
+  }
+  return payload
+}
+
 export function buildJournalPayload(form, lines, status) {
   const filledLines = getFilledJournalLines(lines)
 
-  return {
+  const payload = {
     voucher_date: form.voucher_date,
     transaction_type: form.transaction_type,
     reference_no: form.reference_no || null,
@@ -167,6 +187,8 @@ export function buildJournalPayload(form, lines, status) {
       credit: Number(line.credit) || 0,
     })),
   }
+
+  return appendReceiptFiles(payload, form)
 }
 
 export function buildPayPayload(form, lines) {
@@ -176,6 +198,12 @@ export function buildPayPayload(form, lines) {
 }
 
 export function mapJournalToForm(journal) {
+  const receiptUrls = Array.isArray(journal?.receipt_urls)
+    ? journal.receipt_urls.filter(Boolean)
+    : journal?.receipt_url
+      ? [journal.receipt_url]
+      : []
+
   return {
     voucher_no: journal?.voucher_no || '—',
     status: journal?.status || 'Approved',
@@ -187,6 +215,9 @@ export function mapJournalToForm(journal) {
     project_id: normalizeProjectId(journal?.project_id),
     narration: journal?.narration || '',
     manager_comment: journal?.manager_comment || '',
+    receipt_path: [],
+    receipt_preview: [],
+    receipt_urls: receiptUrls,
   }
 }
 

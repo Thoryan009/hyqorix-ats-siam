@@ -91,6 +91,27 @@
           {{ journal.manager_comment }}
         </p>
       </div>
+
+      <div
+        v-if="receiptUrls.length"
+        class="mt-5 rounded-lg bg-slate-50 px-4 py-3 ring-1 ring-slate-100"
+      >
+        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+          {{ t('journals.receipts') }}
+        </p>
+        <div class="mt-3 flex flex-wrap gap-3">
+          <BaseImagePreview
+            v-for="(url, index) in receiptUrls"
+            :key="`receipt-${index}-${url}`"
+            :src="url"
+            :alt="`${t('journals.receipt')} ${index + 1}`"
+            :show-cancel="false"
+            width="140px"
+            height="100px"
+            class-name="rounded-md"
+          />
+        </div>
+      </div>
     </section>
 
     <!-- Journal lines -->
@@ -216,6 +237,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useTranslate } from '@/shared/composables/useTranslate'
+import BaseImagePreview from '@/shared/components/base/BaseImagePreview.vue'
 import { getCostTypeLabel, getProjectLabel } from '../../data/postJournalStatic'
 
 const props = defineProps({
@@ -230,6 +252,13 @@ const { t } = useTranslate()
 const lines = computed(() =>
   Array.isArray(props.journal?.lines) ? props.journal.lines : [],
 )
+
+const receiptUrls = computed(() => {
+  if (Array.isArray(props.journal?.receipt_urls)) {
+    return props.journal.receipt_urls.filter(Boolean)
+  }
+  return props.journal?.receipt_url ? [props.journal.receipt_url] : []
+})
 
 const partyLabel = computed(() => {
   const code = props.journal?.party_code

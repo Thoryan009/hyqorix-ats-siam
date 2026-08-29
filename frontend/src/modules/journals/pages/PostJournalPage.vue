@@ -285,17 +285,28 @@
         />
       </div>
 
-      <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
-        <h3 class="mb-3 text-sm font-semibold text-slate-800">
-          {{ t('journals.posting_preview') }}
-        </h3>
-        <ul class="space-y-2 text-sm text-slate-700">
-          <li v-for="item in postingPreview" :key="item">• {{ item }}</li>
-        </ul>
-        <div class="mt-4 space-y-1 border-t border-slate-200 pt-3 text-xs text-slate-500">
-          <p>{{ t('journals.prepared_by') }}: {{ t('journals.current_user') }}</p>
-          <p>{{ t('journals.approval') }}: {{ t('journals.manager_required') }}</p>
-        </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <JournalReceiptUpload
+          :receipt-path="form.receipt_path"
+          :receipt-preview="form.receipt_preview"
+          :label="t('journals.receipt_optional')"
+          :hint="t('journals.receipt_hint')"
+          @update:receipt-path="form.receipt_path = $event"
+          @update:receipt-preview="form.receipt_preview = $event"
+        />
+      </div>
+    </div>
+
+    <div class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm lg:max-w-xl">
+      <h3 class="mb-3 text-sm font-semibold text-slate-800">
+        {{ t('journals.posting_preview') }}
+      </h3>
+      <ul class="space-y-2 text-sm text-slate-700">
+        <li v-for="item in postingPreview" :key="item">• {{ item }}</li>
+      </ul>
+      <div class="mt-4 space-y-1 border-t border-slate-200 pt-3 text-xs text-slate-500">
+        <p>{{ t('journals.prepared_by') }}: {{ t('journals.current_user') }}</p>
+        <p>{{ t('journals.approval') }}: {{ t('journals.manager_required') }}</p>
       </div>
     </div>
 
@@ -473,6 +484,7 @@ import { usePendingApprovalJournalsQuery } from '../queries/usePendingApprovalJo
 import JournalApprovalPreview from './components/JournalApprovalPreview.vue'
 import JournalPaymentPanel from './components/JournalPaymentPanel.vue'
 import JournalProjectSelect from './components/JournalProjectSelect.vue'
+import JournalReceiptUpload from './components/JournalReceiptUpload.vue'
 import {
   buildJournalPayload,
   costTypeOptions,

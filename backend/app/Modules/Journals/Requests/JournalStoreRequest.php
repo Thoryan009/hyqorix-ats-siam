@@ -68,6 +68,8 @@ class JournalStoreRequest extends FormRequest
             'party_id' => ['nullable', 'integer', 'exists:parties,id'],
             'project_id' => ['nullable', 'string', 'max:100'],
             'narration' => ['nullable', 'string'],
+            'receipt_path' => ['nullable', 'array', 'max:10'],
+            'receipt_path.*' => ['file', 'mimetypes:image/*', 'max:2048'],
             'status' => ['required', Rule::in(['pending_approval', 'posted'])],
             'lines' => ['required', 'array', 'min:2'],
             'lines.*.account_id' => ['required', 'integer', 'exists:chart_of_accounts,id'],

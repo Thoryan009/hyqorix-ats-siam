@@ -31,11 +31,76 @@ class Journal extends Model
 
     protected $guarded = [];
 
+    protected $appends = ['receipt_url', 'receipt_urls'];
+
     protected $casts = [
         'voucher_date' => 'date',
         'total_debit' => 'decimal:2',
         'total_credit' => 'decimal:2',
     ];
+
+    public function getReceiptPathAttribute($value): ?array
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_array($value)) {
+            return array_values(array_filter($value));
+        }
+
+        $decoded = json_decode($value, true);
+        if (is_array($decoded)) {
+            return array_values(array_filter($decoded));
+        }
+
+        return [$value];
+    }
+
+    public function setReceiptPathAttribute($value): void
+    {
+        if ($value === null || $value === '' || $value === []) {
+            $this->attributes['receipt_path'] = null;
+
+            return;
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded)) {
+                $this->attributes['receipt_path'] = json_encode(array_values(array_filter($decoded)));
+
+                return;
+            }
+
+            $this->attributes['receipt_path'] = json_encode([$value]);
+
+            return;
+        }
+
+        if (is_array($value)) {
+            $this->attributes['receipt_path'] = json_encode(array_values(array_filter($value)));
+
+            return;
+        }
+
+        $this->attributes['receipt_path'] = null;
+    }
+
+    public function getReceiptUrlsAttribute(): array
+    {
+        $paths = $this->receipt_path ?? [];
+
+        return array_map(
+            static fn (string $path) => asset('storage/'.$path),
+            $paths
+        );
+    }
+
+    public function getReceiptUrlAttribute(): ?string
+    {
+        return $this->receipt_urls[0] ?? null;
+    }
 
     public function lines(): HasMany
     {
