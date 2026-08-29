@@ -1,8 +1,6 @@
 <template>
-  <div class="space-y-2">
-    <BaseLabel :for="inputId">{{ t('journals.project_client_demand') }}</BaseLabel>
-
-    <div class="flex flex-wrap gap-2">
+  <div class="space-y-1.5">
+    <div class="flex flex-wrap items-center gap-2">
       <button
         v-for="source in projectSources"
         :key="source.id"
