@@ -31,6 +31,55 @@
     </div>
 
     <div v-if="activeTab === 'bill_entry'">
+    <div class="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900">
+            {{ t('journals.returned_select_title') }}
+          </h3>
+          <p class="mt-0.5 text-xs text-slate-500">
+            {{ t('journals.returned_select_hint') }}
+          </p>
+        </div>
+        <span
+          v-if="returnedOptions.length"
+          class="inline-flex rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200"
+        >
+          {{ returnedOptions.length }} {{ t('journals.returned') }}
+        </span>
+      </div>
+
+      <div class="mt-3 max-w-xl">
+        <BaseLabel for="returned_journal">{{ t('journals.select_returned_journal') }}</BaseLabel>
+        <BaseSearchSelect
+          id="returned_journal"
+          v-model="selectedReturnedJournalId"
+          class="mt-1.5"
+          :options="returnedOptions"
+          :placeholder="returnedJournalPlaceholder"
+          :disabled="isReturnedLoading || !returnedOptions.length"
+          :filter-fn="filterReturnedJournal"
+          teleport-dropdown
+          list-class-name="max-h-72"
+        />
+      </div>
+    </div>
+
+    <div
+      v-if="editingJournalId && form.manager_comment"
+      class="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm"
+    >
+      <p class="text-[11px] font-semibold uppercase tracking-wide text-rose-700/80">
+        {{ t('journals.manager_return_comment') }}
+      </p>
+      <p class="mt-1.5 text-sm leading-relaxed text-rose-950">
+        {{ form.manager_comment }}
+      </p>
+      <p class="mt-2 text-xs text-rose-700/80">
+        {{ t('journals.manager_return_comment_hint') }}
+      </p>
+    </div>
+
     <div class="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
       <div>
         <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -289,6 +338,7 @@
         <JournalReceiptUpload
           :receipt-path="form.receipt_path"
           :receipt-preview="form.receipt_preview"
+          :existing-urls="form.receipt_urls || []"
           :label="t('journals.receipt_optional')"
           :hint="t('journals.receipt_hint')"
           @update:receipt-path="form.receipt_path = $event"
@@ -315,25 +365,45 @@
         {{ validationMessage }}
       </p>
       <BaseButton
-        className="border border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50"
-        :disabled="isSubmitting"
-        @click="handleSubmit('pending_approval')"
+        v-if="editingJournalId"
+        className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+        :disabled="isResubmitting"
+        @click="clearReturnedSelection"
       >
-        <span v-if="isSubmitting && pendingStatus === 'pending_approval'">
-          {{ t('journals.submitting') }}
-        </span>
-        <span v-else>{{ t('journals.submit_approval') }}</span>
+        {{ t('journals.clear_selection') }}
       </BaseButton>
-      <BaseButton
-        className="bg-indigo-600 text-white hover:bg-indigo-700"
-        :disabled="isSubmitting"
-        @click="handleSubmit('posted')"
-      >
-        <span v-if="isSubmitting && pendingStatus === 'posted'">
-          {{ t('journals.posting') }}
-        </span>
-        <span v-else>{{ t('journals.post_journal') }}</span>
-      </BaseButton>
+      <template v-if="editingJournalId">
+        <BaseButton
+          className="border border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50"
+          :disabled="isResubmitting"
+          @click="handleResubmit"
+        >
+          <span v-if="isResubmitting">{{ t('journals.resubmitting') }}</span>
+          <span v-else>{{ t('journals.resubmit_approval') }}</span>
+        </BaseButton>
+      </template>
+      <template v-else>
+        <BaseButton
+          className="border border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50"
+          :disabled="isSubmitting"
+          @click="handleSubmit('pending_approval')"
+        >
+          <span v-if="isSubmitting && pendingStatus === 'pending_approval'">
+            {{ t('journals.submitting') }}
+          </span>
+          <span v-else>{{ t('journals.submit_approval') }}</span>
+        </BaseButton>
+        <BaseButton
+          className="bg-indigo-600 text-white hover:bg-indigo-700"
+          :disabled="isSubmitting"
+          @click="handleSubmit('posted')"
+        >
+          <span v-if="isSubmitting && pendingStatus === 'posted'">
+            {{ t('journals.posting') }}
+          </span>
+          <span v-else>{{ t('journals.post_journal') }}</span>
+        </BaseButton>
+      </template>
     </div>
     </div>
 
@@ -425,7 +495,7 @@
               {{ t('journals.manager_comment') }}
             </h3>
             <p class="mt-0.5 text-xs text-indigo-700/70">
-              {{ t('journals.manager_comment_placeholder') }}
+              {{ t('journals.manager_action_hint') }}
             </p>
           </div>
           <div class="px-6 py-5">
@@ -434,7 +504,7 @@
               v-model="managerComment"
               :rows="3"
               className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
-              :placeholder="t('journals.manager_comment_placeholder')"
+              :placeholder="t('journals.manager_action_placeholder')"
             />
             <p v-if="approveValidationMessage" class="mt-2 text-sm text-red-600">
               {{ approveValidationMessage }}
@@ -447,8 +517,17 @@
                 {{ t('journals.clear_selection') }}
               </BaseButton>
               <BaseButton
+                className="border border-rose-300 bg-white text-rose-700 hover:bg-rose-50"
+                :disabled="isReturning || isApproving"
+                @click="handleReturn"
+              >
+                <i v-if="!isReturning" class="fa fa-undo mr-1.5"></i>
+                <span v-if="isReturning">{{ t('journals.returning') }}</span>
+                <span v-else>{{ t('journals.return_journal') }}</span>
+              </BaseButton>
+              <BaseButton
                 className="bg-indigo-600 text-white hover:bg-indigo-700"
-                :disabled="isApproving"
+                :disabled="isApproving || isReturning"
                 @click="handleApprove"
               >
                 <i v-if="!isApproving" class="fa fa-check mr-1.5"></i>
@@ -480,17 +559,20 @@ import { useTranslate } from '@/shared/composables/useTranslate'
 import { useAccountOptionsQuery } from '../queries/useAccountOptionsQuery'
 import { useJournalMutations } from '../queries/useJournalMutations'
 import { usePartyLedgerOptionsQuery } from '../queries/usePartyLedgerOptionsQuery'
-import { usePendingApprovalJournalsQuery } from '../queries/usePendingApprovalJournalsQuery'
+import { usePendingApprovalJournalsQuery, useReturnedJournalsQuery } from '../queries/usePendingApprovalJournalsQuery'
 import JournalApprovalPreview from './components/JournalApprovalPreview.vue'
 import JournalPaymentPanel from './components/JournalPaymentPanel.vue'
 import JournalProjectSelect from './components/JournalProjectSelect.vue'
 import JournalReceiptUpload from './components/JournalReceiptUpload.vue'
 import {
   buildJournalPayload,
+  buildResubmitPayload,
   costTypeOptions,
   createEmptyJournalLine,
   defaultJournalForm,
   defaultJournalLines,
+  mapJournalToForm,
+  mapJournalToLines,
   todayIsoDate,
   validateJournalForm,
 } from '../data/postJournalStatic'
@@ -503,8 +585,11 @@ const router = useRouter()
 const activeTab = ref('bill_entry')
 const selectedApprovalJournalId = ref('')
 const selectedPaymentJournalId = ref('')
+const selectedReturnedJournalId = ref('')
+const editingJournalId = ref('')
 const managerComment = ref('')
 const approveValidationMessage = ref('')
+let skipPartyClear = false
 const pageTabs = computed(() => [
   { id: 'bill_entry', label: t('journals.tab_bill_entry') },
   { id: 'approval', label: t('journals.tab_approval') },
@@ -512,44 +597,62 @@ const pageTabs = computed(() => [
 ])
 
 const isApprovalTab = computed(() => activeTab.value === 'approval')
+const isBillEntryTab = computed(() => activeTab.value === 'bill_entry')
 const {
   data: pendingApprovalData,
   isLoading: isPendingApprovalLoading,
   refetch: refetchPendingApprovals,
 } = usePendingApprovalJournalsQuery(isApprovalTab)
 
+const {
+  data: returnedData,
+  isLoading: isReturnedLoading,
+  refetch: refetchReturned,
+} = useReturnedJournalsQuery(isBillEntryTab)
+
 const pendingApprovalJournals = computed(() => pendingApprovalData.value?.data?.data ?? [])
+const returnedJournals = computed(() => returnedData.value?.data?.data ?? [])
+
+const buildJournalSelectOption = (journal) => {
+  const party = journal.party_code || journal.party_name || ''
+  const amount = Number(journal.total_debit || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  const parts = [
+    journal.voucher_no,
+    journal.voucher_date_label || journal.voucher_date,
+    party,
+    amount ? `Dr ${amount}` : '',
+  ].filter(Boolean)
+
+  return {
+    id: journal.id,
+    code: journal.voucher_no,
+    name: parts.join(' · '),
+    voucher_no: journal.voucher_no,
+    party_name: journal.party_name || '',
+    party_code: journal.party_code || '',
+    narration: journal.narration || '',
+    reference_no: journal.reference_no || '',
+  }
+}
 
 const pendingApprovalOptions = computed(() =>
-  pendingApprovalJournals.value.map((journal) => {
-    const party = journal.party_code || journal.party_name || ''
-    const amount = Number(journal.total_debit || 0).toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-    const parts = [
-      journal.voucher_no,
-      journal.voucher_date_label || journal.voucher_date,
-      party,
-      amount ? `Dr ${amount}` : '',
-    ].filter(Boolean)
-
-    return {
-      id: journal.id,
-      code: journal.voucher_no,
-      name: parts.join(' · '),
-      voucher_no: journal.voucher_no,
-      party_name: journal.party_name || '',
-      party_code: journal.party_code || '',
-      narration: journal.narration || '',
-      reference_no: journal.reference_no || '',
-    }
-  }),
+  pendingApprovalJournals.value.map(buildJournalSelectOption),
 )
+
+const returnedOptions = computed(() => returnedJournals.value.map(buildJournalSelectOption))
 
 const selectedApprovalJournal = computed(() =>
   pendingApprovalJournals.value.find(
     (journal) => String(journal.id) === String(selectedApprovalJournalId.value),
+  ) ?? null,
+)
+
+const selectedReturnedJournal = computed(() =>
+  returnedJournals.value.find(
+    (journal) => String(journal.id) === String(selectedReturnedJournalId.value),
   ) ?? null,
 )
 
@@ -559,6 +662,14 @@ const pendingJournalPlaceholder = computed(() =>
     : pendingApprovalOptions.value.length
       ? t('journals.search_pending_journal')
       : t('journals.no_pending_journals'),
+)
+
+const returnedJournalPlaceholder = computed(() =>
+  isReturnedLoading.value
+    ? t('journals.loading_returned_journals')
+    : returnedOptions.value.length
+      ? t('journals.search_returned_journal')
+      : t('journals.no_returned_journals'),
 )
 
 const filterPendingJournal = (option, query) => {
@@ -577,6 +688,8 @@ const filterPendingJournal = (option, query) => {
     .some((value) => String(value).toLowerCase().includes(q))
 }
 
+const filterReturnedJournal = filterPendingJournal
+
 const form = ref({ ...defaultJournalForm, voucher_date: todayIsoDate() })
 const lines = ref(defaultJournalLines.map((line) => ({ ...line })))
 const validationMessage = ref('')
@@ -588,7 +701,33 @@ const resetBillEntryForm = () => {
   lines.value = defaultJournalLines.map((line) => ({ ...line }))
   validationMessage.value = ''
   pendingStatus.value = ''
+  editingJournalId.value = ''
   nextLineId = Math.max(...lines.value.map((line) => Number(line.id) || 0), 0) + 1
+}
+
+const clearReturnedSelection = () => {
+  selectedReturnedJournalId.value = ''
+  resetBillEntryForm()
+}
+
+const loadReturnedJournal = (journal) => {
+  if (!journal) {
+    if (!selectedReturnedJournalId.value) {
+      editingJournalId.value = ''
+      resetBillEntryForm()
+    }
+    return
+  }
+
+  skipPartyClear = true
+  editingJournalId.value = String(journal.id)
+  form.value = mapJournalToForm(journal)
+  lines.value = mapJournalToLines(journal)
+  validationMessage.value = ''
+  nextLineId = Math.max(...lines.value.map((line) => Number(line.id) || 0), 0) + 1
+  queueMicrotask(() => {
+    skipPartyClear = false
+  })
 }
 
 const { data: transactionTypeOptionsData } = useJournalTransactionTypeOptionsQuery('active')
@@ -610,7 +749,7 @@ const partyTypeOptions = computed(() => [
   })),
 ])
 
-const { submit, submitLoading: isSubmitting, approve, approveLoading: isApproving } =
+const { submit, submitLoading: isSubmitting, approve, approveLoading: isApproving, returnJournal: returnMutation, returnLoading: isReturning, resubmit, resubmitLoading: isResubmitting } =
   useJournalMutations({
     onSuccess(result) {
       const voucher = result?.data?.voucher_no || result?.voucher_no || ''
@@ -620,11 +759,13 @@ const { submit, submitLoading: isSubmitting, approve, approveLoading: isApprovin
       if (status === 'pending_approval') {
         toast.success(t('journals.submitted_success', { voucher }))
         resetBillEntryForm()
+        selectedReturnedJournalId.value = ''
         selectedApprovalJournalId.value = journalId ? String(journalId) : ''
         managerComment.value = ''
         approveValidationMessage.value = ''
         activeTab.value = 'approval'
         refetchPendingApprovals()
+        refetchReturned()
         return
       }
 
@@ -641,6 +782,34 @@ const { submit, submitLoading: isSubmitting, approve, approveLoading: isApprovin
       selectedPaymentJournalId.value = journalId ? String(journalId) : ''
       activeTab.value = 'payment'
       refetchPendingApprovals()
+    },
+    onReturnSuccess(result) {
+      const voucher = result?.data?.voucher_no || result?.voucher_no || ''
+      const journalId = result?.data?.id || result?.id || ''
+      const journal = result?.data || result
+      toast.success(t('journals.returned_success', { voucher }))
+      selectedApprovalJournalId.value = ''
+      managerComment.value = ''
+      approveValidationMessage.value = ''
+      activeTab.value = 'bill_entry'
+      selectedReturnedJournalId.value = journalId ? String(journalId) : ''
+      if (journal?.id) {
+        loadReturnedJournal(journal)
+      }
+      refetchPendingApprovals()
+      refetchReturned()
+    },
+    onResubmitSuccess(result) {
+      const voucher = result?.data?.voucher_no || result?.voucher_no || ''
+      const journalId = result?.data?.id || result?.id || ''
+      toast.success(t('journals.resubmitted_success', { voucher }))
+      selectedReturnedJournalId.value = ''
+      editingJournalId.value = ''
+      resetBillEntryForm()
+      selectedApprovalJournalId.value = journalId ? String(journalId) : ''
+      activeTab.value = 'approval'
+      refetchPendingApprovals()
+      refetchReturned()
     },
   })
 
@@ -667,6 +836,29 @@ const handleApprove = async () => {
   }
 }
 
+const handleReturn = async () => {
+  approveValidationMessage.value = ''
+  const comment = String(managerComment.value || '').trim()
+  if (!comment) {
+    approveValidationMessage.value = t('journals.error_return_comment_required')
+    toast.error(approveValidationMessage.value)
+    return
+  }
+  if (!selectedApprovalJournalId.value) return
+
+  try {
+    await returnMutation.mutateAsync({
+      id: selectedApprovalJournalId.value,
+      manager_comment: comment,
+    })
+  } catch (error) {
+    approveValidationMessage.value =
+      error?.errors?.manager_comment?.[0] ||
+      error?.message ||
+      t('journals.error_return_comment_required')
+  }
+}
+
 const handlePaid = () => {
   selectedPaymentJournalId.value = ''
   router.push({ name: 'Journal Management' })
@@ -677,6 +869,34 @@ watch(isApprovalTab, (enabled) => {
     refetchPendingApprovals()
   }
 })
+
+watch(isBillEntryTab, (enabled) => {
+  if (enabled) {
+    refetchReturned()
+  }
+})
+
+watch(selectedReturnedJournal, (journal) => {
+  loadReturnedJournal(journal)
+})
+
+watch(returnedOptions, (options) => {
+  if (!options.length || isReturnedLoading.value) return
+  if (
+    selectedReturnedJournalId.value &&
+    !options.some((option) => String(option.id) === String(selectedReturnedJournalId.value))
+  ) {
+    selectedReturnedJournalId.value = ''
+  }
+})
+
+watch(
+  () => form.value.party_type,
+  () => {
+    if (skipPartyClear) return
+    form.value.party_id = ''
+  },
+)
 
 watch(selectedApprovalJournalId, () => {
   managerComment.value = ''
@@ -697,6 +917,7 @@ const statusBadgeClass = computed(() => {
   const status = String(form.value.status || '').toLowerCase()
   if (status === 'posted') return 'bg-emerald-50 text-emerald-700 ring-emerald-200'
   if (status.includes('pending')) return 'bg-blue-50 text-blue-700 ring-blue-200'
+  if (status.includes('return')) return 'bg-rose-50 text-rose-700 ring-rose-200'
   return 'bg-amber-50 text-amber-700 ring-amber-200'
 })
 
@@ -767,13 +988,6 @@ const filterByNameOrCode = (option, query) => {
   return label.includes(query) || code.includes(query)
 }
 
-watch(
-  () => form.value.party_type,
-  () => {
-    form.value.party_id = ''
-  },
-)
-
 const toNumber = (value) => {
   const n = Number(value)
   return Number.isFinite(n) ? n : 0
@@ -839,6 +1053,35 @@ const handleSubmit = async (status) => {
 
   try {
     await submit.mutateAsync(buildJournalPayload(form.value, lines.value, status))
+  } catch (error) {
+    const message =
+      error?.message ||
+      error?.errors?.lines?.[0] ||
+      Object.values(error?.errors ?? {})[0]?.[0] ||
+      t('journals.error_unbalanced')
+    validationMessage.value = message
+  }
+}
+
+const handleResubmit = async () => {
+  validationMessage.value = ''
+
+  if (!editingJournalId.value) return
+
+  const errors = validateJournalForm(form.value, lines.value)
+  if (errors.length) {
+    const firstError = errors[0]
+    const message = t(firstError.key, firstError.params || {})
+    validationMessage.value = message
+    toast.error(message)
+    return
+  }
+
+  try {
+    await resubmit.mutateAsync({
+      id: editingJournalId.value,
+      ...buildResubmitPayload(form.value, lines.value),
+    })
   } catch (error) {
     const message =
       error?.message ||

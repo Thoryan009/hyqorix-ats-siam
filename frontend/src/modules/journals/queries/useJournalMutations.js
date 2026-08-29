@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
-import { approveJournal, payJournal, submitJournal } from '../services/journalService'
+import { approveJournal, payJournal, resubmitJournal, returnJournal, submitJournal } from '../services/journalService'
 import { toast } from '@/shared/config/toastConfig'
 
 export function useJournalMutations(options = {}) {
@@ -39,6 +39,24 @@ export function useJournalMutations(options = {}) {
     onError: handleError,
   })
 
+  const returnJournalMutation = useMutation({
+    mutationFn: ({ id, ...payload }) => returnJournal(id, payload),
+    onSuccess: (data, variables) => {
+      invalidateJournals()
+      options.onReturnSuccess?.(data, variables)
+    },
+    onError: handleError,
+  })
+
+  const resubmit = useMutation({
+    mutationFn: ({ id, ...payload }) => resubmitJournal(id, payload),
+    onSuccess: (data, variables) => {
+      invalidateJournals()
+      options.onResubmitSuccess?.(data, variables)
+    },
+    onError: handleError,
+  })
+
   const pay = useMutation({
     mutationFn: ({ id, ...payload }) => payJournal(id, payload),
     onSuccess: (data, variables) => {
@@ -53,6 +71,10 @@ export function useJournalMutations(options = {}) {
     submitLoading: submit.isPending,
     approve,
     approveLoading: approve.isPending,
+    returnJournal: returnJournalMutation,
+    returnLoading: returnJournalMutation.isPending,
+    resubmit,
+    resubmitLoading: resubmit.isPending,
     pay,
     payLoading: pay.isPending,
   }

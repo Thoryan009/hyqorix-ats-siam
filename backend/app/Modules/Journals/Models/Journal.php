@@ -15,7 +15,7 @@ class Journal extends Model
     use LogsActivity;
     use TracksUser;
 
-    public const STATUSES = ['draft', 'pending_approval', 'approved', 'posted'];
+    public const STATUSES = ['draft', 'pending_approval', 'approved', 'returned', 'posted'];
 
     public const COST_TYPES = [
         'general',

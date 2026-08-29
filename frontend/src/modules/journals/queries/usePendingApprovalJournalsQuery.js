@@ -26,3 +26,7 @@ export function usePendingApprovalJournalsQuery(enabledRef) {
 export function useApprovedJournalsQuery(enabledRef) {
   return useJournalsByStatusQuery('approved', enabledRef)
 }
+
+export function useReturnedJournalsQuery(enabledRef) {
+  return useJournalsByStatusQuery('returned', enabledRef)
+}

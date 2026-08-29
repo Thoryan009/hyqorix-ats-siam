@@ -15,6 +15,7 @@ class JournalResource extends JsonResource
             'draft' => 'Draft',
             'pending_approval' => 'Waiting for Approval',
             'approved' => 'Approved',
+            'returned' => 'Returned',
             'posted' => 'Posted',
         ];
 

@@ -78,6 +78,26 @@ export async function approveJournal(id, payload) {
   return api.data.value
 }
 
+export async function returnJournal(id, payload) {
+  const api = useApi()
+  await api.sendRequest(`${BASE_URL}/${id}/return`, 'POST', payload)
+  if (api.error.value) {
+    throw api.error.value
+  }
+
+  return api.data.value
+}
+
+export async function resubmitJournal(id, payload) {
+  const api = useApi()
+  await api.sendRequest(`${BASE_URL}/${id}/resubmit`, 'POST', resolveRequestBody(payload))
+  if (api.error.value) {
+    throw api.error.value
+  }
+
+  return api.data.value
+}
+
 export async function payJournal(id, payload) {
   const api = useApi()
   await api.sendRequest(`${BASE_URL}/${id}/pay`, 'POST', resolveRequestBody(payload))

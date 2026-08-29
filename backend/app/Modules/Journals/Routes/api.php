@@ -20,6 +20,8 @@ Route::prefix('journals')->group(function () {
     Route::get('demand-letter-options', [JournalController::class, 'demandLetterOptions']);
     Route::post('/', [JournalController::class, 'store']);
     Route::post('{journal}/approve', [JournalController::class, 'approve']);
+    Route::post('{journal}/return', [JournalController::class, 'return']);
+    Route::post('{journal}/resubmit', [JournalController::class, 'resubmit']);
     Route::post('{journal}/pay', [JournalController::class, 'pay']);
     Route::get('{journal}', [JournalController::class, 'show']);
 });

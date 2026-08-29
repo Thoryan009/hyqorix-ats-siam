@@ -7,6 +7,8 @@ use App\Modules\Journals\Models\Journal;
 use App\Modules\Journals\Requests\JournalApproveRequest;
 use App\Modules\Journals\Requests\JournalIndexRequest;
 use App\Modules\Journals\Requests\JournalPayRequest;
+use App\Modules\Journals\Requests\JournalResubmitRequest;
+use App\Modules\Journals\Requests\JournalReturnRequest;
 use App\Modules\Journals\Requests\JournalStoreRequest;
 use App\Modules\Journals\Resources\JournalResource;
 use App\Modules\Journals\Services\JournalService;
@@ -68,6 +70,36 @@ class JournalController extends Controller
 
         return apiSuccess(
             new JournalResource($approved),
+            'updated',
+            200,
+            'Journal'
+        );
+    }
+
+    public function return(JournalReturnRequest $request, Journal $journal): JsonResponse
+    {
+        $returned = $this->service->return(
+            $journal,
+            (string) $request->validated('manager_comment')
+        );
+
+        return apiSuccess(
+            new JournalResource($returned),
+            'updated',
+            200,
+            'Journal'
+        );
+    }
+
+    public function resubmit(JournalResubmitRequest $request, Journal $journal): JsonResponse
+    {
+        $data = $request->validated();
+        $this->applyStoredReceiptPaths($request, $data, $journal);
+
+        $resubmitted = $this->service->resubmit($journal, $data);
+
+        return apiSuccess(
+            new JournalResource($resubmitted),
             'updated',
             200,
             'Journal'

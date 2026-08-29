@@ -297,6 +297,9 @@ const statusBadgeClass = computed(() => {
   if (statusRaw.value.includes('approved')) {
     return 'bg-emerald-50 text-emerald-700 ring-emerald-200'
   }
+  if (statusRaw.value.includes('return')) {
+    return 'bg-rose-50 text-rose-700 ring-rose-200'
+  }
   if (statusRaw.value.includes('pending') || statusRaw.value.includes('waiting')) {
     return 'bg-amber-50 text-amber-700 ring-amber-200'
   }
@@ -308,6 +311,7 @@ const statusBadgeClass = computed(() => {
 
 const statusDotClass = computed(() => {
   if (statusRaw.value.includes('approved')) return 'bg-emerald-500'
+  if (statusRaw.value.includes('return')) return 'bg-rose-500'
   if (statusRaw.value.includes('pending') || statusRaw.value.includes('waiting')) {
     return 'bg-amber-500'
   }

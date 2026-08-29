@@ -119,6 +119,64 @@ class JournalService
         return $this->getJournal($journal->fresh());
     }
 
+    public function return(Journal $journal, string $managerComment): Journal
+    {
+        if ($journal->status !== 'pending_approval') {
+            throw ValidationException::withMessages([
+                'status' => 'Only journals waiting for approval can be returned.',
+            ]);
+        }
+
+        $journal->update([
+            'status' => 'returned',
+            'manager_comment' => $managerComment,
+        ]);
+
+        return $this->getJournal($journal->fresh());
+    }
+
+    public function resubmit(Journal $journal, array $data): Journal
+    {
+        if ($journal->status !== 'returned') {
+            throw ValidationException::withMessages([
+                'status' => 'Only returned journals can be updated and resubmitted.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($journal, $data) {
+            $lines = $data['lines'] ?? [];
+            unset($data['lines']);
+
+            $totals = $this->sumLineTotals($lines);
+            $partyId = $data['party_id'] ?? null;
+            $partyCode = $this->resolvePartyCode($partyId);
+
+            $update = [
+                'voucher_date' => $data['voucher_date'],
+                'transaction_type' => $data['transaction_type'],
+                'reference_no' => $data['reference_no'] ?? null,
+                'party_type' => $data['party_type'] ?? null,
+                'party_id' => $partyId,
+                'project_id' => $data['project_id'] ?? null,
+                'narration' => $data['narration'] ?? null,
+                'total_debit' => $totals['debit'],
+                'total_credit' => $totals['credit'],
+                'status' => 'pending_approval',
+            ];
+
+            if (array_key_exists('receipt_path', $data)) {
+                $update['receipt_path'] = $data['receipt_path'];
+            }
+
+            $journal->update($update);
+
+            $journal->lines()->delete();
+            $this->syncLines($journal, $lines, $partyCode);
+
+            return $this->getJournal($journal->fresh());
+        });
+    }
+
     public function pay(Journal $journal, array $data): Journal
     {
         if ($journal->status !== 'approved') {

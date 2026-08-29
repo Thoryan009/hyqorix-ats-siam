@@ -197,6 +197,12 @@ export function buildPayPayload(form, lines) {
   return payload
 }
 
+export function buildResubmitPayload(form, lines) {
+  const payload = buildJournalPayload(form, lines, 'pending_approval')
+  delete payload.status
+  return payload
+}
+
 export function mapJournalToForm(journal) {
   const receiptUrls = Array.isArray(journal?.receipt_urls)
     ? journal.receipt_urls.filter(Boolean)
