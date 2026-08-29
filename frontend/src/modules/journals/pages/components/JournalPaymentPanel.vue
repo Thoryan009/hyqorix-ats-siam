@@ -157,6 +157,20 @@
           </div>
 
           <div class="space-y-1.5">
+            <BaseLabel for="pay_project_id">{{ t('journals.project_client_demand') }}</BaseLabel>
+            <BaseSearchSelect
+              id="pay_project_id"
+              v-model="form.project_id"
+              :options="jobSelectOptions"
+              :placeholder="jobSelectPlaceholder"
+              :disabled="isJobOptionsLoading"
+              :filter-fn="filterJobOption"
+              teleport-dropdown
+              list-class-name="max-h-72"
+            />
+          </div>
+
+          <div class="space-y-1.5">
             <BaseLabel for="pay_party_type">{{ t('journals.party_type') }}</BaseLabel>
             <BaseSearchSelect
               id="pay_party_type"
@@ -178,16 +192,6 @@
               :placeholder="partyLedgerPlaceholder"
               :disabled="isPartyLedgerLoading"
               :filter-fn="filterByCodeOrName"
-            />
-          </div>
-
-          <div class="space-y-1.5">
-            <BaseLabel for="pay_project_id">{{ t('journals.project_client_demand') }}</BaseLabel>
-            <BaseSelect
-              id="pay_project_id"
-              v-model="form.project_id"
-              :options="projectOptions"
-              :placeholder="t('journals.select_project')"
             />
           </div>
         </div>
@@ -367,13 +371,14 @@ import { usePartyLedgerOptionsQuery } from '../../queries/usePartyLedgerOptionsQ
 import { useApprovedJournalsQuery } from '../../queries/usePendingApprovalJournalsQuery'
 import { usePartyTypeOptionsQuery } from '@/modules/parties/queries/usePartyTypeOptionsQuery'
 import { useJournalTransactionTypeOptionsQuery } from '../../queries/useJournalTransactionTypeOptionsQuery'
+import { useJobSelectOptionsQuery } from '../../queries/useJobOptionsQuery'
 import {
   buildPayPayload,
   costTypeOptions,
   createEmptyJournalLine,
+  filterJobOption,
   mapJournalToForm,
   mapJournalToLines,
-  projectOptions,
   validateJournalForm,
 } from '../../data/postJournalStatic'
 
@@ -471,6 +476,17 @@ const transactionTypeOptions = computed(() =>
     code: item.code ?? item.id,
     name: item.name,
   })),
+)
+
+const { jobSelectOptions, isLoading: isJobOptionsLoading } = useJobSelectOptionsQuery(
+  computed(() => props.active),
+)
+const jobSelectPlaceholder = computed(() =>
+  isJobOptionsLoading.value
+    ? t('journals.loading_jobs')
+    : jobSelectOptions.value.length
+      ? t('journals.select_project')
+      : t('journals.no_jobs_found'),
 )
 
 const { data: partyTypeOptionsData } = usePartyTypeOptionsQuery('active')

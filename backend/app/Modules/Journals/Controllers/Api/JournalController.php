@@ -26,6 +26,11 @@ class JournalController extends Controller
         );
     }
 
+    public function jobOptions(): JsonResponse
+    {
+        return apiSuccess($this->service->getJobOptions());
+    }
+
     public function store(JournalStoreRequest $request): JsonResponse
     {
         $journal = $this->service->create($request->validated());

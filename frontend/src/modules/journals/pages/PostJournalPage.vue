@@ -109,6 +109,20 @@
         </div>
 
         <div class="space-y-1.5">
+          <BaseLabel for="project_id">{{ t('journals.project_client_demand') }}</BaseLabel>
+          <BaseSearchSelect
+            id="project_id"
+            v-model="form.project_id"
+            :options="jobSelectOptions"
+            :placeholder="jobSelectPlaceholder"
+            :disabled="isJobOptionsLoading"
+            :filter-fn="filterJobOption"
+            teleport-dropdown
+            list-class-name="max-h-72"
+          />
+        </div>
+
+        <div class="space-y-1.5">
           <BaseLabel for="party_type">{{ t('journals.party_type') }}</BaseLabel>
           <BaseSearchSelect
             id="party_type"
@@ -130,16 +144,6 @@
             :placeholder="partyLedgerPlaceholder"
             :disabled="isPartyLedgerLoading"
             :filter-fn="filterByCodeOrName"
-          />
-        </div>
-
-        <div class="space-y-1.5">
-          <BaseLabel for="project_id">{{ t('journals.project_client_demand') }}</BaseLabel>
-          <BaseSelect
-            id="project_id"
-            v-model="form.project_id"
-            :options="projectOptions"
-            :placeholder="t('journals.select_project')"
           />
         </div>
       </div>
@@ -334,26 +338,27 @@
     </div>
     </div>
 
-    <div v-else-if="activeTab === 'approval'" class="space-y-4">
-      <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+    <div v-else-if="activeTab === 'approval'" class="space-y-5">
+      <div class="mx-auto w-full max-w-4xl rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ring-1 ring-slate-100">
+        <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 class="text-sm font-semibold text-slate-900">
+            <h3 class="text-base font-semibold text-slate-900">
               {{ t('journals.approval_select_title') }}
             </h3>
-            <p class="mt-0.5 text-xs text-slate-500">
+            <p class="mt-1 text-sm text-slate-500">
               {{ t('journals.approval_select_hint') }}
             </p>
           </div>
           <span
             v-if="pendingApprovalOptions.length"
-            class="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200"
+            class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200"
           >
+            <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
             {{ pendingApprovalOptions.length }} {{ t('journals.waiting_for_approval') }}
           </span>
         </div>
 
-        <div class="mt-3 max-w-xl">
+        <div class="mt-4">
           <BaseLabel for="pending_journal">{{ t('journals.select_pending_journal') }}</BaseLabel>
           <BaseSearchSelect
             id="pending_journal"
@@ -371,60 +376,83 @@
 
       <div
         v-if="isPendingApprovalLoading && !selectedApprovalJournal"
-        class="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500 shadow-sm"
+        class="mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm"
       >
-        {{ t('journals.loading_pending_journals') }}
+        <i class="fa fa-spinner fa-spin mb-3 text-2xl text-slate-300"></i>
+        <p class="text-sm text-slate-500">{{ t('journals.loading_pending_journals') }}</p>
       </div>
 
       <div
         v-else-if="!isPendingApprovalLoading && !pendingApprovalOptions.length"
-        class="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm"
+        class="mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm"
       >
+        <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+          <i class="fa fa-inbox text-lg text-slate-400"></i>
+        </div>
         <p class="text-sm font-medium text-slate-900">
           {{ t('journals.no_pending_journals') }}
         </p>
-        <p class="mt-1 text-xs text-slate-500">
+        <p class="mt-1 text-sm text-slate-500">
           {{ t('journals.no_pending_journals_hint') }}
         </p>
       </div>
 
       <div
         v-else-if="!selectedApprovalJournal"
-        class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center"
+        class="mx-auto max-w-4xl rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 p-10 text-center"
       >
+        <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white ring-1 ring-slate-200">
+          <i class="fa fa-search text-lg text-slate-400"></i>
+        </div>
         <p class="text-sm font-medium text-slate-800">
           {{ t('journals.select_journal_to_preview') }}
         </p>
-        <p class="mt-1 text-xs text-slate-500">
+        <p class="mt-1 text-sm text-slate-500">
           {{ t('journals.select_journal_to_preview_hint') }}
         </p>
       </div>
 
       <template v-else>
-        <div class="space-y-4">
-          <JournalApprovalPreview
-            :key="selectedApprovalJournal.id"
-            :journal="selectedApprovalJournal"
-          />
+        <JournalApprovalPreview
+          :key="selectedApprovalJournal.id"
+          :journal="selectedApprovalJournal"
+        />
 
-          <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <BaseLabel for="manager_comment">{{ t('journals.manager_comment') }}</BaseLabel>
+        <div
+          class="mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-sm ring-1 ring-indigo-50"
+        >
+          <div class="border-b border-indigo-50 bg-gradient-to-r from-indigo-50/80 to-white px-6 py-4">
+            <h3 class="text-sm font-semibold text-indigo-950">
+              {{ t('journals.manager_comment') }}
+            </h3>
+            <p class="mt-0.5 text-xs text-indigo-700/70">
+              {{ t('journals.manager_comment_placeholder') }}
+            </p>
+          </div>
+          <div class="px-6 py-5">
             <BaseTextArea
               id="manager_comment"
               v-model="managerComment"
               :rows="3"
-              className="mt-1.5 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
               :placeholder="t('journals.manager_comment_placeholder')"
             />
             <p v-if="approveValidationMessage" class="mt-2 text-sm text-red-600">
               {{ approveValidationMessage }}
             </p>
-            <div class="mt-4 flex justify-end">
+            <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <BaseButton
+                className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                @click="selectedApprovalJournalId = ''"
+              >
+                {{ t('journals.clear_selection') }}
+              </BaseButton>
               <BaseButton
                 className="bg-indigo-600 text-white hover:bg-indigo-700"
                 :disabled="isApproving"
                 @click="handleApprove"
               >
+                <i v-if="!isApproving" class="fa fa-check mr-1.5"></i>
                 <span v-if="isApproving">{{ t('journals.approving') }}</span>
                 <span v-else>{{ t('journals.approve_journal') }}</span>
               </BaseButton>
@@ -454,6 +482,7 @@ import { useAccountOptionsQuery } from '../queries/useAccountOptionsQuery'
 import { useJournalMutations } from '../queries/useJournalMutations'
 import { usePartyLedgerOptionsQuery } from '../queries/usePartyLedgerOptionsQuery'
 import { usePendingApprovalJournalsQuery } from '../queries/usePendingApprovalJournalsQuery'
+import { useJobSelectOptionsQuery } from '../queries/useJobOptionsQuery'
 import JournalApprovalPreview from './components/JournalApprovalPreview.vue'
 import JournalPaymentPanel from './components/JournalPaymentPanel.vue'
 import {
@@ -462,7 +491,7 @@ import {
   createEmptyJournalLine,
   defaultJournalForm,
   defaultJournalLines,
-  projectOptions,
+  filterJobOption,
   todayIsoDate,
   validateJournalForm,
 } from '../data/postJournalStatic'
@@ -570,6 +599,15 @@ const transactionTypeOptions = computed(() =>
     code: item.code ?? item.id,
     name: item.name,
   })),
+)
+
+const { jobSelectOptions, isLoading: isJobOptionsLoading } = useJobSelectOptionsQuery(true)
+const jobSelectPlaceholder = computed(() =>
+  isJobOptionsLoading.value
+    ? t('journals.loading_jobs')
+    : jobSelectOptions.value.length
+      ? t('journals.select_project')
+      : t('journals.no_jobs_found'),
 )
 
 const { data: partyTypeOptionsData } = usePartyTypeOptionsQuery('active')

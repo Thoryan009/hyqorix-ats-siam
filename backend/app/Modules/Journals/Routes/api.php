@@ -16,6 +16,7 @@ Route::prefix('journal-transaction-types')->group(function () {
 
 Route::prefix('journals')->group(function () {
     Route::get('/', [JournalController::class, 'index']);
+    Route::get('job-options', [JournalController::class, 'jobOptions']);
     Route::post('/', [JournalController::class, 'store']);
     Route::post('{journal}/approve', [JournalController::class, 'approve']);
     Route::post('{journal}/pay', [JournalController::class, 'pay']);

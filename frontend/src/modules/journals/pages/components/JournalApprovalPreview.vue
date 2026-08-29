@@ -1,209 +1,216 @@
 <template>
-  <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-    <div
-      class="bg-gradient-to-br from-indigo-700 via-indigo-600 to-indigo-800 px-5 py-5 text-white"
-    >
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-indigo-100/80">
-            {{ t('journals.voucher_no') }}
+  <article class="mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-100">
+    <!-- Header -->
+    <header class="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-slate-50 px-6 py-5">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0 space-y-1">
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-400">
+            {{ t('journals.journal_information') }}
           </p>
-          <p class="mt-0.5 text-2xl font-bold tracking-tight">
+          <h2 class="text-2xl font-bold tracking-tight text-slate-900">
             {{ journal.voucher_no || '—' }}
-          </p>
-          <p class="mt-1 text-sm text-indigo-100/90">
+          </h2>
+          <p class="text-sm text-slate-500">
             {{ journal.voucher_date_label || journal.voucher_date || '—' }}
-            <span v-if="journal.transaction_type_name">
-              · {{ journal.transaction_type_name }}
-            </span>
+            <span v-if="journal.transaction_type_name" class="text-slate-400"> · </span>
+            <span v-if="journal.transaction_type_name">{{ journal.transaction_type_name }}</span>
           </p>
         </div>
         <span
-          class="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/25"
+          class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1"
+          :class="statusBadgeClass"
         >
+          <span class="h-1.5 w-1.5 rounded-full" :class="statusDotClass"></span>
           {{ journal.status || t('journals.waiting_for_approval') }}
         </span>
       </div>
+    </header>
 
-      <div class="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-4 sm:grid-cols-3">
-        <div>
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-indigo-100/70">
-            {{ t('journals.total_debit') }}
-          </p>
-          <p class="mt-0.5 text-lg font-bold tabular-nums">
-            {{ formatAmount(journal.total_debit) }}
-          </p>
-        </div>
-        <div>
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-indigo-100/70">
-            {{ t('journals.total_credit') }}
-          </p>
-          <p class="mt-0.5 text-lg font-bold tabular-nums">
-            {{ formatAmount(journal.total_credit) }}
-          </p>
-        </div>
-        <div class="col-span-2 sm:col-span-1">
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-indigo-100/70">
-            {{ t('journals.balance') }}
-          </p>
-          <p class="mt-0.5 inline-flex items-center gap-1.5 text-sm font-semibold">
-            <span class="h-1.5 w-1.5 rounded-full bg-emerald-300"></span>
-            {{ t('journals.balanced') }}
-          </p>
-        </div>
+    <!-- Totals strip -->
+    <div class="grid grid-cols-1 divide-y divide-slate-100 border-b border-slate-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      <div class="px-6 py-4">
+        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          {{ t('journals.total_debit') }}
+        </p>
+        <p class="mt-1 text-xl font-bold tabular-nums text-slate-900">
+          {{ formatAmount(journal.total_debit) }}
+        </p>
+      </div>
+      <div class="px-6 py-4">
+        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          {{ t('journals.total_credit') }}
+        </p>
+        <p class="mt-1 text-xl font-bold tabular-nums text-slate-900">
+          {{ formatAmount(journal.total_credit) }}
+        </p>
+      </div>
+      <div class="px-6 py-4">
+        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          {{ t('journals.balance') }}
+        </p>
+        <p class="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+          <i class="fa fa-check-circle text-emerald-500"></i>
+          {{ t('journals.balanced') }}
+        </p>
       </div>
     </div>
 
-    <div class="divide-y divide-slate-100 px-5">
-      <div class="grid grid-cols-2 gap-4 py-4 md:grid-cols-4">
-        <div>
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            {{ t('journals.voucher_date') }}
-          </p>
-          <p class="mt-0.5 text-sm font-semibold text-slate-900">
-            {{ journal.voucher_date_label || journal.voucher_date || '—' }}
-          </p>
+    <!-- Meta details -->
+    <section class="border-b border-slate-100 px-6 py-5">
+      <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        {{ t('journals.journal_information') }}
+      </h3>
+      <dl class="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+        <div v-for="item in detailItems" :key="item.label" class="min-w-0">
+          <dt class="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+            {{ item.label }}
+          </dt>
+          <dd class="mt-0.5 text-sm font-medium leading-snug text-slate-900">
+            {{ item.value }}
+          </dd>
         </div>
-        <div>
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            {{ t('journals.transaction_type') }}
-          </p>
-          <p class="mt-0.5 text-sm font-semibold text-slate-900">
-            {{ journal.transaction_type_name || journal.transaction_type || '—' }}
-          </p>
-        </div>
-        <div>
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            {{ t('journals.reference_no') }}
-          </p>
-          <p class="mt-0.5 text-sm font-semibold text-slate-900">
-            {{ journal.reference_no || '—' }}
-          </p>
-        </div>
-        <div>
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            {{ t('journals.project_client_demand') }}
-          </p>
-          <p class="mt-0.5 text-sm font-semibold text-slate-900">
-            {{ projectLabel }}
-          </p>
-        </div>
-      </div>
+      </dl>
 
-      <div class="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
-        <div>
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            {{ t('journals.party_type') }}
-          </p>
-          <p class="mt-0.5 text-sm font-semibold capitalize text-slate-900">
-            {{ journal.party_type || '—' }}
-          </p>
-        </div>
-        <div>
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            {{ t('journals.party_ledger') }}
-          </p>
-          <p class="mt-0.5 text-sm font-semibold text-slate-900">
-            {{ partyLabel }}
-          </p>
-        </div>
-      </div>
-
-      <div v-if="journal.narration" class="py-4">
-        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+      <div v-if="journal.narration" class="mt-5 rounded-lg bg-slate-50 px-4 py-3 ring-1 ring-slate-100">
+        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">
           {{ t('journals.narration') }}
         </p>
-        <p class="mt-1 text-sm leading-relaxed text-slate-700">
+        <p class="mt-1.5 text-sm leading-relaxed text-slate-700">
           {{ journal.narration }}
         </p>
       </div>
 
       <div
-        v-if="journal.created_by || journal.created_at"
-        class="grid grid-cols-2 gap-4 py-4"
+        v-if="journal.manager_comment"
+        class="mt-4 rounded-lg border border-amber-100 bg-amber-50/60 px-4 py-3"
       >
-        <div v-if="journal.created_by">
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            {{ t('journals.prepared_by') }}
-          </p>
-          <p class="mt-0.5 text-sm font-semibold text-slate-900">
-            {{ journal.created_by }}
-          </p>
-        </div>
-        <div v-if="journal.created_at">
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            {{ t('journals.submitted_at') }}
-          </p>
-          <p class="mt-0.5 text-sm font-semibold text-slate-900">
-            {{ journal.created_at }}
-          </p>
-        </div>
+        <p class="text-[11px] font-medium uppercase tracking-wide text-amber-700/80">
+          {{ t('journals.manager_comment') }}
+        </p>
+        <p class="mt-1.5 text-sm leading-relaxed text-amber-950">
+          {{ journal.manager_comment }}
+        </p>
       </div>
-    </div>
+    </section>
 
-    <div class="border-t border-slate-100">
-      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-        <h3 class="text-sm font-semibold text-slate-800">
+    <!-- Journal lines -->
+    <section class="px-6 py-5">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">
           {{ t('journals.journal_lines') }}
         </h3>
-        <span class="text-xs font-medium text-slate-500">
+        <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
           {{ lines.length }} {{ t('journals.lines_count') }}
         </span>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="min-w-full text-left text-sm">
-          <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <tr>
-              <th class="px-4 py-2.5">#</th>
-              <th class="px-4 py-2.5">{{ t('journals.account') }}</th>
-              <th class="px-4 py-2.5">{{ t('journals.sub_ledger') }}</th>
-              <th class="px-4 py-2.5">{{ t('journals.cost_revenue_type') }}</th>
-              <th class="px-4 py-2.5 text-right">{{ t('journals.debit_label') }}</th>
-              <th class="px-4 py-2.5 text-right">{{ t('journals.credit_label') }}</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="(line, index) in lines" :key="line.id || index" class="text-slate-800">
-              <td class="px-4 py-3 tabular-nums text-slate-400">{{ index + 1 }}</td>
-              <td class="px-4 py-3">
-                <p class="font-medium text-slate-900">
-                  {{ line.account_code || '—' }}
-                </p>
-                <p class="text-xs text-slate-500">{{ line.account_name || '' }}</p>
-              </td>
-              <td class="px-4 py-3 text-slate-600">{{ line.sub_ledger || '—' }}</td>
-              <td class="px-4 py-3 text-slate-600">
-                {{ getCostTypeLabel(line.cost_type) || '—' }}
-              </td>
-              <td class="px-4 py-3 text-right font-medium tabular-nums text-slate-900">
-                {{ Number(line.debit) > 0 ? formatAmount(line.debit) : '—' }}
-              </td>
-              <td class="px-4 py-3 text-right font-medium tabular-nums text-slate-900">
-                {{ Number(line.credit) > 0 ? formatAmount(line.credit) : '—' }}
-              </td>
-            </tr>
-            <tr v-if="!lines.length">
-              <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">
-                {{ t('journals.posting_preview_empty') }}
-              </td>
-            </tr>
-          </tbody>
-          <tfoot v-if="lines.length" class="border-t border-slate-200 bg-slate-50">
-            <tr class="text-sm font-semibold text-slate-900">
-              <td colspan="4" class="px-4 py-3 text-right">{{ t('journals.total') }}</td>
-              <td class="px-4 py-3 text-right tabular-nums">
-                {{ formatAmount(journal.total_debit) }}
-              </td>
-              <td class="px-4 py-3 text-right tabular-nums">
-                {{ formatAmount(journal.total_credit) }}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+      <div class="overflow-hidden rounded-xl border border-slate-200">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50/80">
+                <th class="w-10 px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  #
+                </th>
+                <th class="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  {{ t('journals.account') }}
+                </th>
+                <th class="hidden px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:table-cell">
+                  {{ t('journals.sub_ledger') }}
+                </th>
+                <th class="hidden px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 lg:table-cell">
+                  {{ t('journals.cost_revenue_type') }}
+                </th>
+                <th class="w-28 px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  {{ t('journals.debit_label') }}
+                </th>
+                <th class="w-28 px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  {{ t('journals.credit_label') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr
+                v-for="(line, index) in lines"
+                :key="line.id || index"
+                class="transition-colors hover:bg-slate-50/70"
+              >
+                <td class="px-3 py-3 tabular-nums text-slate-400">{{ index + 1 }}</td>
+                <td class="px-3 py-3">
+                  <p class="font-semibold text-slate-900">{{ line.account_code || '—' }}</p>
+                  <p class="mt-0.5 max-w-[220px] truncate text-xs text-slate-500">
+                    {{ line.account_name || '' }}
+                  </p>
+                  <p class="mt-1 text-xs text-slate-400 md:hidden">
+                    <span v-if="line.sub_ledger">{{ line.sub_ledger }}</span>
+                    <span v-if="line.sub_ledger && getCostTypeLabel(line.cost_type)"> · </span>
+                    <span v-if="getCostTypeLabel(line.cost_type)">
+                      {{ getCostTypeLabel(line.cost_type) }}
+                    </span>
+                  </p>
+                </td>
+                <td class="hidden px-3 py-3 text-slate-600 md:table-cell">
+                  {{ line.sub_ledger || '—' }}
+                </td>
+                <td class="hidden px-3 py-3 text-slate-600 lg:table-cell">
+                  {{ getCostTypeLabel(line.cost_type) || '—' }}
+                </td>
+                <td class="px-3 py-3 text-right font-medium tabular-nums text-slate-900">
+                  <span v-if="Number(line.debit) > 0">{{ formatAmount(line.debit) }}</span>
+                  <span v-else class="text-slate-300">—</span>
+                </td>
+                <td class="px-3 py-3 text-right font-medium tabular-nums text-slate-900">
+                  <span v-if="Number(line.credit) > 0">{{ formatAmount(line.credit) }}</span>
+                  <span v-else class="text-slate-300">—</span>
+                </td>
+              </tr>
+              <tr v-if="!lines.length">
+                <td colspan="6" class="px-4 py-10 text-center text-sm text-slate-500">
+                  {{ t('journals.posting_preview_empty') }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div
+          v-if="lines.length"
+          class="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900"
+        >
+          <span>{{ t('journals.total') }}</span>
+          <div class="flex gap-8 tabular-nums">
+            <span>
+              <span class="mr-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+                {{ t('journals.debit_label') }}
+              </span>
+              {{ formatAmount(journal.total_debit) }}
+            </span>
+            <span>
+              <span class="mr-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+                {{ t('journals.credit_label') }}
+              </span>
+              {{ formatAmount(journal.total_credit) }}
+            </span>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
+    </section>
+
+    <!-- Audit footer -->
+    <footer
+      v-if="journal.created_by || journal.created_at"
+      class="flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-100 bg-slate-50/50 px-6 py-3 text-xs text-slate-500"
+    >
+      <span v-if="journal.created_by">
+        {{ t('journals.prepared_by') }}:
+        <span class="font-medium text-slate-700">{{ journal.created_by }}</span>
+      </span>
+      <span v-if="journal.created_at">
+        {{ t('journals.submitted_at') }}:
+        <span class="font-medium text-slate-700">{{ journal.created_at }}</span>
+      </span>
+    </footer>
+  </article>
 </template>
 
 <script setup>
@@ -232,8 +239,54 @@ const partyLabel = computed(() => {
 })
 
 const projectLabel = computed(() => {
+  if (props.journal?.project_name) return props.journal.project_name
   const label = getProjectLabel(props.journal?.project_id)
   return label || props.journal?.project_id || '—'
+})
+
+const detailItems = computed(() => [
+  {
+    label: t('journals.reference_no'),
+    value: props.journal?.reference_no || '—',
+  },
+  {
+    label: t('journals.project_client_demand'),
+    value: projectLabel.value,
+  },
+  {
+    label: t('journals.party_type'),
+    value: props.journal?.party_type || '—',
+  },
+  {
+    label: t('journals.party_ledger'),
+    value: partyLabel.value,
+  },
+])
+
+const statusRaw = computed(() =>
+  String(props.journal?.status_raw || props.journal?.status || '').toLowerCase(),
+)
+
+const statusBadgeClass = computed(() => {
+  if (statusRaw.value.includes('approved')) {
+    return 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+  }
+  if (statusRaw.value.includes('pending') || statusRaw.value.includes('waiting')) {
+    return 'bg-amber-50 text-amber-700 ring-amber-200'
+  }
+  if (statusRaw.value.includes('posted')) {
+    return 'bg-slate-100 text-slate-700 ring-slate-200'
+  }
+  return 'bg-indigo-50 text-indigo-700 ring-indigo-200'
+})
+
+const statusDotClass = computed(() => {
+  if (statusRaw.value.includes('approved')) return 'bg-emerald-500'
+  if (statusRaw.value.includes('pending') || statusRaw.value.includes('waiting')) {
+    return 'bg-amber-500'
+  }
+  if (statusRaw.value.includes('posted')) return 'bg-slate-500'
+  return 'bg-indigo-500'
 })
 
 const formatAmount = (value) => {

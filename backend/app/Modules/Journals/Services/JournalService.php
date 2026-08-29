@@ -4,6 +4,7 @@ namespace App\Modules\Journals\Services;
 
 use App\Modules\Journals\Models\Journal;
 use App\Modules\Journals\Repositories\JournalRepository;
+use App\Modules\JobList\Models\JobList;
 use App\Modules\Parties\Models\Party;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,23 @@ class JournalService
     public function getPaginatedData(array $filters = []): LengthAwarePaginator
     {
         return $this->repository->getPaginatedData($filters);
+    }
+
+    public function getJobOptions(): array
+    {
+        return JobList::query()
+            ->select(['id', 'name'])
+            ->whereHas('applications')
+            ->withCount('applications')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (JobList $job) => [
+                'id' => $job->id,
+                'job_name' => $job->name,
+                'application_count' => (int) $job->applications_count,
+            ])
+            ->values()
+            ->all();
     }
 
     public function getJournal(Journal $journal): Journal

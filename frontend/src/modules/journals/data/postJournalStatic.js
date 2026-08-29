@@ -1,9 +1,3 @@
-export const projectOptions = [
-  { id: 'general', name: 'General / No Project' },
-  { id: 'CL001', name: 'CL001 – Client Project' },
-  { id: 'demand_01', name: 'Demand – Manpower Batch A' },
-]
-
 export const costTypeOptions = [
   { id: 'general', name: 'General' },
   { id: 'direct_cost', name: 'Direct Cost' },
@@ -62,8 +56,29 @@ export function getCostTypeLabel(id) {
   return getOptionLabel(costTypeOptions, id)
 }
 
-export function getProjectLabel(id) {
-  return getOptionLabel(projectOptions, id)
+export function getProjectLabel(id, options = []) {
+  if (!id) return ''
+  const match = options.find((option) => String(option.id) === String(id))
+  if (match?.job_name) return match.job_name
+  if (match?.name) return match.name
+  return String(id)
+}
+
+export function formatJobSelectOptions(jobs = []) {
+  return jobs.map((job) => ({
+    id: job.id,
+    name: `${job.job_name} (${job.application_count})`,
+    job_name: job.job_name,
+    application_count: job.application_count,
+  }))
+}
+
+export function filterJobOption(option, query) {
+  const q = String(query || '').toLowerCase()
+  if (!q) return true
+  return [option?.name, option?.job_name, option?.application_count]
+    .filter((value) => value !== undefined && value !== null && value !== '')
+    .some((value) => String(value).toLowerCase().includes(q))
 }
 
 export function isJournalLineEmpty(line) {
@@ -88,7 +103,7 @@ export function buildJournalPayload(form, lines, status) {
     reference_no: form.reference_no || null,
     party_type: form.party_type || null,
     party_id: form.party_id || null,
-    project_id: form.project_id || null,
+    project_id: form.project_id ? String(form.project_id) : null,
     narration: form.narration || null,
     status,
     lines: filledLines.map((line) => ({
@@ -232,7 +247,7 @@ export function flattenJournalRows(journals = []) {
       debit: Number(line.debit) > 0 ? Number(line.debit) : null,
       credit: Number(line.credit) > 0 ? Number(line.credit) : null,
       cost_class: getCostTypeLabel(line.cost_type),
-      project_client: getProjectLabel(journal.project_id),
+      project_client: journal.project_name || getProjectLabel(journal.project_id),
       status: journal.status,
     }))
   })

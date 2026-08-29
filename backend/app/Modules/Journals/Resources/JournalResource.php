@@ -2,6 +2,7 @@
 
 namespace App\Modules\Journals\Resources;
 
+use App\Modules\JobList\Models\JobList;
 use App\Modules\Shared\Helpers\DateTimeFormatter;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -29,6 +30,7 @@ class JournalResource extends JsonResource
             'party_code' => $this->party?->code,
             'party_name' => $this->party?->name,
             'project_id' => $this->project_id,
+            'project_name' => $this->resolveProjectName(),
             'narration' => $this->narration,
             'manager_comment' => $this->manager_comment,
             'total_debit' => number_format((float) $this->total_debit, 2, '.', ''),
@@ -41,5 +43,20 @@ class JournalResource extends JsonResource
             'created_by' => $this->createdBy?->name,
             'updated_by' => $this->updatedBy?->name,
         ];
+    }
+
+    private function resolveProjectName(): ?string
+    {
+        $projectId = $this->project_id;
+
+        if ($projectId === null || $projectId === '') {
+            return null;
+        }
+
+        if (!ctype_digit((string) $projectId)) {
+            return null;
+        }
+
+        return JobList::query()->whereKey((int) $projectId)->value('name');
     }
 }
