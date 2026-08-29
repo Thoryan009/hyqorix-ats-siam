@@ -99,18 +99,7 @@
         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">
           {{ t('journals.receipts') }}
         </p>
-        <div class="mt-3 flex flex-wrap gap-3">
-          <BaseImagePreview
-            v-for="(url, index) in receiptUrls"
-            :key="`receipt-${index}-${url}`"
-            :src="url"
-            :alt="`${t('journals.receipt')} ${index + 1}`"
-            :show-cancel="false"
-            width="140px"
-            height="100px"
-            class-name="rounded-md"
-          />
-        </div>
+        <JournalReceiptGallery :items="receiptGalleryItems" />
       </div>
     </section>
 
@@ -237,7 +226,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useTranslate } from '@/shared/composables/useTranslate'
-import BaseImagePreview from '@/shared/components/base/BaseImagePreview.vue'
+import JournalReceiptGallery from './JournalReceiptGallery.vue'
 import { getCostTypeLabel, getProjectLabel } from '../../data/postJournalStatic'
 
 const props = defineProps({
@@ -259,6 +248,14 @@ const receiptUrls = computed(() => {
   }
   return props.journal?.receipt_url ? [props.journal.receipt_url] : []
 })
+
+const receiptGalleryItems = computed(() =>
+  receiptUrls.value.map((src, index) => ({
+    key: `receipt-${index}-${src}`,
+    src,
+    alt: `${t('journals.receipt')} ${index + 1}`,
+  })),
+)
 
 const partyLabel = computed(() => {
   const code = props.journal?.party_code
