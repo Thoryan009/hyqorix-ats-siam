@@ -6,6 +6,7 @@ use App\Modules\Journals\Models\Journal;
 use App\Modules\Journals\Repositories\JournalRepository;
 use App\Modules\JobList\Models\JobList;
 use App\Modules\Parties\Models\Party;
+use App\Modules\WorkOrder\Models\WorkOrder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -34,6 +35,27 @@ class JournalService
                 'id' => $job->id,
                 'job_name' => $job->name,
                 'application_count' => (int) $job->applications_count,
+            ])
+            ->values()
+            ->all();
+    }
+
+    public function getDemandLetterOptions(): array
+    {
+        return WorkOrder::query()
+            ->select(['id', 'work_order_id'])
+            ->whereHas('applications')
+            ->withCount([
+                'jobLists as job_count',
+                'applications as application_count',
+            ])
+            ->orderBy('work_order_id')
+            ->get()
+            ->map(fn (WorkOrder $workOrder) => [
+                'id' => $workOrder->id,
+                'name' => $workOrder->work_order_id,
+                'job_count' => (int) $workOrder->job_count,
+                'application_count' => (int) $workOrder->application_count,
             ])
             ->values()
             ->all();

@@ -108,19 +108,7 @@
           />
         </div>
 
-        <div class="space-y-1.5">
-          <BaseLabel for="project_id">{{ t('journals.project_client_demand') }}</BaseLabel>
-          <BaseSearchSelect
-            id="project_id"
-            v-model="form.project_id"
-            :options="jobSelectOptions"
-            :placeholder="jobSelectPlaceholder"
-            :disabled="isJobOptionsLoading"
-            :filter-fn="filterJobOption"
-            teleport-dropdown
-            list-class-name="max-h-72"
-          />
-        </div>
+        <JournalProjectSelect input-id="project_id" v-model="form.project_id" />
 
         <div class="space-y-1.5">
           <BaseLabel for="party_type">{{ t('journals.party_type') }}</BaseLabel>
@@ -482,16 +470,15 @@ import { useAccountOptionsQuery } from '../queries/useAccountOptionsQuery'
 import { useJournalMutations } from '../queries/useJournalMutations'
 import { usePartyLedgerOptionsQuery } from '../queries/usePartyLedgerOptionsQuery'
 import { usePendingApprovalJournalsQuery } from '../queries/usePendingApprovalJournalsQuery'
-import { useJobSelectOptionsQuery } from '../queries/useJobOptionsQuery'
 import JournalApprovalPreview from './components/JournalApprovalPreview.vue'
 import JournalPaymentPanel from './components/JournalPaymentPanel.vue'
+import JournalProjectSelect from './components/JournalProjectSelect.vue'
 import {
   buildJournalPayload,
   costTypeOptions,
   createEmptyJournalLine,
   defaultJournalForm,
   defaultJournalLines,
-  filterJobOption,
   todayIsoDate,
   validateJournalForm,
 } from '../data/postJournalStatic'
@@ -599,15 +586,6 @@ const transactionTypeOptions = computed(() =>
     code: item.code ?? item.id,
     name: item.name,
   })),
-)
-
-const { jobSelectOptions, isLoading: isJobOptionsLoading } = useJobSelectOptionsQuery(true)
-const jobSelectPlaceholder = computed(() =>
-  isJobOptionsLoading.value
-    ? t('journals.loading_jobs')
-    : jobSelectOptions.value.length
-      ? t('journals.select_project')
-      : t('journals.no_jobs_found'),
 )
 
 const { data: partyTypeOptionsData } = usePartyTypeOptionsQuery('active')

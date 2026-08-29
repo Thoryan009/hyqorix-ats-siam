@@ -40,6 +40,16 @@ export async function fetchJobOptions() {
   return response(api)
 }
 
+export async function fetchDemandLetterOptions() {
+  const api = useApi()
+  await api.sendRequest(`${BASE_URL}/demand-letter-options`)
+  if (api.error.value) {
+    throw api.error.value
+  }
+
+  return response(api)
+}
+
 export async function submitJournal(payload) {
   const api = useApi()
   await api.sendRequest(BASE_URL, 'POST', payload)

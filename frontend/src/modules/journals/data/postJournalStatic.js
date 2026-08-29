@@ -66,10 +66,20 @@ export function getProjectLabel(id, options = []) {
 
 export function formatJobSelectOptions(jobs = []) {
   return jobs.map((job) => ({
-    id: job.id,
-    name: `${job.job_name} (${job.application_count})`,
+    id: `job:${job.id}`,
+    name: `${job.job_name} · ${job.application_count} Applications`,
     job_name: job.job_name,
     application_count: job.application_count,
+  }))
+}
+
+export function formatDemandLetterSelectOptions(demandLetters = []) {
+  return demandLetters.map((item) => ({
+    id: `dl:${item.id}`,
+    name: `${item.name} · ${item.job_count} Jobs · ${item.application_count} Applications`,
+    demand_letter_name: item.name,
+    job_count: item.job_count,
+    application_count: item.application_count,
   }))
 }
 
@@ -79,6 +89,49 @@ export function filterJobOption(option, query) {
   return [option?.name, option?.job_name, option?.application_count]
     .filter((value) => value !== undefined && value !== null && value !== '')
     .some((value) => String(value).toLowerCase().includes(q))
+}
+
+export function filterDemandLetterOption(option, query) {
+  const q = String(query || '').toLowerCase()
+  if (!q) return true
+  return [
+    option?.name,
+    option?.demand_letter_name,
+    option?.job_count,
+    option?.application_count,
+  ]
+    .filter((value) => value !== undefined && value !== null && value !== '')
+    .some((value) => String(value).toLowerCase().includes(q))
+}
+
+export const PROJECT_SOURCE_JOB = 'job'
+export const PROJECT_SOURCE_DEMAND_LETTER = 'demand_letter'
+
+export function parseProjectId(value) {
+  const raw = String(value ?? '')
+
+  if (!raw) {
+    return { type: PROJECT_SOURCE_JOB, id: '' }
+  }
+
+  if (raw.startsWith('job:')) {
+    return { type: PROJECT_SOURCE_JOB, id: raw }
+  }
+
+  if (raw.startsWith('dl:')) {
+    return { type: PROJECT_SOURCE_DEMAND_LETTER, id: raw }
+  }
+
+  if (/^\d+$/.test(raw)) {
+    return { type: PROJECT_SOURCE_JOB, id: `job:${raw}` }
+  }
+
+  return { type: PROJECT_SOURCE_JOB, id: raw }
+}
+
+export function normalizeProjectId(value) {
+  const parsed = parseProjectId(value)
+  return parsed.id
 }
 
 export function isJournalLineEmpty(line) {
@@ -131,7 +184,7 @@ export function mapJournalToForm(journal) {
     reference_no: journal?.reference_no || '',
     party_type: journal?.party_type || '',
     party_id: journal?.party_id || '',
-    project_id: journal?.project_id || '',
+    project_id: normalizeProjectId(journal?.project_id),
     narration: journal?.narration || '',
     manager_comment: journal?.manager_comment || '',
   }

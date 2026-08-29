@@ -4,6 +4,7 @@ namespace App\Modules\Journals\Resources;
 
 use App\Modules\JobList\Models\JobList;
 use App\Modules\Shared\Helpers\DateTimeFormatter;
+use App\Modules\WorkOrder\Models\WorkOrder;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class JournalResource extends JsonResource
@@ -47,16 +48,28 @@ class JournalResource extends JsonResource
 
     private function resolveProjectName(): ?string
     {
-        $projectId = $this->project_id;
+        $projectId = (string) ($this->project_id ?? '');
 
-        if ($projectId === null || $projectId === '') {
+        if ($projectId === '') {
             return null;
         }
 
-        if (!ctype_digit((string) $projectId)) {
-            return null;
+        if (str_starts_with($projectId, 'job:')) {
+            $id = (int) substr($projectId, 4);
+
+            return $id > 0 ? JobList::query()->whereKey($id)->value('name') : null;
         }
 
-        return JobList::query()->whereKey((int) $projectId)->value('name');
+        if (str_starts_with($projectId, 'dl:')) {
+            $id = (int) substr($projectId, 3);
+
+            return $id > 0 ? WorkOrder::query()->whereKey($id)->value('work_order_id') : null;
+        }
+
+        if (ctype_digit($projectId)) {
+            return JobList::query()->whereKey((int) $projectId)->value('name');
+        }
+
+        return null;
     }
 }
