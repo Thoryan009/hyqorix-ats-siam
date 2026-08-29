@@ -20,7 +20,7 @@
     </div>
 
     <div
-      class="success-card relative rounded-3xl border border-slate-200/80 bg-white px-6 py-10 text-center shadow-xl ring-1 ring-primary/10 sm:px-10"
+      class="success-card relative z-10 rounded-3xl border border-slate-200/80 bg-white px-6 py-10 text-center shadow-xl ring-1 ring-primary/10 sm:px-10"
     >
       <div
         class="success-icon mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-primary-light ring-4 ring-primary/15"
@@ -72,13 +72,13 @@
       <div class="success-actions mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
         <BaseButton
           className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-          @click="emit('secondary')"
+          @click="onSecondary"
         >
           {{ secondaryLabel }}
         </BaseButton>
         <BaseButton
           className="bg-primary text-white hover:bg-primary-hover"
-          @click="emit('primary')"
+          @click="onPrimary"
         >
           {{ primaryLabel }}
         </BaseButton>
@@ -88,6 +88,8 @@
 </template>
 
 <script setup>
+const emit = defineEmits(['primary', 'secondary'])
+
 defineProps({
   kicker: {
     type: String,
@@ -115,7 +117,13 @@ defineProps({
   },
 })
 
-defineEmits(['primary', 'secondary'])
+const onPrimary = () => {
+  emit('primary')
+}
+
+const onSecondary = () => {
+  emit('secondary')
+}
 
 const particles = [
   { id: 1, left: '8%', top: '12%', size: '8px', delay: '0.1s', duration: '2.8s', opacity: '0.55' },

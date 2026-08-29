@@ -6,8 +6,8 @@
     :summary-items="summaryItems"
     :primary-label="t('journals.payment_success_view_journals')"
     :secondary-label="t('journals.payment_success_pay_another')"
-    @primary="emit('view-journals')"
-    @secondary="emit('pay-another')"
+    @primary="onViewJournals"
+    @secondary="onPayAnother"
   >
     <template v-if="success.managerComment" #extra>
       <div class="rounded-xl border border-primary/10 bg-primary-light/40 px-4 py-3">
@@ -35,6 +35,14 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['view-journals', 'pay-another'])
+
+const onViewJournals = () => {
+  emit('view-journals')
+}
+
+const onPayAnother = () => {
+  emit('pay-another')
+}
 
 const { t } = useTranslate()
 

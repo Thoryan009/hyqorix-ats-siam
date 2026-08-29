@@ -2,7 +2,7 @@
   <JournalPaymentSuccess
     v-if="paymentSuccess"
     :success="paymentSuccess"
-    @view-journals="emit('view-journals')"
+    @view-journals="handleViewJournalsClick"
     @pay-another="handlePaymentSuccessPayAnother"
   />
 
@@ -558,6 +558,15 @@ const { pay, payLoading: isPaying } = useJournalMutations({
 
 const handlePaymentSuccessPayAnother = () => {
   paymentSuccess.value = null
+  validationMessage.value = ''
+  selectedJournalId.value = ''
+  loadSelectedJournal(null)
+  refetch()
+}
+
+const handleViewJournalsClick = () => {
+  paymentSuccess.value = null
+  emit('view-journals')
 }
 
 const loadSelectedJournal = (journal) => {
