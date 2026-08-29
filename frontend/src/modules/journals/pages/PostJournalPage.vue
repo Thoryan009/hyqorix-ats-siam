@@ -563,6 +563,7 @@
       :active="activeTab === 'payment'"
       :initial-journal-id="selectedPaymentJournalId"
       @paid="handlePaid"
+      @view-journals="handlePaymentViewJournals"
     />
   </SectionHeader>
 </template>
@@ -952,6 +953,10 @@ const handleReturn = async () => {
 }
 
 const handlePaid = () => {
+  selectedPaymentJournalId.value = ''
+}
+
+const handlePaymentViewJournals = () => {
   selectedPaymentJournalId.value = ''
   router.push({ name: 'Journal Management' })
 }

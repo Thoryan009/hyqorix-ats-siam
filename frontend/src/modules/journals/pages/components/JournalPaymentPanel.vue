@@ -1,5 +1,12 @@
 <template>
-  <div class="space-y-4">
+  <JournalPaymentSuccess
+    v-if="paymentSuccess"
+    :success="paymentSuccess"
+    @view-journals="emit('view-journals')"
+    @pay-another="handlePaymentSuccessPayAnother"
+  />
+
+  <div v-else class="space-y-4">
     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -377,6 +384,7 @@ import { useApprovedJournalsQuery } from '../../queries/usePendingApprovalJourna
 import { usePartyTypeOptionsQuery } from '@/modules/parties/queries/usePartyTypeOptionsQuery'
 import { useJournalTransactionTypeOptionsQuery } from '../../queries/useJournalTransactionTypeOptionsQuery'
 import JournalProjectSelect from './JournalProjectSelect.vue'
+import JournalPaymentSuccess from './JournalPaymentSuccess.vue'
 import JournalReceiptUpload from './JournalReceiptUpload.vue'
 import {
   buildPayPayload,
@@ -398,10 +406,11 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['paid'])
+const emit = defineEmits(['paid', 'view-journals'])
 
 const { t } = useTranslate()
 const selectedJournalId = ref(props.initialJournalId ? String(props.initialJournalId) : '')
+const paymentSuccess = ref(null)
 const form = ref(mapJournalToForm(null))
 const lines = ref(mapJournalToLines(null))
 const validationMessage = ref('')
@@ -530,12 +539,26 @@ const accountPlaceholder = computed(() =>
 
 const { pay, payLoading: isPaying } = useJournalMutations({
   onPaySuccess(result) {
-    const voucher = result?.data?.voucher_no || result?.voucher_no || ''
-    toast.success(t('journals.paid_success', { voucher }))
+    const journal = result?.data || result || {}
+    paymentSuccess.value = {
+      voucherNo: journal.voucher_no || '—',
+      journalId: journal.id || '',
+      status: journal.status || '—',
+      totalDebit: journal.total_debit,
+      totalCredit: journal.total_credit,
+      voucherDate: journal.voucher_date_label || journal.voucher_date || '—',
+      managerComment: journal.manager_comment || form.value.manager_comment || '',
+    }
     selectedJournalId.value = ''
+    loadSelectedJournal(null)
+    refetch()
     emit('paid', result)
   },
 })
+
+const handlePaymentSuccessPayAnother = () => {
+  paymentSuccess.value = null
+}
 
 const loadSelectedJournal = (journal) => {
   if (!journal) {
