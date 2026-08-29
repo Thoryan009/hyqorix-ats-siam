@@ -208,17 +208,54 @@
 
     <!-- Audit footer -->
     <footer
-      v-if="journal.created_by || journal.created_at"
-      class="flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-100 bg-slate-50/50 px-6 py-3 text-xs text-slate-500"
+      v-if="hasAuditInfo"
+      class="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 text-xs text-slate-500"
     >
-      <span v-if="journal.created_by">
-        {{ t('journals.prepared_by') }}:
-        <span class="font-medium text-slate-700">{{ journal.created_by }}</span>
-      </span>
-      <span v-if="journal.created_at">
-        {{ t('journals.submitted_at') }}:
-        <span class="font-medium text-slate-700">{{ journal.created_at }}</span>
-      </span>
+      <div class="flex flex-wrap gap-x-6 gap-y-2">
+        <span v-if="journal.created_by">
+          {{ t('journals.created_by') }}:
+          <span class="font-medium text-slate-700">{{ journal.created_by }}</span>
+        </span>
+        <span v-if="journal.created_at">
+          {{ t('journals.created_at') }}:
+          <span class="font-medium text-slate-700">{{ journal.created_at }}</span>
+        </span>
+      </div>
+
+      <div
+        v-if="journal.is_reversed || journal.reversed_by || journal.reversed_at"
+        class="flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-rose-100 bg-rose-50/60 px-3 py-2 text-rose-700"
+      >
+        <span v-if="journal.reversed_by">
+          {{ t('journals.reversed_by') }}:
+          <span class="font-medium">{{ journal.reversed_by }}</span>
+        </span>
+        <span v-if="journal.reversed_at">
+          {{ t('journals.reversed_at') }}:
+          <span class="font-medium">{{ journal.reversed_at }}</span>
+        </span>
+        <RouterLink
+          v-if="journal.reversal_journal_id && journal.reversal_voucher_no"
+          :to="{ name: 'Journal View', params: { id: journal.reversal_journal_id } }"
+          class="font-medium text-rose-800 underline-offset-2 hover:underline"
+        >
+          {{ t('journals.view_reversal_entry', { voucher: journal.reversal_voucher_no }) }}
+        </RouterLink>
+      </div>
+
+      <div
+        v-if="journal.is_reversal && journal.original_voucher_no"
+        class="flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-indigo-700"
+      >
+        <span>{{ t('journals.reversal_of') }}:</span>
+        <RouterLink
+          v-if="journal.reverses_journal_id"
+          :to="{ name: 'Journal View', params: { id: journal.reverses_journal_id } }"
+          class="font-medium underline-offset-2 hover:underline"
+        >
+          {{ journal.original_voucher_no }}
+        </RouterLink>
+      </div>
     </footer>
   </article>
 </template>
@@ -289,11 +326,25 @@ const detailItems = computed(() => [
   },
 ])
 
+const hasAuditInfo = computed(() =>
+  Boolean(
+    props.journal?.created_by
+      || props.journal?.created_at
+      || props.journal?.is_reversed
+      || props.journal?.is_reversal
+      || props.journal?.reversed_by
+      || props.journal?.reversed_at,
+  ),
+)
+
 const statusRaw = computed(() =>
   String(props.journal?.status_raw || props.journal?.status || '').toLowerCase(),
 )
 
 const statusBadgeClass = computed(() => {
+  if (statusRaw.value.includes('reversed')) {
+    return 'bg-rose-50 text-rose-700 ring-rose-200'
+  }
   if (statusRaw.value.includes('approved')) {
     return 'bg-emerald-50 text-emerald-700 ring-emerald-200'
   }
@@ -310,6 +361,7 @@ const statusBadgeClass = computed(() => {
 })
 
 const statusDotClass = computed(() => {
+  if (statusRaw.value.includes('reversed')) return 'bg-rose-500'
   if (statusRaw.value.includes('approved')) return 'bg-emerald-500'
   if (statusRaw.value.includes('return')) return 'bg-rose-500'
   if (statusRaw.value.includes('pending') || statusRaw.value.includes('waiting')) {

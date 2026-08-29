@@ -17,6 +17,7 @@ class JournalResource extends JsonResource
             'approved' => 'Approved',
             'returned' => 'Returned',
             'posted' => 'Posted',
+            'reversed' => 'Reversed',
         ];
 
         return [
@@ -46,6 +47,18 @@ class JournalResource extends JsonResource
             'updated_at' => DateTimeFormatter::formatDateTime($this->updated_at),
             'created_by' => $this->createdBy?->name,
             'updated_by' => $this->updatedBy?->name,
+            'reversed_at' => DateTimeFormatter::formatDateTime($this->reversed_at),
+            'reversed_by' => $this->reversedBy?->name,
+            'reversal_journal_id' => $this->reversal_journal_id,
+            'reversal_voucher_no' => $this->reversalJournal?->voucher_no,
+            'reverses_journal_id' => $this->reverses_journal_id,
+            'original_voucher_no' => $this->originalJournal?->voucher_no,
+            'is_reversed' => $this->status === 'reversed' || $this->reversed_at !== null,
+            'is_reversal' => $this->reverses_journal_id !== null,
+            'can_reverse' => $this->status === 'posted'
+                && $this->reversed_at === null
+                && $this->reversal_journal_id === null
+                && $this->reverses_journal_id === null,
         ];
     }
 

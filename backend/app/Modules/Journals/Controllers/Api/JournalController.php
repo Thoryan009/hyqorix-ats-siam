@@ -8,6 +8,7 @@ use App\Modules\Journals\Requests\JournalApproveRequest;
 use App\Modules\Journals\Requests\JournalIndexRequest;
 use App\Modules\Journals\Requests\JournalPayRequest;
 use App\Modules\Journals\Requests\JournalResubmitRequest;
+use App\Modules\Journals\Requests\JournalReverseRequest;
 use App\Modules\Journals\Requests\JournalReturnRequest;
 use App\Modules\Journals\Requests\JournalStoreRequest;
 use App\Modules\Journals\Resources\JournalResource;
@@ -115,6 +116,18 @@ class JournalController extends Controller
 
         return apiSuccess(
             new JournalResource($posted),
+            'updated',
+            200,
+            'Journal'
+        );
+    }
+
+    public function reverse(JournalReverseRequest $request, Journal $journal): JsonResponse
+    {
+        $reversed = $this->service->reverse($journal);
+
+        return apiSuccess(
+            new JournalResource($reversed),
             'updated',
             200,
             'Journal'

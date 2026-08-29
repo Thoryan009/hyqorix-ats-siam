@@ -15,7 +15,7 @@ class Journal extends Model
     use LogsActivity;
     use TracksUser;
 
-    public const STATUSES = ['draft', 'pending_approval', 'approved', 'returned', 'posted'];
+    public const STATUSES = ['draft', 'pending_approval', 'approved', 'returned', 'posted', 'reversed'];
 
     public const COST_TYPES = [
         'general',
@@ -35,6 +35,7 @@ class Journal extends Model
 
     protected $casts = [
         'voucher_date' => 'date',
+        'reversed_at' => 'datetime',
         'total_debit' => 'decimal:2',
         'total_credit' => 'decimal:2',
     ];
@@ -125,6 +126,21 @@ class Journal extends Model
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function reversedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reversed_by');
+    }
+
+    public function reversalJournal(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reversal_journal_id');
+    }
+
+    public function originalJournal(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reverses_journal_id');
     }
 
     public function getActivityIdentifier(): string

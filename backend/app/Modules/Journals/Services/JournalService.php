@@ -68,6 +68,9 @@ class JournalService
             'transactionType:id,code,name',
             'createdBy:id,name',
             'updatedBy:id,name',
+            'reversedBy:id,name',
+            'reversalJournal:id,voucher_no',
+            'originalJournal:id,voucher_no',
             'lines.account:id,code,name',
         ]);
     }
@@ -214,6 +217,73 @@ class JournalService
 
             $journal->lines()->delete();
             $this->syncLines($journal, $lines, $partyCode);
+
+            return $this->getJournal($journal->fresh());
+        });
+    }
+
+    public function reverse(Journal $journal): Journal
+    {
+        if ($journal->status !== 'posted') {
+            throw ValidationException::withMessages([
+                'status' => 'Only posted journals can be reversed.',
+            ]);
+        }
+
+        if ($journal->reversed_at || $journal->reversal_journal_id) {
+            throw ValidationException::withMessages([
+                'status' => 'This journal has already been reversed.',
+            ]);
+        }
+
+        if ($journal->reverses_journal_id) {
+            throw ValidationException::withMessages([
+                'status' => 'Reversal journals cannot be reversed again.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($journal) {
+            $journal->load('lines');
+
+            $reversalLines = $journal->lines->map(static fn ($line) => [
+                'account_id' => $line->account_id,
+                'sub_ledger' => $line->sub_ledger,
+                'cost_type' => $line->cost_type,
+                'debit' => $line->credit,
+                'credit' => $line->debit,
+            ])->all();
+
+            $totals = $this->sumLineTotals($reversalLines);
+            $partyCode = $this->resolvePartyCode($journal->party_id);
+
+            $narration = 'Reversal of '.$journal->voucher_no;
+            if ($journal->narration) {
+                $narration .= ' — '.$journal->narration;
+            }
+
+            $reversal = $this->model->create([
+                'voucher_no' => $this->nextVoucherNo(),
+                'voucher_date' => now()->toDateString(),
+                'transaction_type' => $journal->transaction_type,
+                'reference_no' => $journal->reference_no,
+                'party_type' => $journal->party_type,
+                'party_id' => $journal->party_id,
+                'project_id' => $journal->project_id,
+                'narration' => $narration,
+                'total_debit' => $totals['debit'],
+                'total_credit' => $totals['credit'],
+                'status' => 'posted',
+                'reverses_journal_id' => $journal->id,
+            ]);
+
+            $this->syncLines($reversal, $reversalLines, $partyCode);
+
+            $journal->update([
+                'status' => 'reversed',
+                'reversed_at' => now(),
+                'reversed_by' => auth()->id(),
+                'reversal_journal_id' => $reversal->id,
+            ]);
 
             return $this->getJournal($journal->fresh());
         });

@@ -23,5 +23,6 @@ Route::prefix('journals')->group(function () {
     Route::post('{journal}/return', [JournalController::class, 'return']);
     Route::post('{journal}/resubmit', [JournalController::class, 'resubmit']);
     Route::post('{journal}/pay', [JournalController::class, 'pay']);
+    Route::post('{journal}/reverse', [JournalController::class, 'reverse']);
     Route::get('{journal}', [JournalController::class, 'show']);
 });

@@ -40,6 +40,9 @@ class JournalRepository extends BaseRepository
             'party:id,code,name,type',
             'transactionType:id,code,name',
             'createdBy:id,name',
+            'reversedBy:id,name',
+            'reversalJournal:id,voucher_no',
+            'originalJournal:id,voucher_no',
             'lines' => function ($lineQuery) {
                 $lineQuery->orderBy('sort_order')->orderBy('id');
             },

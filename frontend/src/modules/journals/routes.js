@@ -1,4 +1,5 @@
 import JournalsPage from './pages/JournalsPage.vue'
+import JournalViewPage from './pages/JournalViewPage.vue'
 import PostJournalPage from './pages/PostJournalPage.vue'
 import TransactionTypesPage from './pages/TransactionTypesPage.vue'
 import DashboardLayout from '@/shared/layouts/DashboardLayout.vue'
@@ -18,6 +19,11 @@ export default [
         path: 'post',
         name: 'Post Journal',
         component: PostJournalPage,
+      },
+      {
+        path: ':id',
+        name: 'Journal View',
+        component: JournalViewPage,
       },
     ],
   },

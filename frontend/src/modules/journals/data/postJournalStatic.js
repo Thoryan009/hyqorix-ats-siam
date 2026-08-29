@@ -328,6 +328,7 @@ export function flattenJournalRows(journals = []) {
 
     return lines.map((line, index) => ({
       id: `${journal.id}-${line.id ?? index}`,
+      journal_id: journal.id,
       je_no: journal.voucher_no,
       date: journal.voucher_date_label || journal.voucher_date,
       transaction: journal.narration || journal.transaction_type_name || getTransactionTypeLabel(journal.transaction_type),
@@ -339,6 +340,13 @@ export function flattenJournalRows(journals = []) {
       cost_class: getCostTypeLabel(line.cost_type),
       project_client: journal.project_name || getProjectLabel(journal.project_id),
       status: journal.status,
+      status_raw: journal.status_raw,
+      can_reverse: Boolean(journal.can_reverse),
+      is_reversed: Boolean(journal.is_reversed),
+      created_by: journal.created_by,
+      created_at: journal.created_at,
+      reversed_by: journal.reversed_by,
+      reversed_at: journal.reversed_at,
     }))
   })
 }

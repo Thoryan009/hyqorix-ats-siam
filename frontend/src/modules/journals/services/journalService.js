@@ -107,3 +107,13 @@ export async function payJournal(id, payload) {
 
   return api.data.value
 }
+
+export async function reverseJournal(id) {
+  const api = useApi()
+  await api.sendRequest(`${BASE_URL}/${id}/reverse`, 'POST')
+  if (api.error.value) {
+    throw api.error.value
+  }
+
+  return api.data.value
+}
