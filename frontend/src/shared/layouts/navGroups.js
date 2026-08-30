@@ -313,6 +313,11 @@ export const navGroups = [
         path: '/accounts/income-statement',
         icon: 'fa fa-file-text-o',
       },
+      {
+        name: 'accounts.balance_sheet',
+        path: '/accounts/balance-sheet',
+        icon: 'fa fa-bank',
+      },
     ],
   },
 
