@@ -1,5 +1,6 @@
 import ChartOfAccountsPage from './pages/ChartOfAccountsPage.vue'
 import GrossProfitPage from './pages/GrossProfitPage.vue'
+import IncomeStatementPage from './pages/IncomeStatementPage.vue'
 import TrialBalancePage from './pages/TrialBalancePage.vue'
 import DashboardLayout from '@/shared/layouts/DashboardLayout.vue'
 
@@ -37,6 +38,18 @@ export default [
         path: '',
         name: 'Finance2 Gross Profit',
         component: GrossProfitPage,
+      },
+    ],
+  },
+  {
+    path: '/accounts/income-statement',
+    component: DashboardLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'Finance2 Income Statement',
+        component: IncomeStatementPage,
       },
     ],
   },

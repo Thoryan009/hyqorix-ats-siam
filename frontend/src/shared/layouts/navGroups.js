@@ -308,6 +308,11 @@ export const navGroups = [
         path: '/accounts/gross-profit',
         icon: 'fa fa-line-chart',
       },
+      {
+        name: 'accounts.income_statement',
+        path: '/accounts/income-statement',
+        icon: 'fa fa-file-text-o',
+      },
     ],
   },
 
