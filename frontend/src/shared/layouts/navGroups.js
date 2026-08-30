@@ -303,6 +303,11 @@ export const navGroups = [
         path: '/accounts/trial-balance',
         icon: 'fa fa-balance-scale',
       },
+      {
+        name: 'accounts.gross_profit',
+        path: '/accounts/gross-profit',
+        icon: 'fa fa-line-chart',
+      },
     ],
   },
 
