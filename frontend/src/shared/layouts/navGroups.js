@@ -298,6 +298,11 @@ export const navGroups = [
         path: '/journals/post',
         icon: 'fa fa-pencil-square-o',
       },
+      {
+        name: 'accounts.trial_balance',
+        path: '/accounts/trial-balance',
+        icon: 'fa fa-balance-scale',
+      },
     ],
   },
 

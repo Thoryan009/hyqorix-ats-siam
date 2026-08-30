@@ -1,7 +1,10 @@
 <?php
 
 use App\Modules\Accounts\Controllers\Api\ChartOfAccountController;
+use App\Modules\Accounts\Controllers\Api\TrialBalanceController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('trial-balance', [TrialBalanceController::class, 'index']);
 
 Route::prefix('chart-of-accounts')->group(function () {
     Route::get('/', [ChartOfAccountController::class, 'index']);
