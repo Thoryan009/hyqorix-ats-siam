@@ -28,6 +28,30 @@ export async function fetchAll(page = 1, perPage = 10, filters = {}) {
   return response(api)
 }
 
+export async function fetchPartyLedger(page = 1, perPage = 50, filters = {}) {
+  const api = useApi()
+  const url = buildUrl(`${BASE_URL}/party-ledger`, {
+    page,
+    per_page: perPage,
+    ...filters,
+  })
+
+  await api.sendRequest(url)
+  return response(api)
+}
+
+export async function fetchGeneralLedger(page = 1, perPage = 50, filters = {}) {
+  const api = useApi()
+  const url = buildUrl(`${BASE_URL}/general-ledger`, {
+    page,
+    per_page: perPage,
+    ...filters,
+  })
+
+  await api.sendRequest(url)
+  return response(api)
+}
+
 export async function fetchJournal(id) {
   const api = useApi()
   await api.sendRequest(`${BASE_URL}/${id}`)

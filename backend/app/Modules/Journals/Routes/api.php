@@ -1,6 +1,8 @@
 <?php
 
+use App\Modules\Journals\Controllers\Api\GeneralLedgerController;
 use App\Modules\Journals\Controllers\Api\JournalController;
+use App\Modules\Journals\Controllers\Api\PartyLedgerController;
 use App\Modules\Journals\Controllers\Api\JournalTransactionTypeController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,6 +18,8 @@ Route::prefix('journal-transaction-types')->group(function () {
 
 Route::prefix('journals')->group(function () {
     Route::get('/', [JournalController::class, 'index']);
+    Route::get('party-ledger', [PartyLedgerController::class, 'index']);
+    Route::get('general-ledger', [GeneralLedgerController::class, 'index']);
     Route::get('job-options', [JournalController::class, 'jobOptions']);
     Route::get('demand-letter-options', [JournalController::class, 'demandLetterOptions']);
     Route::post('narration-hints', [JournalController::class, 'narrationHints']);

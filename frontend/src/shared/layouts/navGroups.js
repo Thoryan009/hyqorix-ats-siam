@@ -294,6 +294,16 @@ export const navGroups = [
         icon: 'fa fa-book',
       },
       {
+        name: 'Party Ledger',
+        path: '/journals/party-ledger',
+        icon: 'fa fa-address-book-o',
+      },
+      {
+        name: 'General Ledger',
+        path: '/journals/general-ledger',
+        icon: 'fa fa-list-alt',
+      },
+      {
         name: 'Post Journal',
         path: '/journals/post',
         icon: 'fa fa-pencil-square-o',
