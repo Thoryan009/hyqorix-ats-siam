@@ -144,6 +144,7 @@ export default {
     balanced: 'ব্যালান্সড',
     unbalanced: 'আনব্যালান্সড',
     narration: 'ন্যারেশন',
+    narration_subtitle: 'এই জার্নাল এন্ট্রির উদ্দেশ্য বর্ণনা করুন',
     narration_placeholder:
       'উদাহরণ: ফেরত আসা ক্যান্ডিডেটকে লাম্প-সাম রিক্রুটমেন্ট সার্ভিস চার্জ রিফান্ড',
     receipt: 'রসিদ',
@@ -161,6 +162,7 @@ export default {
     receipt_next: 'পরের রসিদ',
     close: 'বন্ধ',
     posting_preview: 'পোস্টিং প্রিভিউ',
+    posting_preview_subtitle: 'ডেবিট ও ক্রেডিট লাইনের লাইভ সারাংশ',
     posting_preview_empty: 'এখনো কোনো জার্নাল লাইন দেওয়া হয়নি',
     prepared_by: 'প্রস্তুতকারী',
     current_user: 'বর্তমান ব্যবহারকারী',

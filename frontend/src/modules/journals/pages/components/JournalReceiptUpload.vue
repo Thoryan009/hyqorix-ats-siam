@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-3">
-    <div>
-      <BaseLabel :for="inputId">{{ label }}</BaseLabel>
+    <div v-if="label || hint">
+      <BaseLabel v-if="label" :for="inputId">{{ label }}</BaseLabel>
       <p v-if="hint" class="mt-0.5 text-xs text-slate-500">{{ hint }}</p>
     </div>
 

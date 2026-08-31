@@ -330,41 +330,109 @@
       </div>
     </div>
 
-    <div class="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <BaseLabel for="narration">{{ t('journals.narration') }}</BaseLabel>
-        <BaseTextArea
-          id="narration"
-          v-model="form.narration"
-          :rows="5"
-          className="mt-1.5 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
-          :placeholder="t('journals.narration_placeholder')"
-        />
-      </div>
+    <div class="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div class="grid grid-cols-1 divide-y divide-slate-100 xl:grid-cols-3 xl:divide-x xl:divide-y-0">
+        <div class="flex min-h-[240px] flex-col p-5">
+          <div class="mb-3 flex items-center gap-2.5">
+            <span
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100"
+            >
+              <i class="fa fa-align-left text-xs"></i>
+            </span>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900">{{ t('journals.narration') }}</h3>
+              <p class="text-xs text-slate-500">{{ t('journals.narration_subtitle') }}</p>
+            </div>
+          </div>
+          <BaseTextArea
+            id="narration"
+            v-model="form.narration"
+            :rows="6"
+            className="min-h-[148px] flex-1 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            :placeholder="t('journals.narration_placeholder')"
+          />
+        </div>
 
-      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <JournalReceiptUpload
-          :receipt-path="form.receipt_path"
-          :receipt-preview="form.receipt_preview"
-          :existing-urls="form.receipt_urls || []"
-          :label="t('journals.receipt_optional')"
-          :hint="t('journals.receipt_hint')"
-          @update:receipt-path="form.receipt_path = $event"
-          @update:receipt-preview="form.receipt_preview = $event"
-        />
-      </div>
-    </div>
+        <div class="flex min-h-[240px] flex-col p-5">
+          <div class="mb-3 flex items-center gap-2.5">
+            <span
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100"
+            >
+              <i class="fa fa-paperclip text-xs"></i>
+            </span>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900">{{ t('journals.receipt_optional') }}</h3>
+              <p class="text-xs text-slate-500">{{ t('journals.receipt_hint') }}</p>
+            </div>
+          </div>
+          <div class="flex-1">
+            <JournalReceiptUpload
+              :receipt-path="form.receipt_path"
+              :receipt-preview="form.receipt_preview"
+              :existing-urls="form.receipt_urls || []"
+              label=""
+              hint=""
+              @update:receipt-path="form.receipt_path = $event"
+              @update:receipt-preview="form.receipt_preview = $event"
+            />
+          </div>
+        </div>
 
-    <div class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm lg:max-w-xl">
-      <h3 class="mb-3 text-sm font-semibold text-slate-800">
-        {{ t('journals.posting_preview') }}
-      </h3>
-      <ul class="space-y-2 text-sm text-slate-700">
-        <li v-for="item in postingPreview" :key="item">• {{ item }}</li>
-      </ul>
-      <div class="mt-4 space-y-1 border-t border-slate-200 pt-3 text-xs text-slate-500">
-        <p>{{ t('journals.prepared_by') }}: {{ t('journals.current_user') }}</p>
-        <p>{{ t('journals.approval') }}: {{ t('journals.manager_required') }}</p>
+        <div class="flex min-h-[240px] flex-col bg-gradient-to-b from-slate-50/90 to-white p-5">
+          <div class="mb-3 flex items-center gap-2.5">
+            <span
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600 ring-1 ring-violet-100"
+            >
+              <i class="fa fa-list-alt text-xs"></i>
+            </span>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900">{{ t('journals.posting_preview') }}</h3>
+              <p class="text-xs text-slate-500">{{ t('journals.posting_preview_subtitle') }}</p>
+            </div>
+          </div>
+
+          <div class="flex-1 space-y-2 overflow-y-auto pr-1">
+            <p
+              v-if="!postingPreviewLines.length"
+              class="rounded-lg border border-dashed border-slate-200 bg-white/80 px-3 py-4 text-center text-xs text-slate-500"
+            >
+              {{ t('journals.posting_preview_empty') }}
+            </p>
+            <div
+              v-for="line in postingPreviewLines"
+              :key="line.id"
+              class="flex items-start justify-between gap-2 rounded-lg border border-slate-200/80 bg-white px-3 py-2 shadow-sm"
+            >
+              <p class="min-w-0 flex-1 text-xs leading-relaxed text-slate-700">{{ line.account }}</p>
+              <div class="flex shrink-0 items-center gap-1.5">
+                <span
+                  class="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                  :class="
+                    line.side === 'dr'
+                      ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
+                      : 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
+                  "
+                >
+                  {{ line.side === 'dr' ? t('journals.dr') : t('journals.cr') }}
+                </span>
+                <span class="text-xs font-semibold tabular-nums text-slate-900">
+                  {{ formatAmount(line.amount) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 space-y-1.5 border-t border-slate-200/80 pt-3 text-[11px] text-slate-500">
+            <p class="flex items-center justify-between gap-2">
+              <span>{{ t('journals.prepared_by') }}</span>
+              <span class="font-medium text-slate-700">{{ t('journals.current_user') }}</span>
+            </p>
+            <p class="flex items-center justify-between gap-2">
+              <span>{{ t('journals.approval') }}</span>
+              <span class="font-medium text-amber-700">{{ t('journals.manager_required') }}</span>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1112,22 +1180,21 @@ const differenceLabel = computed(() => {
   return `${formatAmount(abs)} ${difference.value > 0 ? t('journals.dr') : t('journals.cr')}`
 })
 
-const postingPreview = computed(() => {
+const postingPreviewLines = computed(() => {
   const previewLines = lines.value.filter(
     (line) => line.account_id || toNumber(line.debit) > 0 || toNumber(line.credit) > 0,
   )
 
-  if (!previewLines.length) {
-    return [t('journals.posting_preview_empty')]
-  }
-
   return previewLines.map((line) => {
     const account =
       accountOptions.value.find((opt) => String(opt.id) === String(line.account_id))?.name || '—'
-    if (toNumber(line.debit) > 0) {
-      return `${account}: ${t('journals.dr')} ${formatAmount(line.debit)}`
+    const debit = toNumber(line.debit)
+
+    if (debit > 0) {
+      return { id: line.id, account, side: 'dr', amount: debit }
     }
-    return `${account}: ${t('journals.cr')} ${formatAmount(line.credit)}`
+
+    return { id: line.id, account, side: 'cr', amount: toNumber(line.credit) }
   })
 })
 

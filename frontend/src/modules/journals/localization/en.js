@@ -144,6 +144,7 @@ export default {
     balanced: 'Balanced',
     unbalanced: 'Unbalanced',
     narration: 'Narration',
+    narration_subtitle: 'Describe the purpose of this journal entry',
     narration_placeholder:
       'Example: Lump-sum recruitment service charge refund to returned candidate',
     receipt: 'Receipt',
@@ -161,6 +162,7 @@ export default {
     receipt_next: 'Next receipt',
     close: 'Close',
     posting_preview: 'Posting Preview',
+    posting_preview_subtitle: 'Live summary of debit and credit lines',
     posting_preview_empty: 'No journal lines entered yet',
     prepared_by: 'Prepared by',
     current_user: 'Current User',
