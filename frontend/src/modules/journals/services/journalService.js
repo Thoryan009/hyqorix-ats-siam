@@ -58,6 +58,16 @@ export async function fetchDemandLetterOptions() {
   return response(api)
 }
 
+export async function fetchNarrationHints(payload) {
+  const api = useApi()
+  await api.sendRequest(`${BASE_URL}/narration-hints`, 'POST', payload)
+  if (api.error.value) {
+    throw api.error.value
+  }
+
+  return api.data.value?.data?.hints ?? []
+}
+
 export async function submitJournal(payload) {
   const api = useApi()
   await api.sendRequest(BASE_URL, 'POST', resolveRequestBody(payload))

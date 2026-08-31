@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Modules\Journals\Models\Journal;
 use App\Modules\Journals\Requests\JournalApproveRequest;
 use App\Modules\Journals\Requests\JournalIndexRequest;
+use App\Modules\Journals\Requests\JournalNarrationHintRequest;
 use App\Modules\Journals\Requests\JournalPayRequest;
 use App\Modules\Journals\Requests\JournalResubmitRequest;
 use App\Modules\Journals\Requests\JournalReverseRequest;
 use App\Modules\Journals\Requests\JournalReturnRequest;
 use App\Modules\Journals\Requests\JournalStoreRequest;
 use App\Modules\Journals\Resources\JournalResource;
+use App\Modules\Journals\Services\JournalNarrationHintService;
 use App\Modules\Journals\Services\JournalService;
 use App\Modules\Shared\Helpers\FileHelper;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +22,8 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class JournalController extends Controller
 {
     public function __construct(
-        private readonly JournalService $service
+        private readonly JournalService $service,
+        private readonly JournalNarrationHintService $narrationHintService,
     ) {}
 
     public function index(JournalIndexRequest $request): AnonymousResourceCollection
@@ -38,6 +41,13 @@ class JournalController extends Controller
     public function demandLetterOptions(): JsonResponse
     {
         return apiSuccess($this->service->getDemandLetterOptions());
+    }
+
+    public function narrationHints(JournalNarrationHintRequest $request): JsonResponse
+    {
+        return apiSuccess([
+            'hints' => $this->narrationHintService->generate($request->context()),
+        ]);
     }
 
     public function store(JournalStoreRequest $request): JsonResponse

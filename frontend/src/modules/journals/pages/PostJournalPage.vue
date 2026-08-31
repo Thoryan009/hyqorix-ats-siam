@@ -351,6 +351,11 @@
             className="min-h-[148px] flex-1 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
             :placeholder="t('journals.narration_placeholder')"
           />
+          <JournalNarrationHints
+            v-model="form.narration"
+            :context="narrationHintContext"
+            :can-suggest="canSuggestNarrationHints"
+          />
         </div>
 
         <div class="flex min-h-[240px] flex-col p-5">
@@ -485,8 +490,15 @@
     </div>
 
     <div v-else-if="activeTab === 'approval'" class="space-y-5">
+    <JournalReturnSuccess
+      v-if="returnSuccess"
+      :success="returnSuccess"
+      @go-to-bill-entry="handleReturnSuccessGoToBillEntry"
+      @review-more="handleReturnSuccessReviewMore"
+    />
+
     <JournalApprovalSuccess
-      v-if="approvalSuccess"
+      v-else-if="approvalSuccess"
       :success="approvalSuccess"
       @go-to-payment="handleApprovalSuccessGoToPayment"
       @review-more="handleApprovalSuccessReviewMore"
@@ -591,6 +603,7 @@
               className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
               :placeholder="t('journals.manager_action_placeholder')"
             />
+            <JournalManagerCommentPresets v-model="managerComment" />
             <p v-if="approveValidationMessage" class="mt-2 text-sm text-red-600">
               {{ approveValidationMessage }}
             </p>
@@ -648,13 +661,17 @@ import { useJournalMutations } from '../queries/useJournalMutations'
 import { usePartyLedgerOptionsQuery } from '../queries/usePartyLedgerOptionsQuery'
 import { usePendingApprovalJournalsQuery, useReturnedJournalsQuery } from '../queries/usePendingApprovalJournalsQuery'
 import JournalApprovalPreview from './components/JournalApprovalPreview.vue'
+import JournalManagerCommentPresets from './components/JournalManagerCommentPresets.vue'
+import JournalReturnSuccess from './components/JournalReturnSuccess.vue'
 import JournalApprovalSuccess from './components/JournalApprovalSuccess.vue'
 import JournalBillEntrySuccess from './components/JournalBillEntrySuccess.vue'
+import JournalNarrationHints from './components/JournalNarrationHints.vue'
 import JournalPaymentPanel from './components/JournalPaymentPanel.vue'
 import JournalProjectSelect from './components/JournalProjectSelect.vue'
 import JournalReceiptUpload from './components/JournalReceiptUpload.vue'
 import {
   buildJournalPayload,
+  buildNarrationHintContext,
   buildResubmitPayload,
   costTypeOptions,
   createEmptyJournalLine,
@@ -678,6 +695,7 @@ const selectedReturnedJournalId = ref('')
 const editingJournalId = ref('')
 const billEntrySuccess = ref(null)
 const approvalSuccess = ref(null)
+const returnSuccess = ref(null)
 const managerComment = ref('')
 const approveValidationMessage = ref('')
 let skipPartyClear = false
@@ -851,12 +869,32 @@ const buildApprovalSuccessPayload = (result, comment = '') => {
   }
 }
 
+const buildReturnSuccessPayload = (result, comment = '') => {
+  const journal = result?.data || result || {}
+
+  return {
+    voucherNo: journal.voucher_no || '—',
+    journalId: journal.id || '',
+    status: journal.status || '—',
+    statusRaw: journal.status_raw || '',
+    totalDebit: journal.total_debit,
+    totalCredit: journal.total_credit,
+    voucherDate: journal.voucher_date_label || journal.voucher_date || '—',
+    managerComment: comment || journal.manager_comment || '',
+    journal,
+  }
+}
+
 const showBillEntrySuccessPage = (type, result) => {
   billEntrySuccess.value = buildBillEntrySuccessPayload(type, result)
 }
 
 const showApprovalSuccessPage = (result, comment = '') => {
   approvalSuccess.value = buildApprovalSuccessPayload(result, comment)
+}
+
+const showReturnSuccessPage = (result, comment = '') => {
+  returnSuccess.value = buildReturnSuccessPayload(result, comment)
 }
 
 const handleSuccessGoToApproval = () => {
@@ -889,6 +927,26 @@ const handleApprovalSuccessGoToPayment = () => {
 
 const handleApprovalSuccessReviewMore = () => {
   approvalSuccess.value = null
+  selectedApprovalJournalId.value = ''
+  managerComment.value = ''
+  approveValidationMessage.value = ''
+}
+
+const handleReturnSuccessGoToBillEntry = () => {
+  const payload = returnSuccess.value
+  returnSuccess.value = null
+  activeTab.value = 'bill_entry'
+
+  if (!payload?.journalId) return
+
+  selectedReturnedJournalId.value = String(payload.journalId)
+  if (payload.journal?.id) {
+    loadReturnedJournal(payload.journal)
+  }
+}
+
+const handleReturnSuccessReviewMore = () => {
+  returnSuccess.value = null
   selectedApprovalJournalId.value = ''
   managerComment.value = ''
   approveValidationMessage.value = ''
@@ -946,20 +1004,13 @@ const { submit, submitLoading: isSubmitting, approve, approveLoading: isApprovin
       showApprovalSuccessPage(result, comment)
     },
     onReturnSuccess(result) {
-      const voucher = result?.data?.voucher_no || result?.voucher_no || ''
-      const journalId = result?.data?.id || result?.id || ''
-      const journal = result?.data || result
-      toast.success(t('journals.returned_success', { voucher }))
+      const comment = String(managerComment.value || '').trim()
       selectedApprovalJournalId.value = ''
       managerComment.value = ''
       approveValidationMessage.value = ''
-      activeTab.value = 'bill_entry'
-      selectedReturnedJournalId.value = journalId ? String(journalId) : ''
-      if (journal?.id) {
-        loadReturnedJournal(journal)
-      }
       refetchPendingApprovals()
       refetchReturned()
+      showReturnSuccessPage(result, comment)
     },
     onResubmitSuccess(result) {
       const journal = result?.data || result || {}
@@ -1196,6 +1247,26 @@ const postingPreviewLines = computed(() => {
 
     return { id: line.id, account, side: 'cr', amount: toNumber(line.credit) }
   })
+})
+
+const narrationHintContext = computed(() =>
+  buildNarrationHintContext(form.value, lines.value, {
+    transactionTypeOptions: transactionTypeOptions.value,
+    partyTypeOptions: partyTypeOptions.value,
+    partyLedgerOptions: partyLedgerOptions.value,
+    accountOptions: accountOptions.value,
+  }),
+)
+
+const canSuggestNarrationHints = computed(() => {
+  const context = narrationHintContext.value
+
+  return Boolean(
+    context.transaction_type ||
+      context.reference_no ||
+      context.party_label ||
+      (context.lines?.length ?? 0) > 0,
+  )
 })
 
 const goBack = () => {

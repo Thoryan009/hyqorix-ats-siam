@@ -149,6 +149,39 @@ export function getFilledJournalLines(lines) {
   return (lines ?? []).filter((line) => !isJournalLineEmpty(line))
 }
 
+export function buildNarrationHintContext(form, lines, options = {}) {
+  const {
+    transactionTypeOptions = [],
+    partyTypeOptions = [],
+    partyLedgerOptions = [],
+    accountOptions = [],
+    projectOptions = [],
+  } = options
+
+  const transactionTypeLabel =
+    getOptionLabel(transactionTypeOptions, form?.transaction_type) ||
+    getTransactionTypeLabel(form?.transaction_type)
+
+  const partyTypeLabel = getOptionLabel(partyTypeOptions, form?.party_type)
+  const partyLedgerLabel = getOptionLabel(partyLedgerOptions, form?.party_id)
+  const partyLabel = [partyTypeLabel, partyLedgerLabel].filter(Boolean).join(' · ')
+
+  return {
+    voucher_date: form?.voucher_date || null,
+    transaction_type: form?.transaction_type || null,
+    transaction_type_label: transactionTypeLabel || null,
+    reference_no: form?.reference_no || null,
+    party_label: partyLabel || null,
+    project_label: getProjectLabel(form?.project_id, projectOptions) || null,
+    lines: getFilledJournalLines(lines).map((line) => ({
+      account_label: getOptionLabel(accountOptions, line.account_id) || null,
+      debit: Number(line.debit) || 0,
+      credit: Number(line.credit) || 0,
+      cost_type_label: getCostTypeLabel(line.cost_type) || null,
+    })),
+  }
+}
+
 export function normalizeReceiptFiles(value) {
   if (Array.isArray(value)) {
     return value.filter((item) => item instanceof File)
