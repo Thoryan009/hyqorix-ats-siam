@@ -19,6 +19,7 @@ Route::prefix('journals')->group(function () {
     Route::get('job-options', [JournalController::class, 'jobOptions']);
     Route::get('demand-letter-options', [JournalController::class, 'demandLetterOptions']);
     Route::post('narration-hints', [JournalController::class, 'narrationHints']);
+    Route::post('entry-chat', [JournalController::class, 'entryChat']);
     Route::post('/', [JournalController::class, 'store']);
     Route::post('{journal}/approve', [JournalController::class, 'approve']);
     Route::post('{journal}/return', [JournalController::class, 'return']);

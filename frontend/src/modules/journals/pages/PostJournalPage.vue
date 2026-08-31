@@ -13,6 +13,8 @@
       </BaseButton>
     </PageHeader>
 
+    <JournalEntryChatPanel />
+
     <div class="mb-6 flex flex-wrap gap-2">
       <button
         v-for="tab in pageTabs"
@@ -661,6 +663,7 @@ import { useJournalMutations } from '../queries/useJournalMutations'
 import { usePartyLedgerOptionsQuery } from '../queries/usePartyLedgerOptionsQuery'
 import { usePendingApprovalJournalsQuery, useReturnedJournalsQuery } from '../queries/usePendingApprovalJournalsQuery'
 import JournalApprovalPreview from './components/JournalApprovalPreview.vue'
+import JournalEntryChatPanel from './components/JournalEntryChatPanel.vue'
 import JournalManagerCommentPresets from './components/JournalManagerCommentPresets.vue'
 import JournalReturnSuccess from './components/JournalReturnSuccess.vue'
 import JournalApprovalSuccess from './components/JournalApprovalSuccess.vue'

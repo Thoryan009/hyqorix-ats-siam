@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Journals\Models\Journal;
 use App\Modules\Journals\Requests\JournalApproveRequest;
 use App\Modules\Journals\Requests\JournalIndexRequest;
+use App\Modules\Journals\Requests\JournalEntryChatRequest;
 use App\Modules\Journals\Requests\JournalNarrationHintRequest;
 use App\Modules\Journals\Requests\JournalPayRequest;
 use App\Modules\Journals\Requests\JournalResubmitRequest;
@@ -13,6 +14,7 @@ use App\Modules\Journals\Requests\JournalReverseRequest;
 use App\Modules\Journals\Requests\JournalReturnRequest;
 use App\Modules\Journals\Requests\JournalStoreRequest;
 use App\Modules\Journals\Resources\JournalResource;
+use App\Modules\Journals\Services\JournalEntryChatService;
 use App\Modules\Journals\Services\JournalNarrationHintService;
 use App\Modules\Journals\Services\JournalService;
 use App\Modules\Shared\Helpers\FileHelper;
@@ -24,6 +26,7 @@ class JournalController extends Controller
     public function __construct(
         private readonly JournalService $service,
         private readonly JournalNarrationHintService $narrationHintService,
+        private readonly JournalEntryChatService $entryChatService,
     ) {}
 
     public function index(JournalIndexRequest $request): AnonymousResourceCollection
@@ -48,6 +51,20 @@ class JournalController extends Controller
         return apiSuccess([
             'hints' => $this->narrationHintService->generate($request->context()),
         ]);
+    }
+
+    public function entryChat(JournalEntryChatRequest $request): JsonResponse
+    {
+        try {
+            return apiSuccess([
+                'reply' => $this->entryChatService->chat($request->chatMessages()),
+            ]);
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
     }
 
     public function store(JournalStoreRequest $request): JsonResponse

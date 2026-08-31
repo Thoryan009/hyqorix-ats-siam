@@ -68,6 +68,16 @@ export async function fetchNarrationHints(payload) {
   return api.data.value?.data?.hints ?? []
 }
 
+export async function fetchEntryChat(payload) {
+  const api = useApi()
+  await api.sendRequest(`${BASE_URL}/entry-chat`, 'POST', payload)
+  if (api.error.value) {
+    throw api.error.value
+  }
+
+  return api.data.value?.data?.reply ?? ''
+}
+
 export async function submitJournal(payload) {
   const api = useApi()
   await api.sendRequest(BASE_URL, 'POST', resolveRequestBody(payload))
