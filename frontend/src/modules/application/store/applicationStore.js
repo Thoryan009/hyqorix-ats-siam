@@ -77,6 +77,8 @@ export const useApplicationStore = defineStore('application', () => {
 
     // single combined document
     single_document_preview: null,
+
+    create_party_account: 0,
   }
 
   const formData = ref(
@@ -93,7 +95,9 @@ export const useApplicationStore = defineStore('application', () => {
                   ? ['agent']
                   : key === 'applied_through'
                     ? 'agent'
-                    : '', // reset everything else
+                    : key === 'create_party_account'
+                      ? 0
+                      : '', // reset everything else
           ]),
         ),
   )
@@ -111,6 +115,8 @@ export const useApplicationStore = defineStore('application', () => {
           payload[key] = ['agent']
         } else if (key === 'applied_through') {
           payload[key] = 'agent'
+        } else if (key === 'create_party_account') {
+          payload[key] = 0
         } else {
           payload[key] = ''
         }

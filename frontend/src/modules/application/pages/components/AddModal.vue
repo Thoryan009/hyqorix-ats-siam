@@ -23,6 +23,12 @@
         <ApplicationDetailsSection :jobs="jobs" :agents="agents" />
         <LinksSection />
 
+        <CreatePartyAccountCheckbox
+          v-model="store.formData.create_party_account"
+          source-module="application"
+          :default-checked="false"
+        />
+
         <div
           v-if="formError"
           class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
@@ -75,6 +81,7 @@ import LinksSection from './formParts/LinksSection.vue'
 import SingleDocumentSection from './formParts/SingleDocumentSection.vue'
 import MergableDocumentsSection from './formParts/MergableDocumentsSection.vue'
 import {useTranslate} from '@/shared/composables/useTranslate'
+import CreatePartyAccountCheckbox from '@/modules/parties/components/CreatePartyAccountCheckbox.vue'
 
 const { t } = useTranslate()
 const store = useApplicationStore()

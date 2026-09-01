@@ -26,6 +26,7 @@ import { useClientMutations } from '@/modules/client/queries/useClientMutations'
 import app from '@/shared/config/appConfig'
 import CommonForm from './CommonForm.vue'
 import {useTranslate} from "@/shared/composables/useTranslate";
+import { buildEmptyFormData, resetCreatePartyAccount } from '@/modules/parties/utils/createPartyAccountForm'
 
 const { t } = useTranslate('client')
 // Store
@@ -65,11 +66,7 @@ const defaultFormData = {
 const formData = ref(
   app.moduleLocal
     ? { ...defaultFormData }
-    : Object.fromEntries(
-        Object.keys(defaultFormData)
-          .filter((key) => key !== 'status') // remove status
-          .map((key) => [key, ' ']), // set empty space
-      ),
+    : buildEmptyFormData(defaultFormData),
 )
 
 // Mutation
@@ -77,6 +74,7 @@ const { submit, submitLoading } = useClientMutations(store.moduleName, {
   onSuccess() {
     store.handleToggleModal()
     store.handleReset(formData.value)
+    resetCreatePartyAccount(formData.value)
   },
   onError: (error) => {
     console.log('Custom error handling', error)

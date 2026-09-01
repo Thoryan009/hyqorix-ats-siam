@@ -4,6 +4,7 @@ namespace App\Modules\Parties\Services;
 
 use App\Modules\Agent\Models\Agent;
 use App\Modules\Application\Models\Application;
+use App\Modules\Application\Helpers\ApplicationPresenter;
 use App\Modules\Client\Models\Client;
 use App\Modules\Employee\Models\Employee;
 use App\Modules\Parties\Models\Party;
@@ -113,9 +114,13 @@ class PartyService
         return $this->create($payload);
     }
 
-    public function shouldCreatePartyAccount(array $data): bool
+    public function shouldCreatePartyAccount(array $data, bool $default = true): bool
     {
-        return in_array($data['create_party_account'] ?? 1, [1, '1', true], true);
+        $value = array_key_exists('create_party_account', $data)
+            ? $data['create_party_account']
+            : ($default ? 1 : 0);
+
+        return in_array($value, [1, '1', true], true);
     }
 
     private function buildPartyPayloadFromEntity(string $sourceModule, string $typeCode, object $entity): ?array
@@ -148,6 +153,11 @@ class PartyService
                 /** @var Employee $entity */
                 $code = $this->normalizeShortCode('ST', null, $entity->id);
                 $name = (string) ($entity->user?->name ?? '');
+                break;
+            case 'application':
+                /** @var Application $entity */
+                $code = strtoupper(trim((string) ($entity->passport_no ?? '')));
+                $name = ApplicationPresenter::fullName($entity->sur_name ?? '', $entity->given_name ?? '') ?? '';
                 break;
             default:
                 return null;

@@ -7,6 +7,7 @@ use App\Modules\Application\Repositories\ApplicationRepository;
 use App\Modules\Application\Repositories\ProcessRepository;
 use App\Modules\Application\Services\ProcessService;
 use App\Modules\Finance\Services\FinanceAccountService;
+use App\Modules\Parties\Services\PartyService;
 use App\Services\BaseCachedService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,7 @@ class ApplicationService extends BaseCachedService
         private ProcessService $processService,
         private ProcessRepository $processRepository,
         private FinanceAccountService $financeAccountService,
+        private PartyService $partyService,
     ) {
         parent::__construct(new Application());
     }
@@ -69,9 +71,16 @@ class ApplicationService extends BaseCachedService
     public function create(array $data)
     {
         \Log::info('Creating application', $data);
+        $createPartyAccount = $this->partyService->shouldCreatePartyAccount($data, false);
+        unset($data['create_party_account']);
+
         $data['application_id'] = $this->generateApplicationId();
         $record = $this->mutate(fn() => $this->model->create($data));
         $this->financeAccountService->ensureApplicantAccount($record);
+
+        if ($createPartyAccount) {
+            $this->partyService->createFromSourceModule('application', $record);
+        }
 
         return $record;
     }

@@ -20,6 +20,7 @@ import { useVendorMutations } from '@/modules/vendor/queries/useVendorMutations'
 import app from '@/shared/config/appConfig'
 import CommonForm from './CommonForm.vue'
 import { useTranslate } from '@/shared/composables/useTranslate'
+import { buildEmptyFormData, resetCreatePartyAccount } from '@/modules/parties/utils/createPartyAccountForm'
 
 const { t } = useTranslate('vendor')
 const store = useVendorStore()
@@ -54,11 +55,7 @@ const defaultFormData = {
 const formData = ref(
   app.moduleLocal
     ? { ...defaultFormData }
-    : Object.fromEntries(
-        Object.keys(defaultFormData)
-          .filter((key) => key !== 'status')
-          .map((key) => [key, ' '])
-      )
+    : buildEmptyFormData(defaultFormData)
 )
 
 watch(
@@ -75,6 +72,7 @@ const { submit, submitLoading } = useVendorMutations(store.moduleName, {
   onSuccess() {
     store.handleToggleModal()
     store.handleReset(formData.value)
+    resetCreatePartyAccount(formData.value)
   },
 })
 
