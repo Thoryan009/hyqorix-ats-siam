@@ -2,6 +2,8 @@
 
 namespace App\Modules\Journals\Services;
 
+use App\Modules\Application\Helpers\ApplicationPresenter;
+use App\Modules\Application\Models\Application;
 use App\Modules\Journals\Models\Journal;
 use App\Modules\Journals\Repositories\JournalRepository;
 use App\Modules\JobList\Models\JobList;
@@ -35,6 +37,33 @@ class JournalService
                 'id' => $job->id,
                 'job_name' => $job->name,
                 'application_count' => (int) $job->applications_count,
+            ])
+            ->values()
+            ->all();
+    }
+
+    public function getSubLedgerApplicants(int $jobListId): array
+    {
+        if ($jobListId <= 0) {
+            return [];
+        }
+
+        return Application::query()
+            ->select(['id', 'given_name', 'sur_name', 'passport_no', 'application_id'])
+            ->where('job_list_id', $jobListId)
+            ->whereNotNull('passport_no')
+            ->where('passport_no', '!=', '')
+            ->orderBy('passport_no')
+            ->limit(500)
+            ->get()
+            ->map(fn (Application $application) => [
+                'id' => $application->id,
+                'passport_no' => strtoupper(trim((string) $application->passport_no)),
+                'full_name' => ApplicationPresenter::fullName(
+                    $application->given_name ?? '',
+                    $application->sur_name ?? '',
+                ),
+                'application_id' => $application->application_id,
             ])
             ->values()
             ->all();

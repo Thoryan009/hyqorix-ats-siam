@@ -217,9 +217,7 @@
               </th>
               <th class="min-w-[160px] border-b border-slate-200 px-3 py-2.5 font-semibold">
                 {{ t('journals.sub_ledger') }}
-              </th>
-              <th class="min-w-[140px] border-b border-slate-200 px-3 py-2.5 font-semibold">
-                {{ t('journals.cost_revenue_type') }}
+                <span v-if="requiresSubledger" class="text-red-500">*</span>
               </th>
               <th class="w-36 whitespace-nowrap border-b border-slate-200 px-2 py-2.5 text-right font-semibold">
                 {{ t('journals.debit_label') }}
@@ -247,18 +245,25 @@
                 />
               </td>
               <td class="border-b border-slate-100 px-3 py-2">
+                <button
+                  v-if="requiresSubledger"
+                  type="button"
+                  class="w-full rounded-md border px-3 py-2 text-left text-sm transition"
+                  :class="
+                    line.sub_ledger
+                      ? 'border-gray-300 bg-white text-slate-800 hover:border-primary'
+                      : 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-400'
+                  "
+                  @click="openSubLedgerModal(index)"
+                >
+                  {{ line.sub_ledger || t('journals.select_sub_ledger') }}
+                </button>
                 <BaseInput
+                  v-else
                   v-model="line.sub_ledger"
                   :placeholder="t('journals.optional')"
                   :disabled="true"
                   className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
-                />
-              </td>
-              <td class="border-b border-slate-100 px-3 py-2">
-                <BaseSelect
-                  v-model="line.cost_type"
-                  :options="costTypeOptions"
-                  :placeholder="t('journals.select_cost_type')"
                 />
               </td>
               <td class="w-36 border-b border-slate-100 px-2 py-2">
@@ -276,21 +281,32 @@
                 />
               </td>
               <td class="whitespace-nowrap border-b border-slate-100 px-3 py-2">
-                <div class="flex flex-nowrap items-center gap-1">
+                <div class="flex flex-nowrap items-center gap-2">
                   <button
                     type="button"
-                    class="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+                    class="inline-flex cursor-pointer items-center text-green-600 transition duration-200 hover:text-green-800"
+                    :title="t('journals.copy')"
                     @click="copyLine(index)"
                   >
-                    {{ t('journals.copy') }}
+                    <i class="fa fa-copy"></i>
                   </button>
                   <button
                     type="button"
-                    class="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    class="inline-flex cursor-pointer items-center text-blue-600 transition duration-200 hover:text-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
+                    :title="t('journals.duplicate')"
+                    :disabled="!(Number(line.debit) > 0)"
+                    @click="duplicateLine(index)"
+                  >
+                    <i class="fa fa-clone"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex cursor-pointer items-center text-red-600 transition duration-200 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+                    :title="t('journals.delete')"
                     :disabled="lines.length <= 1"
                     @click="deleteLine(index)"
                   >
-                    {{ t('journals.delete') }}
+                    <i class="fa fa-trash"></i>
                   </button>
                 </div>
               </td>
@@ -298,13 +314,13 @@
           </tbody>
           <tfoot>
             <tr class="bg-slate-50 font-semibold text-slate-800">
-              <td class="px-3 py-2.5" colspan="4">{{ t('journals.total') }}</td>
+              <td class="px-3 py-2.5" colspan="3">{{ t('journals.total') }}</td>
               <td class="px-3 py-2.5 text-right tabular-nums">{{ formatAmount(totalDebit) }}</td>
               <td class="px-3 py-2.5 text-right tabular-nums">{{ formatAmount(totalCredit) }}</td>
               <td class="px-3 py-2.5"></td>
             </tr>
             <tr class="text-slate-700">
-              <td class="px-3 py-2.5" colspan="4">
+              <td class="px-3 py-2.5" colspan="3">
                 {{ t('journals.difference') }}:
                 <span class="font-medium">{{ differenceLabel }}</span>
               </td>
@@ -648,6 +664,14 @@
       @paid="handlePaid"
       @view-journals="handlePaymentViewJournals"
     />
+
+    <SubLedgerApplicantModal
+      :is-visible="subLedgerModalOpen"
+      :job-list-id="selectedJobListId"
+      :model-value="activeSubLedgerValue"
+      @update:model-value="applySubLedgerSelection"
+      @close="closeSubLedgerModal"
+    />
   </SectionHeader>
 </template>
 
@@ -672,11 +696,11 @@ import JournalNarrationHints from './components/JournalNarrationHints.vue'
 import JournalPaymentPanel from './components/JournalPaymentPanel.vue'
 import JournalProjectSelect from './components/JournalProjectSelect.vue'
 import JournalReceiptUpload from './components/JournalReceiptUpload.vue'
+import SubLedgerApplicantModal from './components/SubLedgerApplicantModal.vue'
 import {
   buildJournalPayload,
   buildNarrationHintContext,
   buildResubmitPayload,
-  costTypeOptions,
   createEmptyJournalLine,
   defaultJournalForm,
   defaultJournalLines,
@@ -808,6 +832,8 @@ const filterReturnedJournal = filterPendingJournal
 const form = ref({ ...defaultJournalForm, voucher_date: todayIsoDate() })
 const lines = ref(defaultJournalLines.map((line) => ({ ...line })))
 const validationMessage = ref('')
+const subLedgerModalOpen = ref(false)
+const activeSubLedgerLineIndex = ref(null)
 const pendingStatus = ref('')
 let nextLineId = Math.max(...lines.value.map((line) => Number(line.id) || 0), 0) + 1
 
@@ -964,8 +990,24 @@ const transactionTypeOptions = computed(() =>
     id: item.id ?? item.code,
     code: item.code ?? item.id,
     name: item.name,
+    subledger_required: Boolean(item.subledger_required),
   })),
 )
+
+const requiresSubledger = computed(() => {
+  const code = form.value.transaction_type
+  if (!code) return false
+
+  return (transactionTypeOptionsData.value ?? []).some(
+    (item) => String(item.code ?? item.id) === String(code) && item.subledger_required,
+  )
+})
+
+const activeSubLedgerValue = computed(() => {
+  const index = activeSubLedgerLineIndex.value
+  if (index === null || index === undefined) return ''
+  return lines.value[index]?.sub_ledger ?? ''
+})
 
 const { data: partyTypeOptionsData } = usePartyTypeOptionsQuery('active')
 const partyTypeOptions = computed(() => [
@@ -1124,10 +1166,35 @@ watch(
   () => form.value.project_id,
   () => {
     if (skipPartyClear) return
-    if (!requiresPartyJobFilter(form.value.party_type)) return
-    form.value.party_id = ''
+    if (requiresPartyJobFilter(form.value.party_type)) {
+      form.value.party_id = ''
+    }
+    if (requiresSubledger.value) {
+      lines.value = lines.value.map((line) => ({ ...line, sub_ledger: '' }))
+    }
   },
 )
+
+const openSubLedgerModal = (index) => {
+  if (!selectedJobListId.value) {
+    toast.error(t('journals.error_job_required_for_sub_ledger'))
+    return
+  }
+
+  activeSubLedgerLineIndex.value = index
+  subLedgerModalOpen.value = true
+}
+
+const closeSubLedgerModal = () => {
+  subLedgerModalOpen.value = false
+  activeSubLedgerLineIndex.value = null
+}
+
+const applySubLedgerSelection = (value) => {
+  const index = activeSubLedgerLineIndex.value
+  if (index === null || index === undefined || !lines.value[index]) return
+  lines.value[index].sub_ledger = value
+}
 
 watch(selectedApprovalJournalId, () => {
   managerComment.value = ''
@@ -1167,6 +1234,30 @@ const copyLine = (index) => {
   lines.value.splice(index + 1, 0, copied)
 }
 
+const duplicateLine = (index) => {
+  const source = lines.value[index]
+  if (!source) return
+
+  const debit = Number(source.debit) || 0
+  if (debit <= 0) return
+
+  let targetIndex = index + 1
+  if (!lines.value[targetIndex]) {
+    lines.value.push(createEmptyJournalLine(nextLineId++))
+    targetIndex = lines.value.length - 1
+  }
+
+  const target = lines.value[targetIndex]
+  const subLedger = String(source.sub_ledger ?? '').trim()
+
+  if (subLedger) {
+    target.sub_ledger = subLedger
+  }
+
+  target.credit = source.debit
+  target.debit = ''
+}
+
 const deleteLine = (index) => {
   if (lines.value.length <= 1) return
   lines.value.splice(index, 1)
@@ -1177,8 +1268,6 @@ const partyTypeRef = computed(() => form.value.party_type)
 const requiresJobForParty = computed(() => requiresPartyJobFilter(form.value.party_type))
 
 const selectedJobListId = computed(() => {
-  if (!requiresJobForParty.value) return ''
-
   const parsed = parseProjectId(form.value.project_id)
   if (parsed.type !== PROJECT_SOURCE_JOB || !parsed.id) return ''
 
@@ -1187,7 +1276,10 @@ const selectedJobListId = computed(() => {
 })
 
 const partyLedgerFilters = computed(() => ({
-  job_list_id: selectedJobListId.value || undefined,
+  job_list_id:
+    requiresJobForParty.value && selectedJobListId.value
+      ? selectedJobListId.value
+      : undefined,
 }))
 
 const partyLedgerQueryEnabled = computed(() => {
@@ -1341,7 +1433,15 @@ const handleSubmit = async (status) => {
     return
   }
 
-  const errors = validateJournalForm(form.value, lines.value)
+  if (requiresSubledger.value && !selectedJobListId.value) {
+    validationMessage.value = t('journals.error_job_required_for_sub_ledger')
+    toast.error(validationMessage.value)
+    return
+  }
+
+  const errors = validateJournalForm(form.value, lines.value, {
+    requiresSubledger: requiresSubledger.value,
+  })
   if (errors.length) {
     const firstError = errors[0]
     const message = t(firstError.key, firstError.params || {})
@@ -1367,7 +1467,25 @@ const handleResubmit = async () => {
 
   if (!editingJournalId.value) return
 
-  const errors = validateJournalForm(form.value, lines.value)
+  if (
+    requiresPartyJobFilter(form.value.party_type) &&
+    form.value.party_id &&
+    !selectedJobListId.value
+  ) {
+    validationMessage.value = t('journals.error_job_required_for_party')
+    toast.error(validationMessage.value)
+    return
+  }
+
+  if (requiresSubledger.value && !selectedJobListId.value) {
+    validationMessage.value = t('journals.error_job_required_for_sub_ledger')
+    toast.error(validationMessage.value)
+    return
+  }
+
+  const errors = validateJournalForm(form.value, lines.value, {
+    requiresSubledger: requiresSubledger.value,
+  })
   if (errors.length) {
     const firstError = errors[0]
     const message = t(firstError.key, firstError.params || {})

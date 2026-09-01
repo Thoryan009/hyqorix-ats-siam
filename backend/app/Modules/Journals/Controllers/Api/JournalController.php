@@ -46,6 +46,18 @@ class JournalController extends Controller
         return apiSuccess($this->service->getDemandLetterOptions());
     }
 
+    public function subLedgerApplicants(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $jobListId = $request->integer('job_list_id');
+
+        return apiSuccess(
+            $this->service->getSubLedgerApplicants($jobListId),
+            'fetched',
+            200,
+            'Sub-ledger applicants'
+        );
+    }
+
     public function narrationHints(JournalNarrationHintRequest $request): JsonResponse
     {
         return apiSuccess([

@@ -82,6 +82,19 @@ export async function fetchDemandLetterOptions() {
   return response(api)
 }
 
+export async function fetchSubLedgerApplicants(jobListId) {
+  const api = useApi()
+  const url = buildUrl(`${BASE_URL}/sub-ledger-applicants`, {
+    job_list_id: jobListId,
+  })
+  await api.sendRequest(url)
+  if (api.error.value) {
+    throw api.error.value
+  }
+
+  return response(api)
+}
+
 export async function fetchNarrationHints(payload) {
   const api = useApi()
   await api.sendRequest(`${BASE_URL}/narration-hints`, 'POST', payload)

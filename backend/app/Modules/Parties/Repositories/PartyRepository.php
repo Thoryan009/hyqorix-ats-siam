@@ -4,6 +4,7 @@ namespace App\Modules\Parties\Repositories;
 
 use App\Modules\Application\Models\Application;
 use App\Modules\Parties\Models\Party;
+use App\Modules\Parties\Models\PartyType;
 use App\Repositories\BaseRepository;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -26,7 +27,15 @@ class PartyRepository extends BaseRepository
             $query->where('type', $filters['type']);
         }
 
-        if (!empty($filters['job_list_id'])) {
+        if (!empty($filters['job_list_id']) && !empty($filters['type'])) {
+            $partyType = PartyType::query()
+                ->where('code', $filters['type'])
+                ->first(['apply_job_filter']);
+
+            if (!$partyType?->apply_job_filter) {
+                return;
+            }
+
             $jobListId = (int) $filters['job_list_id'];
             $applicationIds = Application::query()
                 ->where('job_list_id', $jobListId)

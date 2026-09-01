@@ -218,9 +218,6 @@
                 <th class="min-w-[160px] border-b border-slate-200 px-3 py-2.5 font-semibold">
                   {{ t('journals.sub_ledger') }}
                 </th>
-                <th class="min-w-[140px] border-b border-slate-200 px-3 py-2.5 font-semibold">
-                  {{ t('journals.cost_revenue_type') }}
-                </th>
                 <th class="w-36 whitespace-nowrap border-b border-slate-200 px-2 py-2.5 text-right font-semibold">
                   {{ t('journals.debit_label') }}
                 </th>
@@ -252,13 +249,6 @@
                     :placeholder="t('journals.optional')"
                     :disabled="true"
                     className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
-                  />
-                </td>
-                <td class="border-b border-slate-100 px-3 py-2">
-                  <BaseSelect
-                    v-model="line.cost_type"
-                    :options="costTypeOptions"
-                    :placeholder="t('journals.select_cost_type')"
                   />
                 </td>
                 <td class="w-36 border-b border-slate-100 px-2 py-2">
@@ -298,13 +288,13 @@
             </tbody>
             <tfoot>
               <tr class="bg-slate-50 font-semibold text-slate-800">
-                <td class="px-3 py-2.5" colspan="4">{{ t('journals.total') }}</td>
+                <td class="px-3 py-2.5" colspan="3">{{ t('journals.total') }}</td>
                 <td class="px-3 py-2.5 text-right tabular-nums">{{ formatAmount(totalDebit) }}</td>
                 <td class="px-3 py-2.5 text-right tabular-nums">{{ formatAmount(totalCredit) }}</td>
                 <td class="px-3 py-2.5"></td>
               </tr>
               <tr class="text-slate-700">
-                <td class="px-3 py-2.5" colspan="4">
+                <td class="px-3 py-2.5" colspan="3">
                   {{ t('journals.difference') }}:
                   <span class="font-medium">{{ differenceLabel }}</span>
                 </td>
@@ -388,7 +378,6 @@ import JournalPaymentSuccess from './JournalPaymentSuccess.vue'
 import JournalReceiptUpload from './JournalReceiptUpload.vue'
 import {
   buildPayPayload,
-  costTypeOptions,
   createEmptyJournalLine,
   mapJournalToForm,
   mapJournalToLines,

@@ -1,13 +1,3 @@
-export const costTypeOptions = [
-  { id: 'general', name: 'General' },
-  { id: 'direct_cost', name: 'Direct Cost' },
-  { id: 'operating_expense', name: 'Operating Expense' },
-  { id: 'recruitment_revenue', name: 'Recruitment Revenue' },
-  { id: 'sales_return_refund', name: 'Sales Return / Refund' },
-  { id: 'asset', name: 'Asset' },
-  { id: 'liability', name: 'Liability' },
-]
-
 export const todayIsoDate = () => {
   const date = new Date()
   const year = date.getFullYear()
@@ -34,7 +24,6 @@ export const createEmptyJournalLine = (id = Date.now()) => ({
   id,
   account_id: '',
   sub_ledger: '',
-  cost_type: '',
   debit: '',
   credit: '',
 })
@@ -52,10 +41,6 @@ export function getTransactionTypeLabel(id) {
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
-}
-
-export function getCostTypeLabel(id) {
-  return getOptionLabel(costTypeOptions, id)
 }
 
 export function getProjectLabel(id, options = []) {
@@ -138,11 +123,10 @@ export function normalizeProjectId(value) {
 
 export function isJournalLineEmpty(line) {
   const accountId = String(line?.account_id ?? '').trim()
-  const costType = String(line?.cost_type ?? '').trim()
   const debit = Number(line?.debit) || 0
   const credit = Number(line?.credit) || 0
 
-  return !accountId && !costType && debit <= 0 && credit <= 0
+  return !accountId && debit <= 0 && credit <= 0
 }
 
 export function getFilledJournalLines(lines) {
@@ -177,7 +161,6 @@ export function buildNarrationHintContext(form, lines, options = {}) {
       account_label: getOptionLabel(accountOptions, line.account_id) || null,
       debit: Number(line.debit) || 0,
       credit: Number(line.credit) || 0,
-      cost_type_label: getCostTypeLabel(line.cost_type) || null,
     })),
   }
 }
@@ -215,7 +198,6 @@ export function buildJournalPayload(form, lines, status) {
     lines: filledLines.map((line) => ({
       account_id: line.account_id,
       sub_ledger: line.sub_ledger || null,
-      cost_type: line.cost_type || null,
       debit: Number(line.debit) || 0,
       credit: Number(line.credit) || 0,
     })),
@@ -270,13 +252,12 @@ export function mapJournalToLines(journal) {
     id: line.id || index + 1,
     account_id: line.account_id || '',
     sub_ledger: line.sub_ledger || '',
-    cost_type: line.cost_type || '',
     debit: Number(line.debit) > 0 ? line.debit : '',
     credit: Number(line.credit) > 0 ? line.credit : '',
   }))
 }
 
-export function validateJournalForm(form, lines) {
+export function validateJournalForm(form, lines, options = {}) {
   const errors = []
 
   if (!form.voucher_date) {
@@ -339,6 +320,13 @@ export function validateJournalForm(form, lines) {
         params: { row: rowNo },
       })
     }
+
+    if (options.requiresSubledger && !String(line.sub_ledger ?? '').trim()) {
+      errors.push({
+        key: 'journals.error_row_sub_ledger_required',
+        params: { row: rowNo },
+      })
+    }
   })
 
   const totalDebit = filled.reduce((sum, item) => sum + (Number(item.line.debit) || 0), 0)
@@ -370,7 +358,6 @@ export function flattenJournalRows(journals = []) {
       party_ref: journal.party_code || journal.party_name || journal.reference_no || '',
       debit: Number(line.debit) > 0 ? Number(line.debit) : null,
       credit: Number(line.credit) > 0 ? Number(line.credit) : null,
-      cost_class: getCostTypeLabel(line.cost_type),
       project_client: journal.project_name || getProjectLabel(journal.project_id),
       status: journal.status,
       status_raw: journal.status_raw,

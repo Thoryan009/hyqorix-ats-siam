@@ -65,9 +65,6 @@
                 {{ t('journals.credit') }}
               </th>
               <th class="whitespace-nowrap border border-[#163a6d] px-3 py-2.5 font-semibold">
-                {{ t('journals.cost_class') }}
-              </th>
-              <th class="whitespace-nowrap border border-[#163a6d] px-3 py-2.5 font-semibold">
                 {{ t('journals.project_client') }}
               </th>
               <th class="whitespace-nowrap border border-[#163a6d] px-3 py-2.5 font-semibold">
@@ -110,9 +107,6 @@
               </td>
               <td class="whitespace-nowrap border border-slate-200 px-3 py-2 text-right tabular-nums text-slate-800">
                 {{ formatAmount(row.credit) }}
-              </td>
-              <td class="whitespace-nowrap border border-slate-200 px-3 py-2 text-slate-500">
-                {{ row.cost_class || '' }}
               </td>
               <td class="whitespace-nowrap border border-slate-200 px-3 py-2 text-slate-700">
                 {{ row.project_client || '' }}

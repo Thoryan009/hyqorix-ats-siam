@@ -22,6 +22,7 @@ Route::prefix('journals')->group(function () {
     Route::get('general-ledger', [GeneralLedgerController::class, 'index']);
     Route::get('job-options', [JournalController::class, 'jobOptions']);
     Route::get('demand-letter-options', [JournalController::class, 'demandLetterOptions']);
+    Route::get('sub-ledger-applicants', [JournalController::class, 'subLedgerApplicants']);
     Route::post('narration-hints', [JournalController::class, 'narrationHints']);
     Route::post('entry-chat', [JournalController::class, 'entryChat']);
     Route::post('/', [JournalController::class, 'store']);

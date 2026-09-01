@@ -128,9 +128,6 @@
                 <th class="hidden px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:table-cell">
                   {{ t('journals.sub_ledger') }}
                 </th>
-                <th class="hidden px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 lg:table-cell">
-                  {{ t('journals.cost_revenue_type') }}
-                </th>
                 <th class="w-28 px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   {{ t('journals.debit_label') }}
                 </th>
@@ -153,17 +150,10 @@
                   </p>
                   <p class="mt-1 text-xs text-slate-400 md:hidden">
                     <span v-if="line.sub_ledger">{{ line.sub_ledger }}</span>
-                    <span v-if="line.sub_ledger && getCostTypeLabel(line.cost_type)"> · </span>
-                    <span v-if="getCostTypeLabel(line.cost_type)">
-                      {{ getCostTypeLabel(line.cost_type) }}
-                    </span>
                   </p>
                 </td>
                 <td class="hidden px-3 py-3 text-slate-600 md:table-cell">
                   {{ line.sub_ledger || '—' }}
-                </td>
-                <td class="hidden px-3 py-3 text-slate-600 lg:table-cell">
-                  {{ getCostTypeLabel(line.cost_type) || '—' }}
                 </td>
                 <td class="px-3 py-3 text-right font-medium tabular-nums text-slate-900">
                   <span v-if="Number(line.debit) > 0">{{ formatAmount(line.debit) }}</span>
@@ -175,7 +165,7 @@
                 </td>
               </tr>
               <tr v-if="!lines.length">
-                <td colspan="6" class="px-4 py-10 text-center text-sm text-slate-500">
+                <td colspan="5" class="px-4 py-10 text-center text-sm text-slate-500">
                   {{ t('journals.posting_preview_empty') }}
                 </td>
               </tr>
@@ -264,7 +254,7 @@
 import { computed } from 'vue'
 import { useTranslate } from '@/shared/composables/useTranslate'
 import JournalReceiptGallery from './JournalReceiptGallery.vue'
-import { getCostTypeLabel, getProjectLabel } from '../../data/postJournalStatic'
+import { getProjectLabel } from '../../data/postJournalStatic'
 
 const props = defineProps({
   journal: {
