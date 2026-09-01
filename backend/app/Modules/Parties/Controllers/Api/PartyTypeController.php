@@ -32,10 +32,12 @@ class PartyTypeController extends Controller
             'status' => $request->query('status', 'active'),
         ])->map(fn (PartyType $type) => [
             'id' => $type->code,
+            'party_type_id' => $type->id,
             'name' => $type->name,
             'code' => $type->code,
             'status' => $type->status,
             'sort_order' => (int) $type->sort_order,
+            'source_module' => $type->source_module,
         ])->values();
 
         return apiSuccess($options);

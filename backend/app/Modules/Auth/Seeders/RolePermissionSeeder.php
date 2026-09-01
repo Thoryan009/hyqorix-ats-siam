@@ -103,7 +103,7 @@ class RolePermissionSeeder extends Seeder
             'process_expiry_report' => ['view'],
             'role' => ['create', 'edit', 'delete', 'view'],
             'permission' => ['create', 'edit', 'delete', 'view'],
-            'setting' => ['edit', 'view', 'basic', 'password', 'backup', 'embassy', 'document_expiry'],
+            'setting' => ['edit', 'view', 'basic', 'password', 'backup', 'embassy', 'document_expiry', 'party_type_mapping'],
             'activity' => ['view'],
             'user' => ['create', 'edit', 'delete'],
         ];

@@ -5,6 +5,7 @@ export default {
       password: 'Password Change',
       backup: 'Database Backup',
       embassy: 'Embassy Settings',
+      party_type_mapping: 'Party Type Mapping',
     },
 
     basic: {
@@ -73,6 +74,14 @@ export default {
       agency_name: 'Agency Name for Embassy',
       company_rl: 'Company RL',
       save_settings: 'Save Settings',
+    },
+
+    party_type_mapping: {
+      description:
+        'Link each management module to one party type. Each management and party type can only be linked once.',
+      select_party_type: 'Select party type',
+      none: 'None',
+      save_mappings: 'Save Mappings',
     },
   },
 }

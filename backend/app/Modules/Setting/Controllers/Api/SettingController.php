@@ -9,12 +9,15 @@ use App\Modules\Setting\Resources\SettingResource;
 use App\Modules\Setting\Requests\EmbassyRequest;
 use App\Modules\Setting\Resources\EmbassyResource;
 use App\Modules\Setting\Services\SettingDataDbService;
+use App\Modules\Parties\Requests\PartyTypeMappingRequest;
+use App\Modules\Parties\Services\PartyTypeService;
 
 class SettingController extends Controller
 {
     public function __construct(
         private SettingService $service,
-        private SettingDataDbService $dataDbService
+        private SettingDataDbService $dataDbService,
+        private PartyTypeService $partyTypeService,
     ) {}
 
      public function show($id)
@@ -110,6 +113,23 @@ class SettingController extends Controller
     {
         $data = $this->dataDbService->getSettingData();
         return apiSuccess($data, 'Setting data retrieved successfully');
+    }
+
+    public function partyTypeMappingsShow()
+    {
+        return apiSuccess(
+            $this->partyTypeService->getSourceModuleMappings(),
+            'Party type mappings retrieved successfully'
+        );
+    }
+
+    public function partyTypeMappingsUpdate(PartyTypeMappingRequest $request)
+    {
+        $mappings = $this->partyTypeService->updateSourceModuleMappings(
+            $request->validated('mappings')
+        );
+
+        return apiSuccess($mappings, 'Party type mappings updated successfully');
     }
 
 

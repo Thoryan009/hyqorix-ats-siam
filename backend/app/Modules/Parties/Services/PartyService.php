@@ -7,6 +7,7 @@ use App\Modules\Application\Models\Application;
 use App\Modules\Client\Models\Client;
 use App\Modules\Employee\Models\Employee;
 use App\Modules\Parties\Models\Party;
+use App\Modules\Parties\Models\PartyType;
 use App\Modules\Parties\Repositories\PartyRepository;
 use App\Modules\Parties\Resources\PartyCandidateSourceResource;
 use App\Modules\Parties\Resources\PartySourceOptionResource;
@@ -77,22 +78,28 @@ class PartyService
 
     public function getSourceOptions(string $type, array $filters = []): array
     {
-        return match ($type) {
-            'Client' => PartySourceOptionResource::collection($this->getClientSourceOptions())->resolve(),
-            'Principal' => PartySourceOptionResource::collection($this->getPrincipalSourceOptions())->resolve(),
-            'Agent' => PartySourceOptionResource::collection($this->getAgentSourceOptions())->resolve(),
-            'Candidate' => PartyCandidateSourceResource::collection(
-                $this->getCandidateSourceOptions($filters)
+        $partyType = PartyType::query()->where('code', $type)->first();
+
+        if (!$partyType || !$partyType->source_module) {
+            throw new InvalidArgumentException("Party source options are not available for type [{$type}].");
+        }
+
+        return match ($partyType->source_module) {
+            'client' => PartySourceOptionResource::collection($this->getClientSourceOptions($type))->resolve(),
+            'principal' => PartySourceOptionResource::collection($this->getPrincipalSourceOptions($type))->resolve(),
+            'agent' => PartySourceOptionResource::collection($this->getAgentSourceOptions($type))->resolve(),
+            'application' => PartyCandidateSourceResource::collection(
+                $this->getCandidateSourceOptions($type, $filters)
             )->resolve(),
-            'Vendor' => PartySourceOptionResource::collection($this->getVendorSourceOptions())->resolve(),
-            'Staff' => PartySourceOptionResource::collection($this->getStaffSourceOptions())->resolve(),
+            'vendor' => PartySourceOptionResource::collection($this->getVendorSourceOptions($type))->resolve(),
+            'employee' => PartySourceOptionResource::collection($this->getStaffSourceOptions($type))->resolve(),
             default => throw new InvalidArgumentException("Party source options are not available for type [{$type}]."),
         };
     }
 
-    private function getClientSourceOptions(): Collection
+    private function getClientSourceOptions(string $type): Collection
     {
-        $existingCodes = $this->getExistingPartyCodeSet('Client');
+        $existingCodes = $this->getExistingPartyCodeSet($type);
 
         return Client::query()
             ->select(['id', 'client_id', 'user_id'])
@@ -110,9 +117,9 @@ class PartyService
             ->values();
     }
 
-    private function getPrincipalSourceOptions(): Collection
+    private function getPrincipalSourceOptions(string $type): Collection
     {
-        $existingCodes = $this->getExistingPartyCodeSet('Principal', 'PR');
+        $existingCodes = $this->getExistingPartyCodeSet($type, 'PR');
 
         return Principal::query()
             ->select(['id', 'principal_id', 'user_id'])
@@ -131,9 +138,9 @@ class PartyService
             ->values();
     }
 
-    private function getAgentSourceOptions(): Collection
+    private function getAgentSourceOptions(string $type): Collection
     {
-        $existingCodes = $this->getExistingPartyCodeSet('Agent', 'AG');
+        $existingCodes = $this->getExistingPartyCodeSet($type, 'AG');
 
         return Agent::query()
             ->select(['id', 'agent_id', 'user_id'])
@@ -152,9 +159,9 @@ class PartyService
             ->values();
     }
 
-    private function getVendorSourceOptions(): Collection
+    private function getVendorSourceOptions(string $type): Collection
     {
-        $existingCodes = $this->getExistingPartyCodeSet('Vendor');
+        $existingCodes = $this->getExistingPartyCodeSet($type);
 
         return Vendor::query()
             ->select(['id', 'vendor_id', 'organization_name', 'user_id'])
@@ -172,10 +179,10 @@ class PartyService
             ->values();
     }
 
-    private function getStaffSourceOptions(): Collection
+    private function getStaffSourceOptions(string $type): Collection
     {
-        $existingCodes = $this->getExistingPartyCodeSet('Staff', 'ST');
-        $existingNames = $this->getExistingPartyNameSet('Staff');
+        $existingCodes = $this->getExistingPartyCodeSet($type, 'ST');
+        $existingNames = $this->getExistingPartyNameSet($type);
 
         return Employee::query()
             ->select(['id', 'user_id'])
@@ -202,7 +209,7 @@ class PartyService
             ->values();
     }
 
-    private function getCandidateSourceOptions(array $filters = []): Collection
+    private function getCandidateSourceOptions(string $type, array $filters = []): Collection
     {
         $jobListId = isset($filters['job_list_id']) ? (int) $filters['job_list_id'] : 0;
 
@@ -210,7 +217,7 @@ class PartyService
             return collect();
         }
 
-        $existingCodes = $this->getExistingPartyCodeSet('Candidate');
+        $existingCodes = $this->getExistingPartyCodeSet($type);
 
         return Application::query()
             ->select(['id', 'given_name', 'sur_name', 'application_id', 'passport_no', 'job_list_id'])

@@ -227,7 +227,7 @@ const partyTypeRef = computed(() => partyType.value)
 const sourceFiltersRef = computed(() =>
   requiresPartyJobFilter(partyType.value) ? { job_list_id: jobId.value || undefined } : {},
 )
-const showJobFilter = computed(() => partyType.value === 'Candidate')
+const showJobFilter = computed(() => requiresPartyJobFilter(partyType.value))
 const isBulkModalOpen = computed(() => store.isBulkModal)
 const { data: jobOptionsData, isLoading: isJobLoading } = usePartyJobOptionsQuery(showJobFilter)
 const { data: sourceData, isLoading: isSourceLoading, isFetching: isSourceFetching } =

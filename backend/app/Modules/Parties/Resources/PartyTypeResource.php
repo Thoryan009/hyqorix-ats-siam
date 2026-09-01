@@ -16,6 +16,7 @@ class PartyTypeResource extends JsonResource
             'sort_order' => (int) $this->sort_order,
             'status' => $this->status === 'active' ? 'Active' : 'Inactive',
             'status_raw' => $this->status,
+            'source_module' => $this->source_module,
             'created_at' => DateTimeFormatter::formatDateTime($this->created_at),
             'updated_at' => DateTimeFormatter::formatDateTime($this->updated_at),
             'created_by' => $this->createdBy?->name,

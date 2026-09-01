@@ -43,6 +43,16 @@
                         {{ t('setting.tabs.embassy') }}
                     </button>
 
+                    <button v-can="'setting.party_type_mapping'" @click="activeTab = 'party_type_mapping'"
+                        :class="[
+                            'px-6 py-4 text-sm font-medium border-b-2 transition-colors',
+                            activeTab === 'party_type_mapping' ?
+                            'border-primary text-primary' :
+                            'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                        ]">
+                        {{ t('setting.tabs.party_type_mapping') }}
+                    </button>
+
 
                 </nav>
             </div>
@@ -61,6 +71,12 @@
                 <!-- Embassy Settings Tab -->
                 <EmbassySettings v-if="activeTab === 'embassy' " v-can="'setting.embassy'" />
 
+                <!-- Party Type Mapping Tab -->
+                <PartyTypeMappingSettings
+                    v-if="activeTab === 'party_type_mapping'"
+                    v-can="'setting.party_type_mapping'"
+                />
+
 
             </div>
         </div>
@@ -76,6 +92,7 @@
     import PasswordChange from './parts/PasswordChange.vue'
     import DatabaseBackup from './parts/DatabaseBackup.vue'
     import EmbassySettings from './parts/EmbassySettings.vue'
+    import PartyTypeMappingSettings from './parts/PartyTypeMappingSettings.vue'
     import { useTranslate } from '@/shared/composables/useTranslate'
     const { t } = useTranslate()
     // Active tab state

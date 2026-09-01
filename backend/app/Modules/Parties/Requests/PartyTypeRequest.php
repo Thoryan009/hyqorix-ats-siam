@@ -55,6 +55,13 @@ class PartyTypeRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
+            'source_module' => [
+                'nullable',
+                'string',
+                'max:50',
+                Rule::in(array_keys(config('parties.source_modules', []))),
+                Rule::unique('party_types', 'source_module')->ignore($partyTypeId),
+            ],
         ];
     }
 

@@ -1,36 +1,33 @@
 import { fetchPartySourceOptions } from '@/modules/parties/services/partyService'
+import { usePartyTypeSourceStore } from '@/modules/parties/store/partyTypeSourceStore'
 
-export const partySourceConfigs = {
-  Client: {
+const partySourceModules = {
+  client: {
     selectLabelKey: 'parties.select_client',
-    fetch: (filters = {}) => fetchPartySourceOptions('Client', filters),
     mapItem: (row) => ({
       id: row.id,
       code: row.code,
       name: row.name,
     }),
   },
-  Principal: {
+  principal: {
     selectLabelKey: 'parties.select_principal',
-    fetch: (filters = {}) => fetchPartySourceOptions('Principal', filters),
     mapItem: (row) => ({
       id: row.id,
       code: row.code,
       name: row.name,
     }),
   },
-  Agent: {
+  agent: {
     selectLabelKey: 'parties.select_agent',
-    fetch: (filters = {}) => fetchPartySourceOptions('Agent', filters),
     mapItem: (row) => ({
       id: row.id,
       code: row.code,
       name: row.name,
     }),
   },
-  Candidate: {
+  application: {
     selectLabelKey: 'parties.select_candidate',
-    fetch: (filters = {}) => fetchPartySourceOptions('Candidate', filters),
     requiresJobFilter: true,
     mapItem: (row) => ({
       id: row.id,
@@ -39,34 +36,47 @@ export const partySourceConfigs = {
       applicationId: row.application_id,
     }),
   },
-  Vendor: {
+  vendor: {
     selectLabelKey: 'parties.select_vendor',
-    fetch: (filters = {}) => fetchPartySourceOptions('Vendor', filters),
     mapItem: (row) => ({
       id: row.id,
       code: row.code,
       name: row.name,
     }),
   },
-  Staff: {
+  employee: {
     selectLabelKey: 'parties.select_staff',
-    fetch: (filters = {}) => fetchPartySourceOptions('Staff', filters),
     mapItem: (row) => ({
       id: row.id,
       code: row.code,
       name: row.name,
     }),
   },
+}
+
+function resolveSourceModule(partyType) {
+  const store = usePartyTypeSourceStore()
+  return store.getSourceModule(partyType)
 }
 
 export function hasPartySource(partyType) {
-  return Boolean(partySourceConfigs[partyType])
+  const sourceModule = resolveSourceModule(partyType)
+  return Boolean(sourceModule && partySourceModules[sourceModule])
 }
 
 export function requiresPartyJobFilter(partyType) {
-  return Boolean(partySourceConfigs[partyType]?.requiresJobFilter)
+  const sourceModule = resolveSourceModule(partyType)
+  return Boolean(partySourceModules[sourceModule]?.requiresJobFilter)
 }
 
 export function getPartySourceConfig(partyType) {
-  return partySourceConfigs[partyType] ?? null
+  const sourceModule = resolveSourceModule(partyType)
+  const base = sourceModule ? partySourceModules[sourceModule] : null
+
+  if (!base) return null
+
+  return {
+    ...base,
+    fetch: (filters = {}) => fetchPartySourceOptions(partyType, filters),
+  }
 }

@@ -190,7 +190,7 @@ const sourceFiltersRef = computed(() =>
   requiresPartyJobFilter(formData.value.type) ? { job_list_id: jobId.value || undefined } : {},
 )
 const showJobFilter = computed(
-  () => store.isModal && !store.isEditModal && formData.value.type === 'Candidate',
+  () => store.isModal && !store.isEditModal && requiresPartyJobFilter(formData.value.type),
 )
 const isAddModalOpen = computed(() => store.isModal && !store.isEditModal)
 const { data: jobOptionsData, isLoading: isJobLoading } = usePartyJobOptionsQuery(showJobFilter)

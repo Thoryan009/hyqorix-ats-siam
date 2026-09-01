@@ -9,7 +9,7 @@ class ModuleServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->mergeConfigFrom(__DIR__.'/Config/sourceModules.php', 'parties.source_modules');
     }
 
     public function boot(): void

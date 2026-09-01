@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/vue-query'
-import { computed, unref } from 'vue'
+import { computed, unref, watch } from 'vue'
 import { fetchPartyTypeOptions } from '../services/partyTypeService'
+import { usePartyTypeSourceStore } from '../store/partyTypeSourceStore'
 
 export function usePartyTypeOptionsQuery(statusRef = 'active', enabledRef = true) {
   const status = computed(() => unref(statusRef) || 'active')
   const enabled = computed(() => Boolean(unref(enabledRef)))
+  const sourceStore = usePartyTypeSourceStore()
 
-  return useQuery({
+  const query = useQuery({
     queryKey: computed(() => ['party-type-options', status.value]),
     queryFn: async () => {
       const result = await fetchPartyTypeOptions(status.value)
@@ -18,4 +20,16 @@ export function usePartyTypeOptionsQuery(statusRef = 'active', enabledRef = true
     gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
+
+  watch(
+    () => query.data.value,
+    (partyTypes) => {
+      if (partyTypes) {
+        sourceStore.setFromPartyTypes(partyTypes)
+      }
+    },
+    { immediate: true },
+  )
+
+  return query
 }

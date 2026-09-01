@@ -34,7 +34,45 @@ class PartyTypeService
             $query->where('status', $status);
         }
 
-        return $query->get(['id', 'code', 'name', 'status', 'sort_order']);
+        return $query->get(['id', 'code', 'name', 'status', 'sort_order', 'source_module']);
+    }
+
+    public function getSourceModuleMappings(): array
+    {
+        $modules = config('parties.source_modules', []);
+        $linked = $this->model->newQuery()
+            ->whereNotNull('source_module')
+            ->pluck('id', 'source_module');
+
+        return collect($modules)->map(function (string $label, string $key) use ($linked) {
+            return [
+                'source_module' => $key,
+                'label' => $label,
+                'party_type_id' => $linked->get($key),
+            ];
+        })->values()->all();
+    }
+
+    public function updateSourceModuleMappings(array $mappings): array
+    {
+        return DB::transaction(function () use ($mappings) {
+            $this->model->newQuery()->update(['source_module' => null]);
+
+            foreach ($mappings as $mapping) {
+                $partyTypeId = $mapping['party_type_id'] ?? null;
+                $sourceModule = $mapping['source_module'] ?? null;
+
+                if (!$sourceModule || !$partyTypeId) {
+                    continue;
+                }
+
+                $this->model->newQuery()
+                    ->whereKey($partyTypeId)
+                    ->update(['source_module' => $sourceModule]);
+            }
+
+            return $this->getSourceModuleMappings();
+        });
     }
 
     public function getPartyType(PartyType $partyType): PartyType

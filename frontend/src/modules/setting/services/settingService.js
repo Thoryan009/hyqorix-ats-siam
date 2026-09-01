@@ -21,6 +21,24 @@ export async function fetchSettingData() {
   return response(api)
 }
 
+export async function fetchPartyTypeMappings() {
+  const api = useApi()
+  await api.sendRequest('settings/party-type-mappings')
+  return response(api)
+}
+
+export async function updatePartyTypeMappings(payload) {
+  const api = useApi()
+  await api.sendRequest('settings/party-type-mappings', 'PUT', payload, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (api.error.value) throw api.error.value
+  return api.data.value
+}
+
 // Update Settings
 export async function updateData({ id, payload }) {
   const api = useApi()
