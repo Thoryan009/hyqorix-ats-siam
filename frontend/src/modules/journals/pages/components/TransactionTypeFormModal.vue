@@ -47,6 +47,82 @@
         />
       </div>
 
+      <div class="space-y-2">
+        <BaseLabel>{{ t('journal_transaction_types.subledger_required') }}</BaseLabel>
+        <div class="grid grid-cols-2 gap-3">
+          <label
+            class="flex items-center gap-3 rounded-lg border p-4 transition cursor-pointer"
+            :class="
+              formData.subledger_required == '1'
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-300'
+            "
+          >
+            <input
+              type="radio"
+              v-model="formData.subledger_required"
+              value="1"
+              class="h-3 w-3"
+            />
+            <p class="font-medium">{{ t('shared.labels.yes') }}</p>
+          </label>
+          <label
+            class="flex items-center gap-3 rounded-lg border p-4 transition cursor-pointer"
+            :class="
+              formData.subledger_required == '0'
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-300'
+            "
+          >
+            <input
+              type="radio"
+              v-model="formData.subledger_required"
+              value="0"
+              class="h-3 w-3"
+            />
+            <p class="font-medium">{{ t('shared.labels.no') }}</p>
+          </label>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <BaseLabel>{{ t('journal_transaction_types.demand_letter_required') }}</BaseLabel>
+        <div class="grid grid-cols-2 gap-3">
+          <label
+            class="flex items-center gap-3 rounded-lg border p-4 transition cursor-pointer"
+            :class="
+              formData.demand_letter_required == '1'
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-300'
+            "
+          >
+            <input
+              type="radio"
+              v-model="formData.demand_letter_required"
+              value="1"
+              class="h-3 w-3"
+            />
+            <p class="font-medium">{{ t('shared.labels.yes') }}</p>
+          </label>
+          <label
+            class="flex items-center gap-3 rounded-lg border p-4 transition cursor-pointer"
+            :class="
+              formData.demand_letter_required == '0'
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-300'
+            "
+          >
+            <input
+              type="radio"
+              v-model="formData.demand_letter_required"
+              value="0"
+              class="h-3 w-3"
+            />
+            <p class="font-medium">{{ t('shared.labels.no') }}</p>
+          </label>
+        </div>
+      </div>
+
       <div class="flex justify-end gap-2 pt-4">
         <BaseButton
           class="bg-yellow-600 hover:bg-yellow-700"
@@ -81,6 +157,8 @@ const emptyFormData = {
   name: '',
   sort_order: 0,
   status: 'active',
+  subledger_required: '0',
+  demand_letter_required: '0',
 }
 
 const sampleFormData = {
@@ -88,6 +166,8 @@ const sampleFormData = {
   name: 'Client Advance',
   sort_order: 11,
   status: 'active',
+  subledger_required: '0',
+  demand_letter_required: '0',
 }
 
 const createDefaultForm = () =>
@@ -116,6 +196,8 @@ watch(
         name: store.item.name ?? '',
         sort_order: store.item.sort_order ?? 0,
         status: store.item.status_raw ?? 'active',
+        subledger_required: store.item.subledger_required ? '1' : '0',
+        demand_letter_required: store.item.demand_letter_required ? '1' : '0',
       }
       return
     }
@@ -143,6 +225,8 @@ const handleSubmit = async () => {
     name: formData.value.name,
     sort_order: Number(formData.value.sort_order) || 0,
     status: formData.value.status,
+    subledger_required: formData.value.subledger_required === '1' ? 1 : 0,
+    demand_letter_required: formData.value.demand_letter_required === '1' ? 1 : 0,
   }
 
   if (store.isEditModal) {

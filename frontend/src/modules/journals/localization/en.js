@@ -282,6 +282,7 @@ export default {
     error_row_amount_required: 'Row {row}: enter a debit or credit amount.',
     error_row_both_amounts: 'Row {row}: a line cannot have both debit and credit.',
     error_unbalanced: 'Debit and credit totals must be equal before posting.',
+    error_job_required_for_party: 'Please select a job before choosing a party.',
     dr: 'Dr',
     cr: 'Cr',
     view: 'View',
@@ -312,5 +313,7 @@ export default {
     code: 'Code',
     name: 'Name',
     sort_order: 'Sort Order',
+    subledger_required: 'Subledger Required',
+    demand_letter_required: 'Demand Letter Required',
   },
 }

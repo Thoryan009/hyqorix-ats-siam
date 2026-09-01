@@ -65,6 +65,7 @@ class PartyRequest extends FormRequest
             'opening_credit' => ['nullable', 'numeric', 'min:0'],
             'remarks' => ['nullable', 'string'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
+            'source_id' => ['nullable', 'integer', 'min:1'],
         ];
     }
 

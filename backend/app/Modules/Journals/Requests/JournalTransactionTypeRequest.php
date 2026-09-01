@@ -39,6 +39,18 @@ class JournalTransactionTypeRequest extends FormRequest
                     : $this->input('sort_order'),
             ]);
         }
+
+        if ($this->has('subledger_required')) {
+            $this->merge([
+                'subledger_required' => in_array($this->input('subledger_required'), [1, '1', true, 'true'], true),
+            ]);
+        }
+
+        if ($this->has('demand_letter_required')) {
+            $this->merge([
+                'demand_letter_required' => in_array($this->input('demand_letter_required'), [1, '1', true, 'true'], true),
+            ]);
+        }
     }
 
     public function rules(): array
@@ -55,6 +67,8 @@ class JournalTransactionTypeRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
+            'subledger_required' => ['nullable', 'boolean'],
+            'demand_letter_required' => ['nullable', 'boolean'],
         ];
     }
 

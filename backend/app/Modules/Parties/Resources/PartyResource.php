@@ -14,6 +14,7 @@ class PartyResource extends JsonResource
             'code' => $this->code,
             'name' => $this->name,
             'type' => $this->type,
+            'source_id' => $this->source_id,
             'opening_debit' => number_format((float) $this->opening_debit, 2, '.', ''),
             'opening_credit' => number_format((float) $this->opening_credit, 2, '.', ''),
             'remarks' => $this->remarks,

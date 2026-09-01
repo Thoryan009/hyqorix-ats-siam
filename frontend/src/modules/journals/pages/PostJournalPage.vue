@@ -189,7 +189,7 @@
             v-model="form.party_id"
             :options="partyLedgerOptions"
             :placeholder="partyLedgerPlaceholder"
-            :disabled="isPartyLedgerLoading"
+            :disabled="isPartyLedgerDisabled"
             :filter-fn="filterByCodeOrName"
           />
         </div>
@@ -682,10 +682,13 @@ import {
   defaultJournalLines,
   mapJournalToForm,
   mapJournalToLines,
+  parseProjectId,
+  PROJECT_SOURCE_JOB,
   todayIsoDate,
   validateJournalForm,
 } from '../data/postJournalStatic'
 import { usePartyTypeOptionsQuery } from '@/modules/parties/queries/usePartyTypeOptionsQuery'
+import { requiresPartyJobFilter } from '@/modules/parties/data/partySourceConfig'
 import { useJournalTransactionTypeOptionsQuery } from '../queries/useJournalTransactionTypeOptionsQuery'
 
 const { t } = useTranslate()
@@ -1117,6 +1120,15 @@ watch(
   },
 )
 
+watch(
+  () => form.value.project_id,
+  () => {
+    if (skipPartyClear) return
+    if (!requiresPartyJobFilter(form.value.party_type)) return
+    form.value.party_id = ''
+  },
+)
+
 watch(selectedApprovalJournalId, () => {
   managerComment.value = ''
   approveValidationMessage.value = ''
@@ -1161,8 +1173,36 @@ const deleteLine = (index) => {
 }
 
 const partyTypeRef = computed(() => form.value.party_type)
-const { data: partiesData, isLoading: isPartyLedgerLoading } =
-  usePartyLedgerOptionsQuery(partyTypeRef)
+
+const requiresJobForParty = computed(() => requiresPartyJobFilter(form.value.party_type))
+
+const selectedJobListId = computed(() => {
+  if (!requiresJobForParty.value) return ''
+
+  const parsed = parseProjectId(form.value.project_id)
+  if (parsed.type !== PROJECT_SOURCE_JOB || !parsed.id) return ''
+
+  const match = String(parsed.id).match(/^job:(\d+)$/)
+  return match ? match[1] : ''
+})
+
+const partyLedgerFilters = computed(() => ({
+  job_list_id: selectedJobListId.value || undefined,
+}))
+
+const partyLedgerQueryEnabled = computed(() => {
+  if (!form.value.party_type) return false
+  if (requiresJobForParty.value && !selectedJobListId.value) return false
+  return true
+})
+
+const { data: partiesData, isLoading: isPartyLedgerLoading } = usePartyLedgerOptionsQuery(
+  partyTypeRef,
+  {
+    filters: partyLedgerFilters,
+    enabled: partyLedgerQueryEnabled,
+  },
+)
 const { data: accountsData, isLoading: isAccountLoading } = useAccountOptionsQuery()
 
 const partyLedgerOptions = computed(() => {
@@ -1183,10 +1223,21 @@ const accountOptions = computed(() => {
   }))
 })
 
-const partyLedgerPlaceholder = computed(() =>
-  isPartyLedgerLoading.value
+const partyLedgerPlaceholder = computed(() => {
+  if (requiresJobForParty.value && !selectedJobListId.value) {
+    return t('journals.error_job_required_for_party')
+  }
+
+  return isPartyLedgerLoading.value
     ? t('journals.loading_parties')
-    : t('journals.select_party'),
+    : t('journals.select_party')
+})
+
+const isPartyLedgerDisabled = computed(
+  () =>
+    isPartyLedgerLoading.value ||
+    !form.value.party_type ||
+    (requiresJobForParty.value && !selectedJobListId.value),
 )
 
 const accountPlaceholder = computed(() =>
@@ -1279,6 +1330,16 @@ const goBack = () => {
 const handleSubmit = async (status) => {
   validationMessage.value = ''
   pendingStatus.value = status
+
+  if (
+    requiresPartyJobFilter(form.value.party_type) &&
+    form.value.party_id &&
+    !selectedJobListId.value
+  ) {
+    validationMessage.value = t('journals.error_job_required_for_party')
+    toast.error(validationMessage.value)
+    return
+  }
 
   const errors = validateJournalForm(form.value, lines.value)
   if (errors.length) {

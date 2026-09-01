@@ -2,6 +2,7 @@
 
 namespace App\Modules\Parties\Repositories;
 
+use App\Modules\Application\Models\Application;
 use App\Modules\Parties\Models\Party;
 use App\Repositories\BaseRepository;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,6 +24,22 @@ class PartyRepository extends BaseRepository
 
         if (!empty($filters['type'])) {
             $query->where('type', $filters['type']);
+        }
+
+        if (!empty($filters['job_list_id'])) {
+            $jobListId = (int) $filters['job_list_id'];
+            $applicationIds = Application::query()
+                ->where('job_list_id', $jobListId)
+                ->pluck('id');
+
+            if ($applicationIds->isEmpty()) {
+                $query->whereRaw('1 = 0');
+
+                return;
+            }
+
+            $query->whereNotNull('source_id')
+                ->whereIn('source_id', $applicationIds);
         }
     }
 

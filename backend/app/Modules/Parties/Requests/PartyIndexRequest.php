@@ -11,6 +11,7 @@ class PartyIndexRequest extends ApiIndexRequest
         return array_merge(parent::rules(), [
             'status' => ['nullable', 'string'],
             'type' => ['nullable', 'string', 'max:50'],
+            'job_list_id' => ['nullable', 'integer', 'min:1'],
         ]);
     }
 
@@ -19,6 +20,7 @@ class PartyIndexRequest extends ApiIndexRequest
         return array_merge(parent::filters(), [
             'status' => $this->get('status'),
             'type' => $this->get('type'),
+            'job_list_id' => $this->integer('job_list_id') ?: null,
         ]);
     }
 }

@@ -18,6 +18,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 class PartyService
@@ -39,7 +40,7 @@ class PartyService
 
     public function create(array $data): Party
     {
-        return $this->model->create($data);
+        return $this->model->create($this->preparePartyData($data));
     }
 
     public function bulkCreate(array $parties): Collection
@@ -48,7 +49,7 @@ class PartyService
             $created = collect();
 
             foreach ($parties as $partyData) {
-                $created->push($this->model->create($partyData));
+                $created->push($this->model->create($this->preparePartyData($partyData)));
             }
 
             return $created;
@@ -57,6 +58,8 @@ class PartyService
 
     public function update(Party $party, array $data): Party
     {
+        unset($data['source_id']);
+
         $party->update($data);
 
         return $party->fresh(['createdBy:id,name', 'updatedBy:id,name']);
@@ -92,6 +95,13 @@ class PartyService
         }
 
         if ($this->model->newQuery()->where('code', $payload['code'])->exists()) {
+            return null;
+        }
+
+        if ($this->model->newQuery()
+            ->where('type', $payload['type'])
+            ->where('source_id', $payload['source_id'])
+            ->exists()) {
             return null;
         }
 
@@ -177,6 +187,7 @@ class PartyService
             'code' => $code,
             'name' => $name,
             'type' => $typeCode,
+            'source_id' => (int) $entity->id,
             'status' => 'active',
             'opening_debit' => 0,
             'opening_credit' => 0,
@@ -208,6 +219,7 @@ class PartyService
     private function getClientSourceOptions(string $type): Collection
     {
         $existingCodes = $this->getExistingPartyCodeSet($type);
+        $existingSourceIds = $this->getExistingSourceIdSet($type);
 
         return Client::query()
             ->select(['id', 'client_id', 'user_id'])
@@ -221,13 +233,15 @@ class PartyService
                 'code' => $this->compactPartyCode($client->client_id),
                 'name' => $client->user?->name,
             ])
-            ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes))
+            ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes)
+                || isset($existingSourceIds[(int) ($item['id'] ?? 0)]))
             ->values();
     }
 
     private function getPrincipalSourceOptions(string $type): Collection
     {
         $existingCodes = $this->getExistingPartyCodeSet($type, 'PR');
+        $existingSourceIds = $this->getExistingSourceIdSet($type);
 
         return Principal::query()
             ->select(['id', 'principal_id', 'user_id'])
@@ -242,13 +256,15 @@ class PartyService
                 'code' => $this->normalizeShortCode('PR', $principal->principal_id, $index + 1),
                 'name' => $principal->user?->name,
             ])
-            ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes))
+            ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes)
+                || isset($existingSourceIds[(int) ($item['id'] ?? 0)]))
             ->values();
     }
 
     private function getAgentSourceOptions(string $type): Collection
     {
         $existingCodes = $this->getExistingPartyCodeSet($type, 'AG');
+        $existingSourceIds = $this->getExistingSourceIdSet($type);
 
         return Agent::query()
             ->select(['id', 'agent_id', 'user_id'])
@@ -263,13 +279,15 @@ class PartyService
                 'code' => $this->normalizeShortCode('AG', $agent->agent_id, $index + 1),
                 'name' => $agent->user?->name,
             ])
-            ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes))
+            ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes)
+                || isset($existingSourceIds[(int) ($item['id'] ?? 0)]))
             ->values();
     }
 
     private function getVendorSourceOptions(string $type): Collection
     {
         $existingCodes = $this->getExistingPartyCodeSet($type);
+        $existingSourceIds = $this->getExistingSourceIdSet($type);
 
         return Vendor::query()
             ->select(['id', 'vendor_id', 'organization_name', 'user_id'])
@@ -283,7 +301,8 @@ class PartyService
                 'code' => $this->compactPartyCode($vendor->vendor_id),
                 'name' => $vendor->organization_name,
             ])
-            ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes))
+            ->reject(fn (array $item) => $this->isExistingPartyCode($item['code'] ?? '', $existingCodes)
+                || isset($existingSourceIds[(int) ($item['id'] ?? 0)]))
             ->values();
     }
 
@@ -291,6 +310,7 @@ class PartyService
     {
         $existingCodes = $this->getExistingPartyCodeSet($type, 'ST');
         $existingNames = $this->getExistingPartyNameSet($type);
+        $existingSourceIds = $this->getExistingSourceIdSet($type);
 
         return Employee::query()
             ->select(['id', 'employee_id', 'user_id'])
@@ -311,8 +331,12 @@ class PartyService
                     'name' => $employee->user?->name,
                 ];
             })
-            ->reject(function (array $item) use ($existingCodes, $existingNames) {
+            ->reject(function (array $item) use ($existingCodes, $existingNames, $existingSourceIds) {
                 if ($this->isExistingPartyCode($item['code'] ?? '', $existingCodes)) {
+                    return true;
+                }
+
+                if (isset($existingSourceIds[(int) ($item['id'] ?? 0)])) {
                     return true;
                 }
 
@@ -332,6 +356,7 @@ class PartyService
         }
 
         $existingCodes = $this->getExistingPartyCodeSet($type);
+        $existingSourceIds = $this->getExistingSourceIdSet($type);
 
         return Application::query()
             ->select(['id', 'given_name', 'sur_name', 'application_id', 'passport_no', 'job_list_id'])
@@ -344,8 +369,93 @@ class PartyService
             ->reject(fn (Application $application) => $this->isExistingPartyCode(
                 $application->passport_no,
                 $existingCodes
-            ))
+            ) || isset($existingSourceIds[(int) $application->id]))
             ->values();
+    }
+
+    /**
+     * @return array<int, true>
+     */
+    private function getExistingSourceIdSet(string $type): array
+    {
+        $set = [];
+
+        $ids = $this->model->newQuery()
+            ->where('type', $type)
+            ->whereNotNull('source_id')
+            ->pluck('source_id');
+
+        foreach ($ids as $id) {
+            $set[(int) $id] = true;
+        }
+
+        return $set;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function preparePartyData(array $data): array
+    {
+        $sourceId = isset($data['source_id']) && $data['source_id'] !== '' && $data['source_id'] !== null
+            ? (int) $data['source_id']
+            : null;
+
+        if (!$sourceId) {
+            unset($data['source_id']);
+
+            return $data;
+        }
+
+        $type = (string) ($data['type'] ?? '');
+        $partyType = PartyType::query()->where('code', $type)->first();
+
+        if (!$partyType?->source_module) {
+            unset($data['source_id']);
+
+            return $data;
+        }
+
+        $this->assertSourceRecordExists($partyType->source_module, $sourceId);
+        $this->assertSourceNotAlreadyLinked($type, $sourceId);
+
+        $data['source_id'] = $sourceId;
+
+        return $data;
+    }
+
+    private function assertSourceRecordExists(string $sourceModule, int $sourceId): void
+    {
+        $exists = match ($sourceModule) {
+            'client' => Client::query()->whereKey($sourceId)->exists(),
+            'agent' => Agent::query()->whereKey($sourceId)->exists(),
+            'principal' => Principal::query()->whereKey($sourceId)->exists(),
+            'vendor' => Vendor::query()->whereKey($sourceId)->exists(),
+            'employee' => Employee::query()->whereKey($sourceId)->exists(),
+            'application' => Application::query()->whereKey($sourceId)->exists(),
+            default => false,
+        };
+
+        if (!$exists) {
+            throw ValidationException::withMessages([
+                'source_id' => ['Selected source record was not found.'],
+            ]);
+        }
+    }
+
+    private function assertSourceNotAlreadyLinked(string $type, int $sourceId): void
+    {
+        $exists = $this->model->newQuery()
+            ->where('type', $type)
+            ->where('source_id', $sourceId)
+            ->exists();
+
+        if ($exists) {
+            throw ValidationException::withMessages([
+                'source_id' => ['A party already exists for this source record.'],
+            ]);
+        }
     }
 
     /**

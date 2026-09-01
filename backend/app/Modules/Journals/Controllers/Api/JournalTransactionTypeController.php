@@ -36,6 +36,8 @@ class JournalTransactionTypeController extends Controller
             'code' => $type->code,
             'status' => $type->status,
             'sort_order' => (int) $type->sort_order,
+            'subledger_required' => (bool) $type->subledger_required,
+            'demand_letter_required' => (bool) $type->demand_letter_required,
         ])->values();
 
         return apiSuccess($options);

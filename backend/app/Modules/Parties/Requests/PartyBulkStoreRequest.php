@@ -71,6 +71,7 @@ class PartyBulkStoreRequest extends FormRequest
             'parties.*.opening_credit' => ['nullable', 'numeric', 'min:0'],
             'parties.*.remarks' => ['nullable', 'string'],
             'parties.*.status' => ['required', Rule::in(['active', 'inactive'])],
+            'parties.*.source_id' => ['nullable', 'integer', 'min:1'],
         ];
     }
 

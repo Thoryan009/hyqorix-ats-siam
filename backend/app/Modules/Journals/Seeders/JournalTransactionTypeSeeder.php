@@ -29,6 +29,8 @@ class JournalTransactionTypeSeeder extends Seeder
                     'name' => $type['name'],
                     'sort_order' => $type['sort_order'],
                     'status' => 'active',
+                    'subledger_required' => $type['subledger_required'] ?? false,
+                    'demand_letter_required' => $type['demand_letter_required'] ?? false,
                 ]
             );
         }

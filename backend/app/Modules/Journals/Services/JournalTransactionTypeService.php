@@ -33,7 +33,7 @@ class JournalTransactionTypeService
             $query->where('status', $status);
         }
 
-        return $query->get(['id', 'code', 'name', 'status', 'sort_order']);
+        return $query->get(['id', 'code', 'name', 'status', 'sort_order', 'subledger_required', 'demand_letter_required']);
     }
 
     public function getTransactionType(JournalTransactionType $transactionType): JournalTransactionType

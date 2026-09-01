@@ -31,15 +31,23 @@ export function isPartyRowEmpty(row, { requireSource = false } = {}) {
 }
 
 export function buildBulkPartyPayload(partyType, rows) {
-  return rows.map((row) => ({
-    type: partyType,
-    code: String(row.code ?? '').trim(),
-    name: String(row.name ?? '').trim(),
-    opening_debit: Number(row.opening_debit) || 0,
-    opening_credit: Number(row.opening_credit) || 0,
-    status: row.status || 'active',
-    remarks: String(row.remarks ?? '').trim(),
-  }))
+  return rows.map((row) => {
+    const payload = {
+      type: partyType,
+      code: String(row.code ?? '').trim(),
+      name: String(row.name ?? '').trim(),
+      opening_debit: Number(row.opening_debit) || 0,
+      opening_credit: Number(row.opening_credit) || 0,
+      status: row.status || 'active',
+      remarks: String(row.remarks ?? '').trim(),
+    }
+
+    if (row.source_id) {
+      payload.source_id = Number(row.source_id)
+    }
+
+    return payload
+  })
 }
 
 export function validateBulkPartyRows(partyType, rows, { requireSource = false } = {}) {

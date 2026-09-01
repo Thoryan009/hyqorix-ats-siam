@@ -18,6 +18,11 @@ class JournalTransactionType extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'subledger_required' => 'boolean',
+        'demand_letter_required' => 'boolean',
+    ];
+
     public function journals(): HasMany
     {
         return $this->hasMany(Journal::class, 'transaction_type', 'code');

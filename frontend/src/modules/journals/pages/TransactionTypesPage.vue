@@ -148,6 +148,8 @@ const columnsTemp = computed(() => [
   { key: 'code', label: t('journal_transaction_types.code') },
   { key: 'name', label: t('journal_transaction_types.name') },
   { key: 'sort_order', label: t('journal_transaction_types.sort_order') },
+  { key: 'subledger_required_label', label: t('journal_transaction_types.subledger_required') },
+  { key: 'demand_letter_required_label', label: t('journal_transaction_types.demand_letter_required') },
   { key: 'status', label: t('shared.labels.status') },
 ])
 

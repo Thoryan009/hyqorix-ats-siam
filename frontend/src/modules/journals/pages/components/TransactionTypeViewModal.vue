@@ -38,6 +38,14 @@
             <p class="font-semibold text-gray-800">{{ store.item?.status }}</p>
           </div>
           <div class="rounded-lg bg-white p-4 shadow-sm">
+            <span class="text-sm font-medium text-gray-600">{{ t('journal_transaction_types.subledger_required') }}</span>
+            <p class="font-semibold text-gray-800">{{ store.item?.subledger_required_label || 'No' }}</p>
+          </div>
+          <div class="rounded-lg bg-white p-4 shadow-sm">
+            <span class="text-sm font-medium text-gray-600">{{ t('journal_transaction_types.demand_letter_required') }}</span>
+            <p class="font-semibold text-gray-800">{{ store.item?.demand_letter_required_label || 'No' }}</p>
+          </div>
+          <div class="rounded-lg bg-white p-4 shadow-sm">
             <span class="text-sm font-medium text-gray-600">{{ t('shared.labels.created_at') }}</span>
             <p class="font-semibold text-gray-800">{{ store.item?.created_at }}</p>
           </div>

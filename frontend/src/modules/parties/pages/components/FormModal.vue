@@ -329,6 +329,12 @@ const handleSubmit = async () => {
     return
   }
 
-  await submit.mutateAsync({ ...formData.value })
+  const payload = { ...formData.value }
+
+  if (showSourceSelect.value && sourceId.value) {
+    payload.source_id = Number(sourceId.value)
+  }
+
+  await submit.mutateAsync(payload)
 }
 </script>
