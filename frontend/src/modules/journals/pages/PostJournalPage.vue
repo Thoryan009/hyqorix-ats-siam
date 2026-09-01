@@ -167,7 +167,11 @@
           />
         </div>
 
-        <JournalProjectSelect input-id="project_id" v-model="form.project_id" />
+        <JournalProjectSelect
+          input-id="project_id"
+          v-model="form.project_id"
+          :demand-letter-required="requiresDemandLetter"
+        />
 
         <div class="space-y-1.5">
           <BaseLabel for="party_type">{{ t('journals.party_type') }}</BaseLabel>
@@ -707,6 +711,7 @@ import {
   mapJournalToForm,
   mapJournalToLines,
   parseProjectId,
+  PROJECT_SOURCE_DEMAND_LETTER,
   PROJECT_SOURCE_JOB,
   todayIsoDate,
   validateJournalForm,
@@ -1001,6 +1006,23 @@ const requiresSubledger = computed(() => {
   return (transactionTypeOptionsData.value ?? []).some(
     (item) => String(item.code ?? item.id) === String(code) && item.subledger_required,
   )
+})
+
+const requiresDemandLetter = computed(() => {
+  const code = form.value.transaction_type
+  if (!code) return false
+
+  return (transactionTypeOptionsData.value ?? []).some(
+    (item) => String(item.code ?? item.id) === String(code) && item.demand_letter_required,
+  )
+})
+
+const selectedDemandLetterId = computed(() => {
+  const parsed = parseProjectId(form.value.project_id)
+  if (parsed.type !== PROJECT_SOURCE_DEMAND_LETTER || !parsed.id) return ''
+
+  const match = String(parsed.id).match(/^dl:(\d+)$/)
+  return match ? match[1] : ''
 })
 
 const activeSubLedgerValue = computed(() => {
@@ -1439,6 +1461,12 @@ const handleSubmit = async (status) => {
     return
   }
 
+  if (requiresDemandLetter.value && !selectedDemandLetterId.value) {
+    validationMessage.value = t('journals.error_demand_letter_required')
+    toast.error(validationMessage.value)
+    return
+  }
+
   const errors = validateJournalForm(form.value, lines.value, {
     requiresSubledger: requiresSubledger.value,
   })
@@ -1479,6 +1507,12 @@ const handleResubmit = async () => {
 
   if (requiresSubledger.value && !selectedJobListId.value) {
     validationMessage.value = t('journals.error_job_required_for_sub_ledger')
+    toast.error(validationMessage.value)
+    return
+  }
+
+  if (requiresDemandLetter.value && !selectedDemandLetterId.value) {
+    validationMessage.value = t('journals.error_demand_letter_required')
     toast.error(validationMessage.value)
     return
   }
