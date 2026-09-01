@@ -60,7 +60,8 @@ class EmployeeRepository extends BaseRepository
         }
 
         $query->where(function (Builder $q) use ($search) {
-            $q->whereHas('user', function (Builder $q2) use ($search) {
+            $q->where('employees.employee_id', 'like', "%{$search}%")
+                ->orWhereHas('user', function (Builder $q2) use ($search) {
                 $q2->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%")
@@ -146,6 +147,7 @@ class EmployeeRepository extends BaseRepository
     {
         return $this->model->create([
             'user_id'        => $userId,
+            'employee_id'    => $data['employee_id'],
             'designation_id' => $data['designation_id'],
             'image_path'     => $data['image_path'] ?? null,
             'username'       => $data['username'] ?? null,

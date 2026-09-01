@@ -151,13 +151,16 @@ class PartyService
                 break;
             case 'employee':
                 /** @var Employee $entity */
-                $code = $this->normalizeShortCode('ST', null, $entity->id);
+                $code = $this->compactPartyCode($entity->employee_id ?? '');
+                if ($code === '') {
+                    $code = $this->normalizeShortCode('ST', null, $entity->id);
+                }
                 $name = (string) ($entity->user?->name ?? '');
                 break;
             case 'application':
                 /** @var Application $entity */
                 $code = strtoupper(trim((string) ($entity->passport_no ?? '')));
-                $name = ApplicationPresenter::fullName($entity->sur_name ?? '', $entity->given_name ?? '') ?? '';
+                $name = ApplicationPresenter::fullName($entity->given_name ?? '', $entity->sur_name ?? '') ?? '';
                 break;
             default:
                 return null;
@@ -290,18 +293,24 @@ class PartyService
         $existingNames = $this->getExistingPartyNameSet($type);
 
         return Employee::query()
-            ->select(['id', 'user_id'])
+            ->select(['id', 'employee_id', 'user_id'])
             ->with(['user:id,name,status'])
             ->tap(fn (Builder $query) => $this->applyActiveUserFilter($query))
             ->orderBy('id')
             ->limit(500)
             ->get()
-            ->values()
-            ->map(fn (Employee $employee, int $index) => [
-                'id' => $employee->id,
-                'code' => $this->normalizeShortCode('ST', null, $index + 1),
-                'name' => $employee->user?->name,
-            ])
+            ->map(function (Employee $employee) {
+                $code = $this->compactPartyCode($employee->employee_id ?? '');
+                if ($code === '') {
+                    $code = $this->normalizeShortCode('ST', null, $employee->id);
+                }
+
+                return [
+                    'id' => $employee->id,
+                    'code' => $code,
+                    'name' => $employee->user?->name,
+                ];
+            })
             ->reject(function (array $item) use ($existingCodes, $existingNames) {
                 if ($this->isExistingPartyCode($item['code'] ?? '', $existingCodes)) {
                     return true;

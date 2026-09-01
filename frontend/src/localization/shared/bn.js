@@ -68,6 +68,7 @@ export default {
 
       // Agent
       agent_id: 'এজেন্ট আইডি',
+      employee_id: 'কর্মচারী আইডি',
       manager_name: 'ম্যানেজারের নাম',
       staff_name: 'স্টাফের নাম',
       staff_phone: 'স্টাফের ফোন',

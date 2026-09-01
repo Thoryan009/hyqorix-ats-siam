@@ -114,11 +114,18 @@ class AgentService extends BaseCachedService
     public function generateAgentId(): string
     {
         $lastAgent = $this->model->orderBy('id', 'desc')->first();
-        $lastNumber = $lastAgent ? (int) str_replace('AGENT-', '', $lastAgent->agent_id) : 0;
+        $lastNumber = $lastAgent ? $this->extractTrailingNumber($lastAgent->agent_id) : 0;
 
-        $newNumber = $lastNumber + 1;
+        return 'AG'.str_pad((string) ($lastNumber + 1), 3, '0', STR_PAD_LEFT);
+    }
 
-        return 'AGENT-' . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+    private function extractTrailingNumber(?string $value): int
+    {
+        if ($value && preg_match('/(\d+)\s*$/', trim($value), $matches)) {
+            return (int) $matches[1];
+        }
+
+        return 0;
     }
 
     public function getAllAgentsWithPoints()

@@ -102,10 +102,17 @@ class ClientService extends BaseCachedService
     public function generateClientId(): string
     {
         $lastClient = $this->model->orderBy('id', 'desc')->first();
-        $lastNumber = $lastClient ? (int) str_replace('CL-', '', $lastClient->client_id) : 0;
+        $lastNumber = $lastClient ? $this->extractTrailingNumber($lastClient->client_id) : 0;
 
-        $newNumber = $lastNumber + 1;
+        return 'CL'.str_pad((string) ($lastNumber + 1), 3, '0', STR_PAD_LEFT);
+    }
 
-        return 'CL-' . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+    private function extractTrailingNumber(?string $value): int
+    {
+        if ($value && preg_match('/(\d+)\s*$/', trim($value), $matches)) {
+            return (int) $matches[1];
+        }
+
+        return 0;
     }
 }

@@ -103,8 +103,17 @@ class VendorService extends BaseCachedService
     public function generateVendorId(): string
     {
         $lastVendor = $this->model->orderBy('id', 'desc')->first();
-        $lastNumber = $lastVendor ? (int) str_replace('VND-', '', $lastVendor->vendor_id) : 0;
+        $lastNumber = $lastVendor ? $this->extractTrailingNumber($lastVendor->vendor_id) : 0;
 
-        return 'VND-' . str_pad((string) ($lastNumber + 1), 3, '0', STR_PAD_LEFT);
+        return 'VND'.str_pad((string) ($lastNumber + 1), 3, '0', STR_PAD_LEFT);
+    }
+
+    private function extractTrailingNumber(?string $value): int
+    {
+        if ($value && preg_match('/(\d+)\s*$/', trim($value), $matches)) {
+            return (int) $matches[1];
+        }
+
+        return 0;
     }
 }

@@ -92,12 +92,7 @@ class AgentRepository extends BaseRepository
 
     protected function applyOrder(Builder $query, array $filters): void
     {
-        // Order by related user name without select('agents.*'), which would wipe withCount columns.
-        $query->orderBy(
-            \App\Modules\Auth\Models\User::select('name')
-                ->whereColumn('users.id', 'agents.user_id')
-                ->limit(1)
-        );
+        $query->orderByDesc('agents.agent_id');
     }
 
     public function createUser(array $data)

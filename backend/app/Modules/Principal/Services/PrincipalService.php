@@ -105,10 +105,17 @@ class PrincipalService extends BaseCachedService
     public function generatePrincipalId(): string
     {
         $lastPrincipal = $this->model->orderBy('id', 'desc')->first();
-        $lastNumber = $lastPrincipal ? (int) str_replace('PRINCIPAL-', '', $lastPrincipal->principal_id) : 0;
+        $lastNumber = $lastPrincipal ? $this->extractTrailingNumber($lastPrincipal->principal_id) : 0;
 
-        $newNumber = $lastNumber + 1;
+        return 'PR'.str_pad((string) ($lastNumber + 1), 3, '0', STR_PAD_LEFT);
+    }
 
-        return 'PRINCIPAL-' . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+    private function extractTrailingNumber(?string $value): int
+    {
+        if ($value && preg_match('/(\d+)\s*$/', trim($value), $matches)) {
+            return (int) $matches[1];
+        }
+
+        return 0;
     }
 }

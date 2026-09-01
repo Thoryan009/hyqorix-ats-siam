@@ -101,9 +101,10 @@ class EmployeeSeeder extends Seeder
         $designationIds = Designation::pluck('id')->toArray();
 
         // Prepare employees for bulk insert
-        $employeesData = collect($items)->map(function ($item) use ($userMap, $now) {
+        $employeesData = collect($items)->map(function ($item, $index) use ($userMap, $now) {
             return [
-                'user_id'        => $userMap[$item['email']], // ✅ correct mapping
+                'user_id'        => $userMap[$item['email']],
+                'employee_id'    => 'ST'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT),
                 'designation_id' => $item['designation_id'],
                 'send_credentials' => 0,
                 'created_by' => 1,

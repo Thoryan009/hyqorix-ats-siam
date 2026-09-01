@@ -66,6 +66,7 @@ class EmployeeService extends BaseCachedService
                     $storedFiles['image_path'] = $path;
                 }
 
+                $data['employee_id'] = $this->generateEmployeeId();
                 $employee = $this->repository->createEmployee($user->id, $data);
                 $this->repository->assignRoles($user, $data['role_ids']);
                 $this->repository->assignDepartments($employee, $data['department_ids']);
@@ -241,5 +242,22 @@ class EmployeeService extends BaseCachedService
     public function getTopEmployeeByPoints()
     {
         return $this->repository->getTopEmployeeByPoints();
+    }
+
+    public function generateEmployeeId(): string
+    {
+        $lastEmployee = $this->model->orderBy('id', 'desc')->first();
+        $lastNumber = $lastEmployee ? $this->extractTrailingNumber($lastEmployee->employee_id) : 0;
+
+        return 'ST'.str_pad((string) ($lastNumber + 1), 3, '0', STR_PAD_LEFT);
+    }
+
+    private function extractTrailingNumber(?string $value): int
+    {
+        if ($value && preg_match('/(\d+)\s*$/', trim($value), $matches)) {
+            return (int) $matches[1];
+        }
+
+        return 0;
     }
 }

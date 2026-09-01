@@ -13,6 +13,11 @@ class EmployeeTableSchema
             ],
 
             [
+                'key' => 'employee_id',
+                'label' => 'Employee ID',
+            ],
+
+            [
                 'key' => 'name',
                 'label' => 'Name',
             ],

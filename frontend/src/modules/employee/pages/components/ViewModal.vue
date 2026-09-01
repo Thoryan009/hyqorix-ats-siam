@@ -56,7 +56,7 @@
 
                   <p class="text-slate-500 text-[11px] mt-0.5">
                     <i class="fa fa-hashtag mr-0.5"></i>
-                    ID: {{ store.item?.id }}
+                    Employee ID: {{ store.item?.employee_id || 'N/A' }}
                     &nbsp;·&nbsp;
                     <i
                       class="fa fa-shield mr-0.5"
