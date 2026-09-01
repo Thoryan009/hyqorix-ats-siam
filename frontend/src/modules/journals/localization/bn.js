@@ -285,6 +285,7 @@ export default {
     error_row_both_amounts: 'সারি {row}: একই লাইনে ডেবিট ও ক্রেডিট দুটোই দেওয়া যাবে না।',
     error_unbalanced: 'পোস্ট করার আগে ডেবিট ও ক্রেডিট সমান হতে হবে।',
     error_job_required_for_party: 'পার্টি নির্বাচনের আগে একটি জব নির্বাচন করুন।',
+    no_party_account_for_job: 'এই জবের অধীনে কোনো পার্টি অ্যাকাউন্ট নেই।',
     error_job_required_for_sub_ledger: 'সাব-লেজার প্রার্থী নির্বাচনের আগে একটি জব নির্বাচন করুন।',
     error_row_sub_ledger_required: 'সারি {row}: সাব-লেজার হিসেবে অন্তত একজন প্রার্থী নির্বাচন করুন।',
     select_sub_ledger: 'প্রার্থী নির্বাচন করুন (পাসপোর্ট নং)',

@@ -285,6 +285,7 @@ export default {
     error_row_both_amounts: 'Row {row}: a line cannot have both debit and credit.',
     error_unbalanced: 'Debit and credit totals must be equal before posting.',
     error_job_required_for_party: 'Please select a job before choosing a party.',
+    no_party_account_for_job: 'There is no party account under this job.',
     error_job_required_for_sub_ledger: 'Please select a job before choosing sub-ledger applicants.',
     error_row_sub_ledger_required: 'Row {row}: please select at least one applicant as sub-ledger.',
     select_sub_ledger: 'Select applicants (passport no.)',

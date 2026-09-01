@@ -196,6 +196,9 @@
             :disabled="isPartyLedgerDisabled"
             :filter-fn="filterByCodeOrName"
           />
+          <p v-if="showNoPartyForJobMessage" class="text-xs text-red-600">
+            {{ t('journals.no_party_account_for_job') }}
+          </p>
         </div>
       </div>
     </div>
@@ -1352,6 +1355,15 @@ const isPartyLedgerDisabled = computed(
     isPartyLedgerLoading.value ||
     !form.value.party_type ||
     (requiresJobForParty.value && !selectedJobListId.value),
+)
+
+const showNoPartyForJobMessage = computed(
+  () =>
+    requiresJobForParty.value &&
+    Boolean(selectedJobListId.value) &&
+    partyLedgerQueryEnabled.value &&
+    !isPartyLedgerLoading.value &&
+    partyLedgerOptions.value.length === 0,
 )
 
 const accountPlaceholder = computed(() =>
