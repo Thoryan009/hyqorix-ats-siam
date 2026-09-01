@@ -69,6 +69,7 @@ class AgentRequest extends FormRequest
 
             'nid_no' => ['nullable', 'integer', Rule::unique('agents', 'nid_no')->ignore($agentPk)],
             'status' => ['required', Rule::in([0, 1])],
+            'create_party_account' => ['nullable', Rule::in([0, 1, '0', '1', true, false])],
         ];
     }
 

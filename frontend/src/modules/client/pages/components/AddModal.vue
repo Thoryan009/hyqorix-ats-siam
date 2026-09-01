@@ -13,6 +13,7 @@
       :onCancel="store.handleToggleModal"
       :loading="submitLoading"
       :store="store"
+      :is-create="true"
     />
   </BaseModal>
 </template>
@@ -56,6 +57,7 @@ const defaultFormData = {
   client_image_preview: null,
   password: 'Test@1234',
   status: '1',
+  create_party_account: 1,
 }
 
 

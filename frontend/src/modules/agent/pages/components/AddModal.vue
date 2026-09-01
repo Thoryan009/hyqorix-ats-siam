@@ -3,7 +3,7 @@
         :className="'xl:max-w-[50vw]'">
         <!-- Use CommonForm here -->
         <CommonForm v-model:formData="formData" :onSubmit="handleSubmit" :onCancel="store.handleToggleModal"
-            :loading="store.isLoading" :store="store" />
+            :loading="store.isLoading" :store="store" :is-create="true" />
     </BaseModal>
 </template>
 
@@ -42,6 +42,7 @@ const { t } = useTranslate('agent')
         address: '123 Test Street, Test City',
         password: 'Test@1234',
         status: 1,
+        create_party_account: 1,
     }
 
     // Initialize formData

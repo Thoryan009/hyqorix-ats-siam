@@ -167,6 +167,12 @@
       </div>
     </div>
 
+    <CreatePartyAccountCheckbox
+      v-if="isCreate"
+      v-model="localForm.create_party_account"
+      source-module="vendor"
+    />
+
     <div class="flex justify-end gap-2 pt-4 pb-6">
       <BaseButton class="bg-yellow-600 hover:bg-yellow-700" type="button" @click="onCancel">
         {{ t('shared.actions.cancel') }}
@@ -193,6 +199,7 @@ import { useToast } from 'vue-toastification'
 import appConfig from '@/shared/config/appConfig'
 import { useFileHandler } from '@/shared/composables/useFileHandler'
 import { useTranslate } from '@/shared/composables/useTranslate'
+import CreatePartyAccountCheckbox from '@/modules/parties/components/CreatePartyAccountCheckbox.vue'
 
 const { t } = useTranslate('vendor')
 const appUrl = appConfig.appUrl
@@ -210,6 +217,7 @@ const props = defineProps({
   onCancel: { type: Function, required: true },
   loading: { type: Boolean, required: true },
   store: { type: Object, required: true },
+  isCreate: { type: Boolean, default: false },
 })
 
 const vendorTypeOptions = computed(() => props.vendorTypes || [])

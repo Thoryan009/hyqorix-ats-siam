@@ -6,11 +6,14 @@ use Illuminate\Support\Facades\DB;
 use App\Services\BaseCachedService;
 use App\Modules\Principal\Models\Principal;
 use App\Modules\Principal\Repositories\PrincipalRepository;
+use App\Modules\Parties\Services\PartyService;
 
 class PrincipalService extends BaseCachedService
 {
-    public function __construct(protected PrincipalRepository $repository)
-    {
+    public function __construct(
+        protected PrincipalRepository $repository,
+        protected PartyService $partyService,
+    ) {
         parent::__construct(new Principal());
     }
 
@@ -54,6 +57,11 @@ class PrincipalService extends BaseCachedService
             $user = $this->repository->createUser($data);
             $principal = $this->repository->createPrincipal($user->id, $data);
              $this->repository->assignRoles($user, $data['role_id']);
+
+            if ($this->partyService->shouldCreatePartyAccount($data)) {
+                $this->partyService->createFromSourceModule('principal', $principal->load('user'));
+            }
+
             $this->flushCache();
             return $principal;
         });

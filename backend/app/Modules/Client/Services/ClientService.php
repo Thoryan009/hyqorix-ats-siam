@@ -6,10 +6,14 @@ use Illuminate\Support\Facades\DB;
 use App\Modules\Client\Models\Client;
 use App\Services\BaseCachedService;
 use App\Modules\Client\Repositories\ClientRepository;
+use App\Modules\Parties\Services\PartyService;
+
 class ClientService extends BaseCachedService
 {
-    public function __construct(protected ClientRepository $repository)
-    {
+    public function __construct(
+        protected ClientRepository $repository,
+        protected PartyService $partyService,
+    ) {
         parent::__construct(new Client());
     }
 
@@ -42,6 +46,11 @@ class ClientService extends BaseCachedService
             $user = $this->repository->createUser($data);
             $client = $this->repository->createClient($user->id, $data);
             $this->repository->assignRoles($user, $data['role_id']);
+
+            if ($this->partyService->shouldCreatePartyAccount($data)) {
+                $this->partyService->createFromSourceModule('client', $client->load('user'));
+            }
+
             $this->flushCache();
             $this->flushRelatedCache();
             return $client;

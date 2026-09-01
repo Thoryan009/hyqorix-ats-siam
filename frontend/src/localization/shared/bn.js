@@ -63,6 +63,7 @@ export default {
       // Client
       client_id: 'ক্লায়েন্ট আইডি',
       send_notification: 'নোটিফিকেশন পাঠান',
+      create_party_account: 'পার্টি অ্যাকাউন্ট তৈরি করুন',
       upload_client_image: 'ক্লায়েন্টের ছবি আপলোড করুন (ঐচ্ছিক)',
 
       // Agent

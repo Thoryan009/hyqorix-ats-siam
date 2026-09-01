@@ -61,6 +61,7 @@ export default {
       // Client
       client_id: 'Client ID',
       send_notification: 'Send Notification',
+      create_party_account: 'Create party account',
       upload_client_image: 'Upload Client Image (Optional)',
 
       // Agent

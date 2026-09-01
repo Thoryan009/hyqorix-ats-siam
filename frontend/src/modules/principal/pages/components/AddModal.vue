@@ -13,6 +13,7 @@
       :onSubmit="handleSubmit"
       :onCancel="store.handleToggleModal"
       :loading="store.isLoading"
+      :is-create="true"
     />
   </BaseModal>
 </template>
@@ -53,6 +54,7 @@ const defaultFormData = {
   send_notification: 1,
   status: 1,
   password: 'Test@1234',
+  create_party_account: 1,
 }
 // Initialize formData
 const formData = ref(

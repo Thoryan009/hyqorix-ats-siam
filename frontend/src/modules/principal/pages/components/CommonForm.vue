@@ -189,6 +189,13 @@
       </div>
 
 
+      <CreatePartyAccountCheckbox
+        v-if="isCreate"
+        v-model="localForm.create_party_account"
+        source-module="principal"
+        class="md:col-span-2"
+      />
+
       <!-- Actions -->
       <div class="md:col-span-2 flex justify-end gap-2 pt-4">
         <BaseButton class="bg-yellow-600 hover:bg-yellow-700" type="button" @click="onCancel">
@@ -219,6 +226,7 @@ import { ref, watch, computed } from 'vue'
 import { useToast } from 'vue-toastification'
 import appConfig from '@/shared/config/appConfig'
 import {useTranslate} from '@/shared/composables/useTranslate'
+import CreatePartyAccountCheckbox from '@/modules/parties/components/CreatePartyAccountCheckbox.vue'
 
 const {t} = useTranslate()
 const appUrl = appConfig.appUrl
@@ -238,6 +246,7 @@ const props = defineProps({
   onSubmit: { type: Function, required: true },
   onCancel: { type: Function, required: true },
   loading: { type: Boolean, default: false },
+  isCreate: { type: Boolean, default: false },
 })
 
 

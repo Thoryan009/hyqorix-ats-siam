@@ -378,6 +378,11 @@
                 </label>
               </div>
             </div>
+            <CreatePartyAccountCheckbox
+              v-if="store.isModal && !store.isEditModal"
+              v-model="formData.create_party_account"
+              source-module="employee"
+            />
           </div>
         </div>
 
@@ -421,6 +426,7 @@ import { generatePassword } from '@/shared/utils/password'
 import { useToast } from 'vue-toastification'
 import appConfig from '@/shared/config/appConfig'
 import { useFileHandler } from '@/shared/composables/useFileHandler2'
+import CreatePartyAccountCheckbox from '@/modules/parties/components/CreatePartyAccountCheckbox.vue'
 
 const appUrl = appConfig.appUrl
 
@@ -468,6 +474,7 @@ const defaultFormData = {
   manager_approval: 0,
   password: generatePassword(10),
   send_credentials: '0',
+  create_party_account: 1,
   image_preview: null,
   image_path: null,
   image_url: null,
@@ -523,6 +530,7 @@ const { formData, resetForm } = useCrudForm(props.store, defaultFormData, [
   'department_ids',
   'status',
   'send_credentials',
+  'create_party_account',
   'show_ats_summary',
   'manager_approval',
 ])

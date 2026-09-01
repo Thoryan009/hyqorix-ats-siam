@@ -3,6 +3,7 @@
 namespace App\Modules\Vendor\Services;
 
 use App\Modules\Finance\Services\FinanceAccountService;
+use App\Modules\Parties\Services\PartyService;
 use App\Modules\Vendor\Models\Vendor;
 use App\Modules\Vendor\Repositories\VendorRepository;
 use App\Services\BaseCachedService;
@@ -13,6 +14,7 @@ class VendorService extends BaseCachedService
     public function __construct(
         protected VendorRepository $repository,
         protected FinanceAccountService $financeAccountService,
+        protected PartyService $partyService,
     ) {
         parent::__construct(new Vendor());
     }
@@ -38,6 +40,11 @@ class VendorService extends BaseCachedService
             $vendor = $this->repository->createVendor($user->id, $data);
             $this->repository->assignRoles($user, $data['role_id']);
             $this->financeAccountService->ensureVendorAccount($vendor->load('user'));
+
+            if ($this->partyService->shouldCreatePartyAccount($data)) {
+                $this->partyService->createFromSourceModule('vendor', $vendor->load('user'));
+            }
+
             $this->flushCache();
 
             return $vendor->load(['user.roles', 'vendorType', 'createdBy', 'updatedBy']);

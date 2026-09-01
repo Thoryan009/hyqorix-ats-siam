@@ -6,11 +6,14 @@ use Illuminate\Support\Facades\DB;
 use App\Modules\Agent\Models\Agent;
 use App\Services\BaseCachedService;
 use App\Modules\Agent\Repositories\AgentRepository;
+use App\Modules\Parties\Services\PartyService;
 
 class AgentService extends BaseCachedService
 {
-    public function __construct(protected AgentRepository $repository)
-    {
+    public function __construct(
+        protected AgentRepository $repository,
+        protected PartyService $partyService,
+    ) {
         parent::__construct(new Agent());
     }
 
@@ -54,6 +57,11 @@ class AgentService extends BaseCachedService
             $user = $this->repository->createUser($data);
             $agent = $this->repository->createAgent($user->id, $data);
              $this->repository->assignRoles($user, $data['role_id']);
+
+            if ($this->partyService->shouldCreatePartyAccount($data)) {
+                $this->partyService->createFromSourceModule('agent', $agent->load('user'));
+            }
+
             $this->flushCache();
             return $agent;
         });

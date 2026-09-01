@@ -213,6 +213,12 @@
       </div>
     </div>
 
+    <CreatePartyAccountCheckbox
+      v-if="isCreate"
+      v-model="localForm.create_party_account"
+      source-module="agent"
+    />
+
     <!-- Actions -->
     <div class="flex justify-end gap-2 pt-4 pb-6" >
       <BaseButton class="bg-yellow-600 hover:bg-yellow-700" type="button" @click="onCancel"
@@ -242,6 +248,7 @@ import { useToast } from 'vue-toastification'
 import appConfig from '@/shared/config/appConfig'
 import { useFileHandler } from '@/shared/composables/useFileHandler'
 import { useTranslate } from '@/shared/composables/useTranslate'
+import CreatePartyAccountCheckbox from '@/modules/parties/components/CreatePartyAccountCheckbox.vue'
 
 const { t } = useTranslate('agent')
 const appUrl = appConfig.appUrl
@@ -263,6 +270,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   store: { type: Object, required: true }, // For accessing store data and methods
   localFormstore: { type: Object }, // For accessing store data like item
+  isCreate: { type: Boolean, default: false },
 })
 
 // Emit updates

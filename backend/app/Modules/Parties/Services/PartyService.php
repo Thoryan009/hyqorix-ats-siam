@@ -76,6 +76,101 @@ class PartyService
         return $this->model->whereIn('id', $ids)->get();
     }
 
+    public function createFromSourceModule(string $sourceModule, object $entity): ?Party
+    {
+        $partyType = PartyType::query()->where('source_module', $sourceModule)->first();
+
+        if (!$partyType) {
+            return null;
+        }
+
+        $payload = $this->buildPartyPayloadFromEntity($sourceModule, $partyType->code, $entity);
+
+        if (!$payload) {
+            return null;
+        }
+
+        if ($this->model->newQuery()->where('code', $payload['code'])->exists()) {
+            return null;
+        }
+
+        if ($this->model->newQuery()
+            ->where('type', $payload['type'])
+            ->where('code', $payload['code'])
+            ->exists()) {
+            return null;
+        }
+
+        if ($sourceModule === 'employee') {
+            $existingNames = $this->getExistingPartyNameSet($payload['type']);
+            $name = strtoupper(trim((string) $payload['name']));
+
+            if ($name !== '' && isset($existingNames[$name])) {
+                return null;
+            }
+        }
+
+        return $this->create($payload);
+    }
+
+    public function shouldCreatePartyAccount(array $data): bool
+    {
+        return in_array($data['create_party_account'] ?? 1, [1, '1', true], true);
+    }
+
+    private function buildPartyPayloadFromEntity(string $sourceModule, string $typeCode, object $entity): ?array
+    {
+        $code = '';
+        $name = '';
+
+        switch ($sourceModule) {
+            case 'client':
+                /** @var Client $entity */
+                $code = $this->compactPartyCode($entity->client_id ?? '');
+                $name = (string) ($entity->user?->name ?? '');
+                break;
+            case 'agent':
+                /** @var Agent $entity */
+                $code = $this->normalizeShortCode('AG', $entity->agent_id ?? null, $entity->id);
+                $name = (string) ($entity->user?->name ?? '');
+                break;
+            case 'principal':
+                /** @var Principal $entity */
+                $code = $this->normalizeShortCode('PR', $entity->principal_id ?? null, $entity->id);
+                $name = (string) ($entity->user?->name ?? '');
+                break;
+            case 'vendor':
+                /** @var Vendor $entity */
+                $code = $this->compactPartyCode($entity->vendor_id ?? '');
+                $name = (string) ($entity->organization_name ?? $entity->user?->name ?? '');
+                break;
+            case 'employee':
+                /** @var Employee $entity */
+                $code = $this->normalizeShortCode('ST', null, $entity->id);
+                $name = (string) ($entity->user?->name ?? '');
+                break;
+            default:
+                return null;
+        }
+
+        $code = trim($code);
+        $name = trim($name);
+
+        if ($code === '' || $name === '') {
+            return null;
+        }
+
+        return [
+            'code' => $code,
+            'name' => $name,
+            'type' => $typeCode,
+            'status' => 'active',
+            'opening_debit' => 0,
+            'opening_credit' => 0,
+            'remarks' => '',
+        ];
+    }
+
     public function getSourceOptions(string $type, array $filters = []): array
     {
         $partyType = PartyType::query()->where('code', $type)->first();

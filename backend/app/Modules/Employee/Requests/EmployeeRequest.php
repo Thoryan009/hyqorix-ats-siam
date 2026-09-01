@@ -117,6 +117,7 @@ class EmployeeRequest extends FormRequest
             ],
 
             'image_path' => $this->fileRule,
+            'create_party_account' => ['nullable', Rule::in([0, 1, '0', '1', true, false])],
         ];
     }
 }

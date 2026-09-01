@@ -85,12 +85,13 @@ class ClientRequest extends FormRequest
                 Rule::in([0, 1]),
             ],
 
-             'client_image_path' => [
+            'client_image_path' => [
                 'nullable',
                 'file',
                 'mimetypes:image/*',
                 'max:400', // 1MB
             ],
+            'create_party_account' => ['nullable', Rule::in([0, 1, '0', '1', true, false])],
         ];
     }
 }

@@ -10,11 +10,14 @@ use Illuminate\Support\Facades\Mail;
 use App\Modules\Employee\Mail\EmployeeMail;
 use App\Modules\Setting\Models\Setting;
 use App\Modules\Shared\Helpers\FileHelper;
+use App\Modules\Parties\Services\PartyService;
 
 class EmployeeService extends BaseCachedService
 {
-    public function __construct(protected EmployeeRepository $repository)
-    {
+    public function __construct(
+        protected EmployeeRepository $repository,
+        protected PartyService $partyService,
+    ) {
         parent::__construct(new Employee());
         $this->repository = $repository;
     }
@@ -66,6 +69,10 @@ class EmployeeService extends BaseCachedService
                 $employee = $this->repository->createEmployee($user->id, $data);
                 $this->repository->assignRoles($user, $data['role_ids']);
                 $this->repository->assignDepartments($employee, $data['department_ids']);
+
+                if ($this->partyService->shouldCreatePartyAccount($data)) {
+                    $this->partyService->createFromSourceModule('employee', $employee->load('user'));
+                }
 
                 if ($data['send_credentials'] == '1') {
                     $setting = Setting::first();
