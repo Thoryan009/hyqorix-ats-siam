@@ -32,6 +32,8 @@ export default {
       address: 'ঠিকানা',
       role: 'রোল',
       status: 'স্ট্যাটাস',
+      yes: 'হ্যাঁ',
+      no: 'না',
       country: 'দেশ',
       client: 'ক্লায়েন্ট',
       agent: 'এজেন্ট',

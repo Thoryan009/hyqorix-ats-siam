@@ -38,6 +38,7 @@ class PartyTypeController extends Controller
             'status' => $type->status,
             'sort_order' => (int) $type->sort_order,
             'source_module' => $type->source_module,
+            'apply_job_filter' => (bool) $type->apply_job_filter,
         ])->values();
 
         return apiSuccess($options);

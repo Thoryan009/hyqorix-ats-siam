@@ -34,7 +34,7 @@ class PartyTypeService
             $query->where('status', $status);
         }
 
-        return $query->get(['id', 'code', 'name', 'status', 'sort_order', 'source_module']);
+        return $query->get(['id', 'code', 'name', 'status', 'sort_order', 'source_module', 'apply_job_filter']);
     }
 
     public function getSourceModuleMappings(): array

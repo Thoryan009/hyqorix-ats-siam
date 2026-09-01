@@ -39,6 +39,12 @@ class PartyTypeRequest extends FormRequest
                     : $this->input('sort_order'),
             ]);
         }
+
+        if ($this->has('apply_job_filter')) {
+            $this->merge([
+                'apply_job_filter' => in_array($this->input('apply_job_filter'), [1, '1', true, 'true'], true),
+            ]);
+        }
     }
 
     public function rules(): array
@@ -62,6 +68,7 @@ class PartyTypeRequest extends FormRequest
                 Rule::in(array_keys(config('parties.source_modules', []))),
                 Rule::unique('party_types', 'source_module')->ignore($partyTypeId),
             ],
+            'apply_job_filter' => ['nullable', 'boolean'],
         ];
     }
 

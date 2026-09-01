@@ -28,7 +28,6 @@ const partySourceModules = {
   },
   application: {
     selectLabelKey: 'parties.select_candidate',
-    requiresJobFilter: true,
     mapItem: (row) => ({
       id: row.id,
       code: row.passport_no,
@@ -65,8 +64,8 @@ export function hasPartySource(partyType) {
 }
 
 export function requiresPartyJobFilter(partyType) {
-  const sourceModule = resolveSourceModule(partyType)
-  return Boolean(partySourceModules[sourceModule]?.requiresJobFilter)
+  const store = usePartyTypeSourceStore()
+  return store.requiresJobFilter(partyType)
 }
 
 export function getPartySourceConfig(partyType) {

@@ -36,6 +36,10 @@
             <p class="font-semibold text-gray-800">{{ store.item?.status }}</p>
           </div>
           <div class="rounded-lg bg-white p-4 shadow-sm">
+            <span class="text-sm font-medium text-gray-600">{{ t('party_types.apply_job_filter') }}</span>
+            <p class="font-semibold text-gray-800">{{ store.item?.apply_job_filter_label || 'No' }}</p>
+          </div>
+          <div class="rounded-lg bg-white p-4 shadow-sm">
             <span class="text-sm font-medium text-gray-600">{{ t('shared.labels.created_at') }}</span>
             <p class="font-semibold text-gray-800">{{ store.item?.created_at }}</p>
           </div>

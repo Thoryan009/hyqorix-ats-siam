@@ -17,6 +17,8 @@ class PartyTypeResource extends JsonResource
             'status' => $this->status === 'active' ? 'Active' : 'Inactive',
             'status_raw' => $this->status,
             'source_module' => $this->source_module,
+            'apply_job_filter' => (bool) $this->apply_job_filter,
+            'apply_job_filter_label' => $this->apply_job_filter ? 'Yes' : 'No',
             'created_at' => DateTimeFormatter::formatDateTime($this->created_at),
             'updated_at' => DateTimeFormatter::formatDateTime($this->updated_at),
             'created_by' => $this->createdBy?->name,

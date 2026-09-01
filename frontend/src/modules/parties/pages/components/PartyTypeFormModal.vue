@@ -47,6 +47,44 @@
         />
       </div>
 
+      <div class="space-y-2">
+        <BaseLabel>{{ t('party_types.apply_job_filter') }}</BaseLabel>
+        <div class="grid grid-cols-2 gap-3">
+          <label
+            class="flex items-center gap-3 rounded-lg border p-4 transition cursor-pointer"
+            :class="
+              formData.apply_job_filter == '1'
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-300'
+            "
+          >
+            <input
+              type="radio"
+              v-model="formData.apply_job_filter"
+              value="1"
+              class="h-3 w-3"
+            />
+            <p class="font-medium">{{ t('shared.labels.yes') }}</p>
+          </label>
+          <label
+            class="flex items-center gap-3 rounded-lg border p-4 transition cursor-pointer"
+            :class="
+              formData.apply_job_filter == '0'
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-300'
+            "
+          >
+            <input
+              type="radio"
+              v-model="formData.apply_job_filter"
+              value="0"
+              class="h-3 w-3"
+            />
+            <p class="font-medium">{{ t('shared.labels.no') }}</p>
+          </label>
+        </div>
+      </div>
+
       <div class="flex justify-end gap-2 pt-4">
         <BaseButton
           class="bg-yellow-600 hover:bg-yellow-700"
@@ -81,6 +119,7 @@ const emptyFormData = {
   name: '',
   sort_order: 0,
   status: 'active',
+  apply_job_filter: '0',
 }
 
 const sampleFormData = {
@@ -88,6 +127,7 @@ const sampleFormData = {
   name: 'Partner',
   sort_order: 10,
   status: 'active',
+  apply_job_filter: '0',
 }
 
 const createDefaultForm = () =>
@@ -114,6 +154,7 @@ watch(
         name: store.item.name ?? '',
         sort_order: store.item.sort_order ?? 0,
         status: store.item.status_raw ?? 'active',
+        apply_job_filter: store.item.apply_job_filter ? '1' : '0',
       }
       return
     }
@@ -138,6 +179,7 @@ const handleSubmit = async () => {
     name: formData.value.name,
     sort_order: Number(formData.value.sort_order) || 0,
     status: formData.value.status,
+    apply_job_filter: formData.value.apply_job_filter === '1' ? 1 : 0,
   }
 
   if (store.isEditModal) {

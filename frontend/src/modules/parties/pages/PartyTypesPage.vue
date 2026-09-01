@@ -142,6 +142,7 @@ const columnsTemp = computed(() => [
   { key: 'code', label: t('party_types.code') },
   { key: 'name', label: t('party_types.name') },
   { key: 'sort_order', label: t('party_types.sort_order') },
+  { key: 'apply_job_filter_label', label: t('party_types.apply_job_filter') },
   { key: 'status', label: t('shared.labels.status') },
 ])
 

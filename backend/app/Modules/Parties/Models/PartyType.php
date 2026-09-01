@@ -18,6 +18,10 @@ class PartyType extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'apply_job_filter' => 'boolean',
+    ];
+
     public function parties(): HasMany
     {
         return $this->hasMany(Party::class, 'type', 'code');

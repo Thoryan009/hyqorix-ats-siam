@@ -32,6 +32,8 @@ export default {
       address: 'Address',
       role: 'Role',
       status: 'Status',
+      yes: 'Yes',
+      no: 'No',
       country: 'Country',
       client: 'Client',
       agent: 'Agent',

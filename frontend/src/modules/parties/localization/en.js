@@ -60,5 +60,6 @@ export default {
     code: 'Code',
     name: 'Name',
     sort_order: 'Sort Order',
+    apply_job_filter: 'Apply Job Filter',
   },
 }

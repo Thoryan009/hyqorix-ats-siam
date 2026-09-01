@@ -60,5 +60,6 @@ export default {
     code: 'কোড',
     name: 'নাম',
     sort_order: 'ক্রম',
+    apply_job_filter: 'জব ফিল্টার প্রয়োগ করুন',
   },
 }
