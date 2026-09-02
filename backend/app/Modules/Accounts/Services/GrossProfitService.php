@@ -30,7 +30,9 @@ class GrossProfitService
         $toDate = $this->normalizeDate($filters['to_date'] ?? null) ?? now()->toDateString();
 
         $passportMap = $this->buildPassportMap($filters);
-        if ($passportMap->isEmpty()) {
+        $hasDimensionFilters = $this->hasDimensionFilters($filters);
+
+        if ($hasDimensionFilters && $passportMap->isEmpty()) {
             return $this->emptyReport($fromDate, $toDate, $includeCandidates);
         }
 
@@ -53,8 +55,6 @@ class GrossProfitService
             ->when($fromDate, fn ($query) => $query->whereDate('journals.voucher_date', '>=', $fromDate))
             ->whereDate('journals.voucher_date', '<=', $toDate)
             ->whereIn('journal_lines.account_id', $accounts->keys())
-            ->whereNotNull('journal_lines.sub_ledger')
-            ->where('journal_lines.sub_ledger', '!=', '')
             ->select([
                 'journal_lines.account_id',
                 'journal_lines.sub_ledger',
@@ -67,43 +67,43 @@ class GrossProfitService
         $candidateTotals = [];
 
         foreach ($lines as $line) {
-            $matchingPassports = $this->matchingPassports((string) $line->sub_ledger, $passportMap);
-            if ($matchingPassports === []) {
-                continue;
-            }
-
             $account = $accounts->get($line->account_id);
             if (! $account) {
                 continue;
             }
 
-            $shareCount = count($matchingPassports);
-            $allocatedDebit = $this->allocateAmount((float) $line->debit, $shareCount);
-            $allocatedCredit = $this->allocateAmount((float) $line->credit, $shareCount);
+            $matchingPassports = $this->matchingPassports((string) ($line->sub_ledger ?? ''), $passportMap);
 
-            foreach ($matchingPassports as $index => $passport) {
-                $debit = $allocatedDebit[$index];
-                $credit = $allocatedCredit[$index];
-                $amount = $this->resolveNetAmount((string) $account->type, $debit, $credit);
-
-                if (! isset($accountTotals[$account->id])) {
-                    $accountTotals[$account->id] = [
-                        'total_dr' => 0.0,
-                        'total_cr' => 0.0,
-                        'amount' => 0.0,
-                    ];
-                }
-
-                $accountTotals[$account->id]['total_dr'] = round($accountTotals[$account->id]['total_dr'] + $debit, 2);
-                $accountTotals[$account->id]['total_cr'] = round($accountTotals[$account->id]['total_cr'] + $credit, 2);
-                $accountTotals[$account->id]['amount'] = round($accountTotals[$account->id]['amount'] + $amount, 2);
-
-                if (! isset($candidateTotals[$passport])) {
-                    $candidateTotals[$passport] = $this->emptyCandidateTotals($passportMap->get($passport));
-                }
-
-                $this->accumulateCandidateAmount($candidateTotals[$passport], (string) $account->type, $amount);
+            if ($hasDimensionFilters && $matchingPassports === []) {
+                continue;
             }
+
+            if ($matchingPassports !== []) {
+                $shareCount = count($matchingPassports);
+                $allocatedDebit = $this->allocateAmount((float) $line->debit, $shareCount);
+                $allocatedCredit = $this->allocateAmount((float) $line->credit, $shareCount);
+
+                foreach ($matchingPassports as $index => $passport) {
+                    $debit = $allocatedDebit[$index];
+                    $credit = $allocatedCredit[$index];
+                    $amount = $this->resolveNetAmount((string) $account->type, $debit, $credit);
+
+                    $this->accumulateAccountTotals($accountTotals, (int) $account->id, $debit, $credit, $amount);
+
+                    if (! isset($candidateTotals[$passport])) {
+                        $candidateTotals[$passport] = $this->emptyCandidateTotals($passportMap->get($passport));
+                    }
+
+                    $this->accumulateCandidateAmount($candidateTotals[$passport], (string) $account->type, $amount);
+                }
+
+                continue;
+            }
+
+            $debit = (float) $line->debit;
+            $credit = (float) $line->credit;
+            $amount = $this->resolveNetAmount((string) $account->type, $debit, $credit);
+            $this->accumulateAccountTotals($accountTotals, (int) $account->id, $debit, $credit, $amount);
         }
 
         [$groups, $summary] = $this->buildGroupsAndSummary($accounts, $accountTotals);
@@ -144,6 +144,38 @@ class GrossProfitService
                 'company_logo_path' => ($logoPath && is_file($logoPath)) ? $setting->company_logo_path : null,
             ],
         ])->setPaper('a4', 'landscape')->output();
+    }
+
+    private function hasDimensionFilters(array $filters): bool
+    {
+        return ! empty($filters['job_list_id'])
+            || ! empty($filters['work_order_id'])
+            || ! empty($filters['client_id'])
+            || ! empty($filters['agent_id'])
+            || ! empty($filters['principal_id']);
+    }
+
+    /**
+     * @param  array<int, array{total_dr: float, total_cr: float, amount: float}>  $accountTotals
+     */
+    private function accumulateAccountTotals(
+        array &$accountTotals,
+        int $accountId,
+        float $debit,
+        float $credit,
+        float $amount,
+    ): void {
+        if (! isset($accountTotals[$accountId])) {
+            $accountTotals[$accountId] = [
+                'total_dr' => 0.0,
+                'total_cr' => 0.0,
+                'amount' => 0.0,
+            ];
+        }
+
+        $accountTotals[$accountId]['total_dr'] = round($accountTotals[$accountId]['total_dr'] + $debit, 2);
+        $accountTotals[$accountId]['total_cr'] = round($accountTotals[$accountId]['total_cr'] + $credit, 2);
+        $accountTotals[$accountId]['amount'] = round($accountTotals[$accountId]['amount'] + $amount, 2);
     }
 
     private function buildPassportMap(array $filters): Collection
