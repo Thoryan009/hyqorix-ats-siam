@@ -104,6 +104,7 @@ import { useChartOfAccountStore } from '@/modules/accounts/store/chartOfAccountS
 import { useTranslate } from '@/shared/composables/useTranslate'
 import {
   accountTypeOptions,
+  applyTypeDefaults,
   financialStatementOptions,
   normalBalanceOptions,
   statusOptions,
@@ -148,6 +149,14 @@ const isSaving = computed(() => submitLoading.value || updateLoading.value)
 const resetForm = () => {
   formData.value = createDefaultForm()
 }
+
+watch(
+  () => formData.value.type,
+  (type) => {
+    if (!type) return
+    formData.value = applyTypeDefaults(formData.value)
+  },
+)
 
 watch(
   () => [store.isModal, store.isEditModal, store.item],

@@ -30,3 +30,57 @@ export const statusOptions = [
   { id: 'active', name: 'Active' },
   { id: 'inactive', name: 'Inactive' },
 ]
+
+const financialStatementByType = {
+  Asset: 'Balance Sheet',
+  'Contra Asset': 'Balance Sheet',
+  Liability: 'Balance Sheet',
+  Equity: 'Balance Sheet',
+  'Contra Equity': 'Balance Sheet',
+  Revenue: 'Gross Profit',
+  'Contra Revenue': 'Gross Profit',
+  'Direct Cost A': 'Gross Profit',
+  'Direct Cost B': 'Gross Profit',
+  'Other Operating Revenue': 'Income Statement',
+  'Other Income': 'Income Statement',
+  'Operating Expense': 'Income Statement',
+  'Finance Cost': 'Income Statement',
+  'Other Expense': 'Income Statement',
+}
+
+const normalBalanceByType = {
+  Asset: 'debit',
+  'Contra Asset': 'credit',
+  Liability: 'credit',
+  Equity: 'credit',
+  'Contra Equity': 'debit',
+  Revenue: 'credit',
+  'Contra Revenue': 'debit',
+  'Direct Cost A': 'debit',
+  'Direct Cost B': 'debit',
+  'Other Operating Revenue': 'credit',
+  'Other Income': 'credit',
+  'Operating Expense': 'debit',
+  'Finance Cost': 'debit',
+  'Other Expense': 'debit',
+}
+
+export function financialStatementForType(type) {
+  return financialStatementByType[type] ?? ''
+}
+
+export function normalBalanceForType(type) {
+  return normalBalanceByType[type] ?? ''
+}
+
+export function applyTypeDefaults(formData = {}) {
+  const type = formData.type
+  const financialStatement = financialStatementForType(type)
+  const normalBalance = normalBalanceForType(type)
+
+  return {
+    ...formData,
+    ...(financialStatement ? { financial_statement: financialStatement } : {}),
+    ...(normalBalance ? { normal_balance: normalBalance } : {}),
+  }
+}

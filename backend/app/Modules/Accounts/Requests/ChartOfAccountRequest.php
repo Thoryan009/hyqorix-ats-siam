@@ -33,6 +33,12 @@ class ChartOfAccountRequest extends FormRequest
                 'code' => trim((string) $this->input('code')),
             ]);
         }
+
+        if ($this->has('type')) {
+            $this->merge(
+                \App\Modules\Accounts\Helpers\ChartOfAccountDefaults::applyTypeDefaults($this->all())
+            );
+        }
     }
 
     public function rules(): array
