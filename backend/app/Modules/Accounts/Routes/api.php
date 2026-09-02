@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('trial-balance', [TrialBalanceController::class, 'index']);
 Route::get('gross-profit', [GrossProfitController::class, 'index']);
+Route::get('gross-profit/export-pdf', [GrossProfitController::class, 'exportPdf']);
 Route::get('income-statement', [IncomeStatementController::class, 'index']);
 Route::get('balance-sheet', [BalanceSheetController::class, 'index']);
 

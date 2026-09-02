@@ -94,17 +94,33 @@
       </div>
 
       <div class="mt-4 flex flex-wrap gap-2">
-        <BaseButton class="bg-indigo-600 text-white hover:bg-indigo-700" :disabled="loading" @click="loadReport">
-          <i class="fa fa-refresh mr-1"></i>
+        <BaseButton class="bg-indigo-600 text-white hover:bg-indigo-700" :disabled="isBusy" @click="loadReport">
+          <i class="fa fa-filter mr-1"></i>
           {{ loading ? t('accounts.loading_gross_profit') : t('accounts.filter') }}
         </BaseButton>
         <BaseButton
           v-if="hasActiveFilters"
           class="bg-slate-600 text-white hover:bg-slate-700"
-          :disabled="loading"
+          :disabled="isBusy"
           @click="resetFilters"
         >
           {{ t('accounts.reset_filters') }}
+        </BaseButton>
+        <BaseButton
+          class="bg-slate-900 text-white hover:bg-slate-800"
+          :disabled="isBusy"
+          @click="viewBreakdownReport"
+        >
+          <i class="fa fa-eye mr-1"></i>
+          {{ previewing ? t('accounts.opening_breakdown') : t('accounts.view_breakdown_report') }}
+        </BaseButton>
+        <BaseButton
+          class="bg-red-600 text-white hover:bg-red-700"
+          :disabled="isBusy"
+          @click="downloadBreakdownReport"
+        >
+          <i class="fa fa-file-pdf-o mr-1"></i>
+          {{ exporting ? t('accounts.generating_pdf') : t('accounts.download_breakdown_report') }}
         </BaseButton>
       </div>
     </div>
@@ -172,61 +188,58 @@
       </div>
     </div>
 
-    <div
-      v-if="!loading && !loadError && candidates.length"
-      class="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
-    >
-      <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
-        <h3 class="text-base font-bold text-slate-900">{{ t('accounts.gross_profit_candidates') }}</h3>
-        <p class="mt-0.5 text-xs text-slate-500">{{ t('accounts.gross_profit_candidates_note') }}</p>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full border-collapse text-sm">
-          <thead>
-            <tr class="bg-slate-100 text-left text-slate-700">
-              <th class="border border-slate-200 px-3 py-2 font-semibold">{{ t('accounts.passport_no') }}</th>
-              <th class="border border-slate-200 px-3 py-2 font-semibold">{{ t('accounts.candidate_name') }}</th>
-              <th class="border border-slate-200 px-3 py-2 font-semibold">{{ t('accounts.filter_job') }}</th>
-              <th class="border border-slate-200 px-3 py-2 font-semibold">{{ t('accounts.filter_demand_letter') }}</th>
-              <th class="border border-slate-200 px-3 py-2 font-semibold">{{ t('accounts.filter_client') }}</th>
-              <th class="border border-slate-200 px-3 py-2 font-semibold">{{ t('accounts.filter_agent') }}</th>
-              <th class="border border-slate-200 px-3 py-2 font-semibold">{{ t('accounts.filter_principal') }}</th>
-              <th class="border border-slate-200 px-3 py-2 text-right font-semibold">{{ t('accounts.total_revenue') }}</th>
-              <th class="border border-slate-200 px-3 py-2 text-right font-semibold">{{ t('accounts.total_direct_cost') }}</th>
-              <th class="border border-slate-200 px-3 py-2 text-right font-semibold">{{ t('accounts.gross_profit') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in candidates" :key="row.passport_no" class="hover:bg-slate-50">
-              <td class="border border-slate-200 px-3 py-2 font-medium text-slate-800">{{ row.passport_no }}</td>
-              <td class="border border-slate-200 px-3 py-2 text-slate-900">{{ row.candidate_name || '—' }}</td>
-              <td class="border border-slate-200 px-3 py-2 text-slate-700">{{ row.job_name || '—' }}</td>
-              <td class="border border-slate-200 px-3 py-2 text-slate-700">{{ row.demand_letter || '—' }}</td>
-              <td class="border border-slate-200 px-3 py-2 text-slate-700">{{ row.client_name || '—' }}</td>
-              <td class="border border-slate-200 px-3 py-2 text-slate-700">{{ row.agent_name || '—' }}</td>
-              <td class="border border-slate-200 px-3 py-2 text-slate-700">{{ row.principal_name || '—' }}</td>
-              <td class="border border-slate-200 px-3 py-2 text-right tabular-nums text-slate-900">
-                {{ formatAmount(row.revenue) }}
-              </td>
-              <td class="border border-slate-200 px-3 py-2 text-right tabular-nums text-slate-900">
-                {{ formatAmount(row.direct_cost) }}
-              </td>
-              <td
-                class="border border-slate-200 px-3 py-2 text-right font-semibold tabular-nums"
-                :class="Number(row.gross_profit) >= 0 ? 'text-emerald-700' : 'text-rose-700'"
-              >
-                {{ formatAmount(row.gross_profit) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <Teleport to="body">
+      <Transition name="export-fade">
+        <div
+          v-if="exporting"
+          class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/45 px-4 backdrop-blur-sm"
+        >
+          <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div class="mb-5 flex items-center gap-4">
+              <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-white shadow-md">
+                <i class="fa fa-file-pdf-o text-2xl"></i>
+              </div>
+              <div>
+                <p class="text-lg font-semibold text-gray-900">{{ t('accounts.generating_pdf') }}</p>
+                <p class="mt-0.5 text-sm text-gray-500">{{ exportStatusText }}</p>
+              </div>
+            </div>
+
+            <div class="mb-2 flex items-center justify-between text-sm font-medium text-gray-700">
+              <span>{{ t('accounts.progress') }}</span>
+              <span class="tabular-nums text-primary">{{ exportProgress }}%</span>
+            </div>
+            <div class="h-2.5 overflow-hidden rounded-full bg-gray-100">
+              <div
+                class="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                :style="{ width: `${exportProgress}%` }"
+              ></div>
+            </div>
+            <p class="mt-3 text-center text-xs text-gray-400">{{ t('accounts.please_wait_preview') }}</p>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <GrossProfitBreakdownPdfPreviewModal
+      :is-visible="previewOpen"
+      :loading="previewing"
+      :error="previewError"
+      :pdf-url="previewUrl"
+      :filename="previewFilename"
+      :progress="exportProgress"
+      :status-text="previewStatusText"
+      @close="closePreview"
+      @download="downloadPreviewPdf"
+      @print="printPreviewPdf"
+      @retry="viewBreakdownReport"
+      @ready="onPreviewReady"
+    />
   </SectionHeader>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
 import BaseSearchSelect from '@/shared/components/base/BaseSearchSelect.vue'
@@ -240,7 +253,12 @@ import {
   useReportPrincipalsQuery,
   useReportWorkOrdersQuery,
 } from '@/modules/reports/queries/useReportsQuery'
-import { fetchGrossProfit } from '../services/grossProfitService'
+import {
+  exportGrossProfitBreakdownPdf,
+  fetchGrossProfit,
+  fetchGrossProfitBreakdownPdf,
+} from '../services/grossProfitService'
+import GrossProfitBreakdownPdfPreviewModal from './components/GrossProfitBreakdownPdfPreviewModal.vue'
 import { toast } from '@/shared/config/toastConfig'
 
 const { t } = useTranslate()
@@ -250,8 +268,14 @@ const fromDate = ref(`${currentYear}-01-01`)
 const toDate = ref(`${currentYear}-12-31`)
 const loading = ref(true)
 const loadError = ref('')
+const exporting = ref(false)
+const previewing = ref(false)
+const previewOpen = ref(false)
+const previewUrl = ref('')
+const previewFilename = ref('')
+const previewError = ref('')
+const exportProgress = ref(0)
 const groups = ref([])
-const candidates = ref([])
 const summary = ref({
   total_revenue: 0,
   total_contra_revenue: 0,
@@ -260,6 +284,26 @@ const summary = ref({
   total_direct_cost: 0,
   gross_profit: 0,
 })
+
+const isBusy = computed(() => loading.value || exporting.value || previewing.value)
+
+const exportStatusText = computed(() => {
+  if (exportProgress.value >= 100) return t('accounts.download_ready')
+  if (exportProgress.value >= 70) return t('accounts.preparing_file')
+  if (exportProgress.value >= 35) return t('accounts.building_report')
+  return t('accounts.collecting_report_data')
+})
+
+const previewStatusText = computed(() => {
+  if (previewError.value) return t('accounts.preview_load_failed')
+  if (exportProgress.value >= 100) return t('accounts.opening_pdf_preview')
+  if (exportProgress.value >= 70) return t('accounts.preparing_preview')
+  if (exportProgress.value >= 35) return t('accounts.building_report')
+  return t('accounts.collecting_report_data')
+})
+
+let progressTimer = null
+let previewReadyTimer = null
 
 const { filters, hasActiveFilters, resetFilters: resetDimensionFilters } = useTableFilters({
   job_list_id: '',
@@ -345,6 +389,29 @@ const periodLabel = computed(() => {
   return ''
 })
 
+function startExportProgress() {
+  exportProgress.value = 6
+  clearInterval(progressTimer)
+  progressTimer = setInterval(() => {
+    if (exportProgress.value >= 90) return
+    const remaining = 90 - exportProgress.value
+    exportProgress.value += Math.max(1, Math.round(remaining * 0.07))
+  }, 280)
+}
+
+function stopExportProgress() {
+  clearInterval(progressTimer)
+  progressTimer = null
+}
+
+function finishExportProgress() {
+  stopExportProgress()
+  exportProgress.value = 100
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, 450)
+  })
+}
+
 function entryRowClass(entry) {
   if (entry.kind === 'header') return 'bg-slate-100'
   return 'hover:bg-slate-50'
@@ -372,6 +439,11 @@ function resolveErrorMessage(error) {
   )
 }
 
+function exportErrorMessage(error, fallback) {
+  if (typeof error === 'string' && error.trim()) return error
+  return error?.message || error?.error || fallback
+}
+
 function activeFilters() {
   return removeEmptyKeys({
     from_date: fromDate.value || undefined,
@@ -385,6 +457,98 @@ function resetFilters() {
   loadReport()
 }
 
+function revokePreviewUrl() {
+  if (previewUrl.value) {
+    window.URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+  }
+}
+
+function closePreview() {
+  stopExportProgress()
+  clearTimeout(previewReadyTimer)
+  previewReadyTimer = null
+  previewOpen.value = false
+  previewing.value = false
+  previewError.value = ''
+  exportProgress.value = 0
+  revokePreviewUrl()
+  previewFilename.value = ''
+}
+
+function onPreviewReady() {
+  if (!previewUrl.value || previewError.value) return
+  clearTimeout(previewReadyTimer)
+  previewReadyTimer = null
+  stopExportProgress()
+  exportProgress.value = 100
+  previewing.value = false
+}
+
+async function viewBreakdownReport() {
+  clearTimeout(previewReadyTimer)
+  previewReadyTimer = null
+  previewOpen.value = true
+  previewing.value = true
+  previewError.value = ''
+  revokePreviewUrl()
+  startExportProgress()
+
+  try {
+    const { blob, filename } = await fetchGrossProfitBreakdownPdf(activeFilters())
+    previewFilename.value = filename
+    previewUrl.value = window.URL.createObjectURL(blob)
+    await finishExportProgress()
+    previewReadyTimer = window.setTimeout(() => {
+      onPreviewReady()
+    }, 1200)
+  } catch (error) {
+    stopExportProgress()
+    exportProgress.value = 0
+    previewError.value = exportErrorMessage(error, t('accounts.breakdown_pdf_load_error'))
+    previewing.value = false
+  }
+}
+
+function downloadPreviewPdf() {
+  if (!previewUrl.value) return
+  const link = document.createElement('a')
+  link.href = previewUrl.value
+  link.setAttribute('download', previewFilename.value || 'gross-profit-breakdown.pdf')
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+function printPreviewPdf() {
+  if (!previewUrl.value) return
+  const printWindow = window.open(previewUrl.value, '_blank')
+  if (!printWindow) {
+    toast.error(t('accounts.allow_popups_to_print'))
+    return
+  }
+  printWindow.addEventListener('load', () => {
+    printWindow.focus()
+    printWindow.print()
+  })
+}
+
+async function downloadBreakdownReport() {
+  exporting.value = true
+  startExportProgress()
+  try {
+    await exportGrossProfitBreakdownPdf(activeFilters())
+    await finishExportProgress()
+    toast.success(t('accounts.breakdown_pdf_generated'))
+  } catch (error) {
+    stopExportProgress()
+    toast.error(exportErrorMessage(error, t('accounts.breakdown_pdf_load_error')))
+  } finally {
+    exporting.value = false
+    exportProgress.value = 0
+  }
+}
+
 async function loadReport() {
   loading.value = true
   loadError.value = ''
@@ -392,7 +556,6 @@ async function loadReport() {
     const payload = await fetchGrossProfit(activeFilters())
     const data = payload?.data ?? payload
     groups.value = Array.isArray(data?.groups) ? data.groups : []
-    candidates.value = Array.isArray(data?.candidates) ? data.candidates : []
     summary.value = {
       total_revenue: Number(data?.summary?.total_revenue || 0),
       total_contra_revenue: Number(data?.summary?.total_contra_revenue || 0),
@@ -405,7 +568,6 @@ async function loadReport() {
     const message = resolveErrorMessage(error)
     loadError.value = message
     groups.value = []
-    candidates.value = []
     toast.error(message)
   } finally {
     loading.value = false
@@ -413,4 +575,23 @@ async function loadReport() {
 }
 
 onMounted(loadReport)
+
+onUnmounted(() => {
+  stopExportProgress()
+  clearTimeout(previewReadyTimer)
+  previewReadyTimer = null
+  revokePreviewUrl()
+})
 </script>
+
+<style scoped>
+.export-fade-enter-active,
+.export-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.export-fade-enter-from,
+.export-fade-leave-to {
+  opacity: 0;
+}
+</style>

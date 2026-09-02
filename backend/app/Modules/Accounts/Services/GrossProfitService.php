@@ -5,6 +5,8 @@ namespace App\Modules\Accounts\Services;
 use App\Modules\Accounts\Models\ChartOfAccount;
 use App\Modules\Application\Helpers\ApplicationPresenter;
 use App\Modules\Application\Models\Application;
+use App\Modules\Setting\Models\Setting;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -22,14 +24,14 @@ class GrossProfitService
         'Revenue',
     ];
 
-    public function getReport(array $filters = []): array
+    public function getReport(array $filters = [], bool $includeCandidates = false): array
     {
         $fromDate = $this->normalizeDate($filters['from_date'] ?? null);
         $toDate = $this->normalizeDate($filters['to_date'] ?? null) ?? now()->toDateString();
 
         $passportMap = $this->buildPassportMap($filters);
         if ($passportMap->isEmpty()) {
-            return $this->emptyReport($fromDate, $toDate);
+            return $this->emptyReport($fromDate, $toDate, $includeCandidates);
         }
 
         $accounts = ChartOfAccount::query()
@@ -42,7 +44,7 @@ class GrossProfitService
             ->keyBy('id');
 
         if ($accounts->isEmpty()) {
-            return $this->emptyReport($fromDate, $toDate);
+            return $this->emptyReport($fromDate, $toDate, $includeCandidates);
         }
 
         $lines = DB::table('journal_lines')
@@ -107,14 +109,41 @@ class GrossProfitService
         [$groups, $summary] = $this->buildGroupsAndSummary($accounts, $accountTotals);
         $candidates = $this->buildCandidateRows($candidateTotals);
 
-        return [
+        $report = [
             'title' => 'Gross Profit',
             'from_date' => $fromDate,
             'to_date' => $toDate,
             'groups' => $groups,
             'summary' => $summary,
-            'candidates' => $candidates,
         ];
+
+        if ($includeCandidates) {
+            $report['candidates'] = $candidates;
+        }
+
+        return $report;
+    }
+
+    public function exportPdf(array $filters = []): string
+    {
+        $report = $this->getReport($filters, true);
+        $setting = Setting::query()->find(1);
+        $logoPath = $setting?->company_logo_path
+            ? public_path('storage/' . ltrim((string) $setting->company_logo_path, '/'))
+            : null;
+
+        return Pdf::loadView('accounts.gross-profit-breakdown-pdf', [
+            'rows' => $report['candidates'] ?? [],
+            'summary' => $report['summary'] ?? [],
+            'filters' => $filters,
+            'from_date' => $report['from_date'] ?? null,
+            'to_date' => $report['to_date'] ?? null,
+            'setting' => [
+                'company_name' => $setting?->company_name,
+                'company_address' => $setting?->company_address,
+                'company_logo_path' => ($logoPath && is_file($logoPath)) ? $setting->company_logo_path : null,
+            ],
+        ])->setPaper('a4', 'landscape')->output();
     }
 
     private function buildPassportMap(array $filters): Collection
@@ -372,9 +401,9 @@ class GrossProfitService
             ->all();
     }
 
-    private function emptyReport(?string $fromDate, string $toDate): array
+    private function emptyReport(?string $fromDate, string $toDate, bool $includeCandidates = false): array
     {
-        return [
+        $report = [
             'title' => 'Gross Profit',
             'from_date' => $fromDate,
             'to_date' => $toDate,
@@ -387,8 +416,13 @@ class GrossProfitService
                 'total_direct_cost' => 0.0,
                 'gross_profit' => 0.0,
             ],
-            'candidates' => [],
         ];
+
+        if ($includeCandidates) {
+            $report['candidates'] = [];
+        }
+
+        return $report;
     }
 
     private function resolveNetAmount(string $accountType, float $totalDr, float $totalCr): float
