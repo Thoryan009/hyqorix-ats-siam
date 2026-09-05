@@ -36,6 +36,7 @@ class PartyLedgerService
     private function buildLedgerRows(array $filters): Collection
     {
         $lines = $this->baseQuery($filters)
+            ->orderByRaw("COALESCE(parties.code, parties.name, '')")
             ->orderBy('journals.voucher_date')
             ->orderBy('journals.id')
             ->orderBy('journal_lines.sort_order')
@@ -47,10 +48,8 @@ class PartyLedgerService
             $party = $journal?->party;
             $account = $line->account;
 
-            $partyRef = trim((string) ($line->sub_ledger ?? ''));
-            if ($partyRef === '') {
-                $partyRef = trim((string) ($party?->code ?? $party?->name ?? ''));
-            }
+            // Party ledger always groups by journal party — never by line sub_ledger.
+            $partyRef = trim((string) ($party?->code ?? $party?->name ?? ''));
             if ($partyRef === '') {
                 $partyRef = 'General';
             }
@@ -63,13 +62,17 @@ class PartyLedgerService
 
             $debit = round((float) $line->debit, 2);
             $credit = round((float) $line->credit, 2);
+            $partyKey = $party?->id
+                ? 'party:'.$party->id
+                : 'ref:'.strtolower($partyRef);
 
             return [
                 'id' => $line->id,
                 'journal_id' => $journal?->id,
                 'party_ref' => $partyRef,
                 'party_type' => $partyType,
-                'party_ref_key' => strtolower($partyRef),
+                'party_ref_key' => $partyKey,
+                'sub_ledger' => trim((string) ($line->sub_ledger ?? '')) ?: null,
                 'date' => optional($journal?->voucher_date)?->format('Y-m-d'),
                 'date_label' => DateTimeFormatter::formatDate($journal?->voucher_date),
                 'je_no' => $journal?->voucher_no,
@@ -103,6 +106,7 @@ class PartyLedgerService
         $query = JournalLine::query()
             ->select('journal_lines.*')
             ->join('journals', 'journals.id', '=', 'journal_lines.journal_id')
+            ->leftJoin('parties', 'parties.id', '=', 'journals.party_id')
             ->whereIn('journals.status', self::LEDGER_STATUSES)
             ->with([
                 'account:id,code,name',
