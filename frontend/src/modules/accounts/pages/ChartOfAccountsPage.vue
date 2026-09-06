@@ -4,7 +4,7 @@
       <div>
         <PageTitle>{{ t('accounts.management') }}</PageTitle>
       </div>
-      <BaseButton @click="store.handleToggleModal('add')">
+      <BaseButton v-can="'chart_of_account.create'" @click="store.handleToggleModal('add')">
         {{ t('shared.actions.add') }} {{ t('accounts.module') }}
       </BaseButton>
     </PageHeader>
@@ -17,8 +17,8 @@
           :disabled="removeItemsLoading"
           @click="bulkDelete"
         >
-          <span v-if="removeItemsLoading">{{ t('shared.messages.deleting') }}</span>
-          <span v-else>{{ t('shared.messages.delete_selected', { count: selectedIds.length }) }}</span>
+          <span v-can="'chart_of_account.delete'"  v-if="removeItemsLoading">{{ t('shared.messages.deleting') }}</span>
+          <span v-can="'chart_of_account.delete'" v-else>{{ t('shared.messages.delete_selected', { count: selectedIds.length }) }}</span>
         </BaseButton>
       </div>
       <div></div>
@@ -70,6 +70,7 @@
 
         <BaseTable
           v-else
+
           :columns="columns"
           :rows="rows"
           :current-page="page"
@@ -83,18 +84,21 @@
         >
           <template #actions="{ row }">
             <BaseTableButton
+              v-can="'chart_of_account.view'"
               icon="fa fa-eye"
               variant="primary"
               title="View"
               @click="onView(row)"
             />
             <BaseTableButton
+              v-can="'chart_of_account.edit'"
               icon="fa fa-pencil"
               variant="success"
               title="Edit"
               @click="onEdit(row)"
             />
             <BaseTableButton
+              v-can="'chart_of_account.delete'"
               icon="fa fa-trash"
               variant="danger"
               title="Delete"
@@ -113,8 +117,8 @@
           @update:perPage="setPerPage"
         />
 
-        <FormModal />
-        <ViewModal />
+        <FormModal v-can="'chart_of_account.create' || 'chart_of_account.edit'"  />
+        <ViewModal v-can="'chart_of_account.view'" />
       </div>
     </div>
   </SectionHeader>

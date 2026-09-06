@@ -4,7 +4,7 @@
       <div>
         <PageTitle>{{ t('party_types.management') }}</PageTitle>
       </div>
-      <BaseButton @click="store.handleToggleModal('add')">
+      <BaseButton v-can="'party_type.create'" @click="store.handleToggleModal('add')">
         {{ t('shared.actions.add') }} {{ t('party_types.module') }}
       </BaseButton>
     </PageHeader>
@@ -17,8 +17,8 @@
           :disabled="removeItemsLoading"
           @click="bulkDelete"
         >
-          <span v-if="removeItemsLoading">{{ t('shared.messages.deleting') }}</span>
-          <span v-else>{{ t('shared.messages.delete_selected', { count: selectedIds.length }) }}</span>
+          <span v-can="'party_type.delete'" v-if="removeItemsLoading">{{ t('shared.messages.deleting') }}</span>
+          <span v-can="'party_type.delete'" v-else>{{ t('shared.messages.delete_selected', { count: selectedIds.length }) }}</span>
         </BaseButton>
       </div>
       <div></div>
@@ -59,18 +59,21 @@
         >
           <template #actions="{ row }">
             <BaseTableButton
+              v-can="'party_type.view'"
               icon="fa fa-eye"
               variant="primary"
               title="View"
               @click="onView(row)"
             />
             <BaseTableButton
+              v-can="'party_type.edit'"
               icon="fa fa-pencil"
               variant="success"
               title="Edit"
               @click="onEdit(row)"
             />
             <BaseTableButton
+              v-can="'party_type.delete'"
               icon="fa fa-trash"
               variant="danger"
               title="Delete"
@@ -88,9 +91,9 @@
           @update:page="setPage"
           @update:perPage="setPerPage"
         />
-
-        <PartyTypeFormModal />
-        <PartyTypeViewModal />
+        
+        <PartyTypeFormModal v-can="'party_type.create'"/>
+        <PartyTypeViewModal v-can="'party_type.view'"/>
       </div>
     </div>
   </SectionHeader>

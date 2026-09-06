@@ -351,6 +351,7 @@
           {{ validationMessage }}
         </p>
         <BaseButton
+        v-can="'journal.payment'"
           className="bg-emerald-600 text-white hover:bg-emerald-700"
           :disabled="isPaying"
           @click="handlePay"

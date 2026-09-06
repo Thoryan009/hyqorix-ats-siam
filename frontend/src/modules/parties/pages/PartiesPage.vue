@@ -5,10 +5,11 @@
         <PageTitle>{{ t('parties.management') }}</PageTitle>
       </div>
       <div class="flex flex-wrap gap-2">
-        <BaseButton @click="store.handleToggleModal('add')">
+        <BaseButton v-can="'party.create'" @click="store.handleToggleModal('add')">
           {{ t('shared.actions.add') }} {{ t('parties.module') }}
         </BaseButton>
         <BaseButton
+          v-can="'party.create'"
           className="border border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50"
           @click="store.handleOpenBulkModal()"
         >
@@ -75,18 +76,21 @@
         >
           <template #actions="{ row }">
             <BaseTableButton
+              v-can="'party.view'"
               icon="fa fa-eye"
               variant="primary"
               title="View"
               @click="onView(row)"
             />
             <BaseTableButton
+              v-can="'party.edit'"
               icon="fa fa-pencil"
               variant="success"
               title="Edit"
               @click="onEdit(row)"
             />
             <BaseTableButton
+              v-can="'party.delete'"
               icon="fa fa-trash"
               variant="danger"
               title="Delete"
@@ -94,7 +98,7 @@
             />
           </template>
         </BaseTable>
-
+      
         <BasePagination
           v-if="!isLoading"
           :total="total"
@@ -105,9 +109,9 @@
           @update:perPage="setPerPage"
         />
 
-        <FormModal />
-        <BulkAddPartyModal />
-        <ViewModal />
+        <FormModal v-can="'party.create'"/>
+        <BulkAddPartyModal v-can="'party.create'"/>
+        <ViewModal v-can="'party.view'"/>
       </div>
     </div>
   </SectionHeader>

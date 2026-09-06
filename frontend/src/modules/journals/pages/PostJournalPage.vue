@@ -18,6 +18,7 @@
     <div class="mb-6 flex flex-wrap gap-2">
       <button
         v-for="tab in pageTabs"
+        v-can="tab.permission"
         :key="tab.id"
         type="button"
         class="rounded-lg border px-4 py-2 text-sm font-semibold transition-all"
@@ -32,15 +33,16 @@
       </button>
     </div>
 
-    <div v-if="activeTab === 'bill_entry'">
+    <div v-can="'journal.bill_entry'" v-if="activeTab === 'bill_entry'">
     <JournalBillEntrySuccess
+
       v-if="billEntrySuccess"
       :success="billEntrySuccess"
       @primary="handleBillEntrySuccessPrimary"
       @secondary="handleSuccessCreateNew"
     />
 
-    <template v-else>
+    <template   v-else>
     <div class="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -490,6 +492,7 @@
       </template>
       <template v-else>
         <BaseButton
+        v-can="'journal.bill_entry'"
           className="border border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50"
           :disabled="isSubmitting"
           @click="handleSubmit('pending_approval')"
@@ -500,6 +503,7 @@
           <span v-else>{{ t('journals.submit_approval') }}</span>
         </BaseButton>
         <BaseButton
+        v-can="'journal.bill_entry'"
           className="bg-indigo-600 text-white hover:bg-indigo-700"
           :disabled="isSubmitting"
           @click="handleSubmit('posted')"
@@ -514,7 +518,7 @@
     </template>
     </div>
 
-    <div v-else-if="activeTab === 'approval'" class="space-y-5">
+    <div v-can="'journal.approve'" v-else-if="activeTab === 'approval'" class="space-y-5">
     <JournalReturnSuccess
       v-if="returnSuccess"
       :success="returnSuccess"
@@ -605,6 +609,7 @@
 
       <template v-else>
         <JournalApprovalPreview
+        v-can="'journal.approve'"
           :key="selectedApprovalJournal.id"
           :journal="selectedApprovalJournal"
         />
@@ -639,7 +644,7 @@
               >
                 {{ t('journals.clear_selection') }}
               </BaseButton>
-              <BaseButton
+              <BaseButton v-can="'journal.approve'"
                 className="border border-rose-300 bg-white text-rose-700 hover:bg-rose-50"
                 :disabled="isReturning || isApproving"
                 @click="handleReturn"
@@ -648,7 +653,7 @@
                 <span v-if="isReturning">{{ t('journals.returning') }}</span>
                 <span v-else>{{ t('journals.return_journal') }}</span>
               </BaseButton>
-              <BaseButton
+              <BaseButton v-can="'journal.approve'"
                 className="bg-indigo-600 text-white hover:bg-indigo-700"
                 :disabled="isApproving || isReturning"
                 @click="handleApprove"
@@ -665,6 +670,7 @@
     </div>
 
     <JournalPaymentPanel
+    v-can="'journal.payment'"
       v-else-if="activeTab === 'payment'"
       :active="activeTab === 'payment'"
       :initial-journal-id="selectedPaymentJournalId"
@@ -738,9 +744,9 @@ const managerComment = ref('')
 const approveValidationMessage = ref('')
 let skipPartyClear = false
 const pageTabs = computed(() => [
-  { id: 'bill_entry', label: t('journals.tab_bill_entry') },
-  { id: 'approval', label: t('journals.tab_approval') },
-  { id: 'payment', label: t('journals.tab_payment') },
+  { id: 'bill_entry', label: t('journals.tab_bill_entry'), permission: 'journal.bill_entry' },
+  { id: 'approval', label: t('journals.tab_approval'), permission: 'journal.approve' },
+  { id: 'payment', label: t('journals.tab_payment'), permission: 'journal.payment' },
 ])
 
 const isApprovalTab = computed(() => activeTab.value === 'approval')

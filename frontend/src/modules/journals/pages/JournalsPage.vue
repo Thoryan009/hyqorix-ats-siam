@@ -6,6 +6,7 @@
         <p class="mt-1 text-sm text-gray-500">{{ t('journals.static_note') }}</p>
       </div>
       <BaseButton
+        v-can="'journal.bill_entry'"
         className="bg-indigo-600 text-white hover:bg-indigo-700"
         @click="$router.push({ name: 'Post Journal' })"
       >
@@ -141,12 +142,14 @@
               >
                 <div class="flex flex-col gap-1.5">
                   <BaseButton
+                  v-can="'journal.view'"
                     className="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3 py-1.5 text-xs"
                     @click="viewJournal(row.journal_id)"
                   >
                     {{ t('journals.view') }}
                   </BaseButton>
                   <BaseButton
+                  v-can="'journal.reverse'"
                     v-if="row.can_reverse"
                     className="bg-rose-50 text-rose-700 hover:bg-rose-100 px-3 py-1.5 text-xs"
                     :disabled="reverseLoading"

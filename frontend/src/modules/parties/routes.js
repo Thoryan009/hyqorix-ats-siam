@@ -12,6 +12,9 @@ export default [
         path: '',
         name: 'Party Management',
         component: PartiesPage,
+        meta: {
+          permissions: ['party.view']
+        },
       },
     ],
   },
@@ -24,6 +27,9 @@ export default [
         path: '',
         name: 'Party Type Management',
         component: PartyTypesPage,
+        meta: {
+          permissions: ['party_type.view']
+        },
       },
     ],
   },

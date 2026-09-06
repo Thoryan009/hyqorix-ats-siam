@@ -15,6 +15,9 @@ export default [
         path: '',
         name: 'Chart of Accounts',
         component: ChartOfAccountsPage,
+        meta: {
+          permissions: ['chart_of_account.view']
+        },
       },
     ],
   },
@@ -27,6 +30,9 @@ export default [
         path: '',
         name: 'Finance2 Trial Balance',
         component: TrialBalancePage,
+        meta: {
+          permissions: ['accounts.trial_balance']
+        },
       },
     ],
   },
@@ -39,6 +45,9 @@ export default [
         path: '',
         name: 'Finance2 Gross Profit',
         component: GrossProfitPage,
+        meta: {
+          permissions: ['accounts.gross_profit']
+        },
       },
     ],
   },
@@ -51,6 +60,9 @@ export default [
         path: '',
         name: 'Finance2 Income Statement',
         component: IncomeStatementPage,
+        meta: {
+          permissions: ['accounts.income_statement']
+        },
       },
     ],
   },
@@ -63,6 +75,9 @@ export default [
         path: '',
         name: 'Finance2 Balance Sheet',
         component: BalanceSheetPage,
+        meta: {
+          permissions: ['accounts.balance_sheet']
+        },
       },
     ],
   },
