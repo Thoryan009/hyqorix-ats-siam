@@ -130,7 +130,7 @@
                 class="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-white/80"
                 :class="itemIndex === 0 ? 'pt-1' : ''"
               >
-                {{ item.section }}
+                {{ t(item.section) }}
               </p>
 
               <router-link

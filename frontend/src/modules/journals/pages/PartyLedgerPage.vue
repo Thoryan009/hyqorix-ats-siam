@@ -158,13 +158,13 @@
                     <span class="inline-flex rounded-full bg-indigo-100 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-800">
                       {{ item.row.party_type }}
                     </span>
-                    <span class="text-sm font-semibold text-slate-900">{{ item.row.party_ref }}</span>
+                    <span class="text-sm font-semibold text-slate-900">{{ partyDisplayLabel(item.row) }}</span>
                   </div>
                 </td>
               </template>
               <template v-else>
                 <td class="whitespace-nowrap border border-slate-200 px-3 py-2 font-medium text-slate-800">
-                  {{ item.row.party_ref }}
+                  {{ partyDisplayLabel(item.row) }}
                 </td>
                 <td class="whitespace-nowrap border border-slate-200 px-3 py-2 text-slate-700">
                   {{ item.row.party_type }}
@@ -277,12 +277,23 @@ watch(
 
 const rows = computed(() => data.value?.data?.data ?? [])
 
+const partyDisplayLabel = (row) => {
+  const code = String(row?.party_code || row?.party_ref || '').trim()
+  const name = String(row?.party_name || '').trim()
+
+  if (code && name && code.toLowerCase() !== name.toLowerCase()) {
+    return `${code} – ${name}`
+  }
+
+  return code || name || '—'
+}
+
 const displayRows = computed(() => {
   const items = []
   let lastPartyKey = ''
 
   rows.value.forEach((row) => {
-    const partyKey = `${row.party_type}::${row.party_ref}`
+    const partyKey = row.party_ref_key || `${row.party_type}::${row.party_ref}`
 
     if (partyKey !== lastPartyKey) {
       items.push({
@@ -318,8 +329,10 @@ const columns = computed(() => [
 ])
 
 const rowClass = (row) => {
-  const partyKey = `${row.party_type}::${row.party_ref}`
-  const partyKeys = [...new Set(rows.value.map((item) => `${item.party_type}::${item.party_ref}`))]
+  const partyKey = row.party_ref_key || `${row.party_type}::${row.party_ref}`
+  const partyKeys = [
+    ...new Set(rows.value.map((item) => item.party_ref_key || `${item.party_type}::${item.party_ref}`)),
+  ]
   const groupIndex = partyKeys.indexOf(partyKey)
   return groupIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'
 }

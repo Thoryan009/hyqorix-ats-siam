@@ -49,10 +49,9 @@ class PartyLedgerService
             $account = $line->account;
 
             // Party ledger always groups by journal party — never by line sub_ledger.
-            $partyRef = trim((string) ($party?->code ?? $party?->name ?? ''));
-            if ($partyRef === '') {
-                $partyRef = 'General';
-            }
+            $partyCode = trim((string) ($party?->code ?? ''));
+            $partyName = trim((string) ($party?->name ?? ''));
+            $partyRef = $partyCode !== '' ? $partyCode : ($partyName !== '' ? $partyName : 'General');
 
             $partyType = $this->resolvePartyTypeLabel(
                 (string) ($journal?->party_type ?? ''),
@@ -70,6 +69,8 @@ class PartyLedgerService
                 'id' => $line->id,
                 'journal_id' => $journal?->id,
                 'party_ref' => $partyRef,
+                'party_code' => $partyCode !== '' ? $partyCode : null,
+                'party_name' => $partyName !== '' ? $partyName : null,
                 'party_type' => $partyType,
                 'party_ref_key' => $partyKey,
                 'sub_ledger' => trim((string) ($line->sub_ledger ?? '')) ?: null,
@@ -92,9 +93,11 @@ class PartyLedgerService
             ->when(!empty($filters['party_ref']), function (Collection $collection) use ($filters) {
                 $needle = strtolower((string) $filters['party_ref']);
 
-                return $collection->filter(
-                    fn (array $row) => str_contains(strtolower($row['party_ref']), $needle)
-                );
+                return $collection->filter(function (array $row) use ($needle) {
+                    return str_contains(strtolower((string) $row['party_ref']), $needle)
+                        || str_contains(strtolower((string) ($row['party_name'] ?? '')), $needle)
+                        || str_contains(strtolower((string) ($row['party_code'] ?? '')), $needle);
+                });
             })
             ->values();
 
@@ -211,7 +214,7 @@ class PartyLedgerService
             $row['running_balance'] = round(abs($net), 2);
             $row['balance_type'] = $net >= 0 ? 'Dr' : 'Cr';
 
-            unset($row['party_ref_key'], $row['debit_raw'], $row['credit_raw']);
+            unset($row['debit_raw'], $row['credit_raw']);
 
             return $row;
         });

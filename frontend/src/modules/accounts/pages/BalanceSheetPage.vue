@@ -158,6 +158,7 @@ import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
 import { useTranslate } from '@/shared/composables/useTranslate'
 import { fetchBalanceSheet } from '../services/balanceSheetService'
+import { localizeAccountType } from '../utils/localizeAccountType'
 import { toast } from '@/shared/config/toastConfig'
 
 const { t } = useTranslate()
@@ -212,7 +213,7 @@ const sectionBlocks = computed(() => {
       {
         kind: 'header',
         key: `header-${group.type}`,
-        label: group.type_label,
+        label: localizeAccountType(group.type, t, group.type_label),
         sectionTotal: group.section_total,
       },
       ...group.rows.map((row) => ({
