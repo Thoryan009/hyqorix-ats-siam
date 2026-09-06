@@ -47,10 +47,10 @@ class GeneralLedgerService
             $party = $journal?->party;
             $account = $line->account;
 
-            $partyRef = trim((string) ($line->sub_ledger ?? ''));
-            if ($partyRef === '') {
-                $partyRef = trim((string) ($party?->code ?? $party?->name ?? ''));
-            }
+            // General ledger party/ref always comes from the journal main party — never sub_ledger.
+            $partyCode = trim((string) ($party?->code ?? ''));
+            $partyName = trim((string) ($party?->name ?? ''));
+            $partyRef = $partyCode !== '' ? $partyCode : ($partyName !== '' ? $partyName : '');
 
             $accountCode = trim((string) ($account?->code ?? ''));
             $accountName = trim((string) ($account?->name ?? ''));
@@ -64,6 +64,9 @@ class GeneralLedgerService
                 'account_code' => $accountCode !== '' ? $accountCode : '—',
                 'account_name' => $accountName !== '' ? $accountName : '—',
                 'account_key' => strtolower($accountCode !== '' ? $accountCode : 'account-'.($account?->id ?? $line->id)),
+                'party_id' => $party?->id,
+                'party_code' => $partyCode !== '' ? $partyCode : null,
+                'party_name' => $partyName !== '' ? $partyName : null,
                 'party_ref' => $partyRef !== '' ? $partyRef : '—',
                 'date' => optional($journal?->voucher_date)?->format('Y-m-d'),
                 'date_label' => DateTimeFormatter::formatDate($journal?->voucher_date),
@@ -97,9 +100,11 @@ class GeneralLedgerService
             ->when(!empty($filters['party_ref']), function (Collection $collection) use ($filters) {
                 $needle = strtolower((string) $filters['party_ref']);
 
-                return $collection->filter(
-                    fn (array $row) => str_contains(strtolower($row['party_ref']), $needle)
-                );
+                return $collection->filter(function (array $row) use ($needle) {
+                    return str_contains(strtolower((string) $row['party_ref']), $needle)
+                        || str_contains(strtolower((string) ($row['party_name'] ?? '')), $needle)
+                        || str_contains(strtolower((string) ($row['party_code'] ?? '')), $needle);
+                });
             })
             ->values();
 

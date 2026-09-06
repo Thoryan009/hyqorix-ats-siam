@@ -168,7 +168,7 @@ export function buildGeneralLedgerPrintHtml({ rows = [], labels = {}, filters = 
       <td>${escapeHtml(row.date_label || row.date || '')}</td>
       <td>${escapeHtml(row.je_no || '')}</td>
       <td>${escapeHtml(row.particulars || '')}</td>
-      <td>${escapeHtml(row.party_ref || '')}</td>
+      <td>${escapeHtml(partyDisplayLabel(row))}</td>
       <td class="num">${escapeHtml(formatPrintAmount(row.debit, { empty: '' }))}</td>
       <td class="num">${escapeHtml(formatPrintAmount(row.credit, { empty: '' }))}</td>
       <td class="num">${escapeHtml(balance)}</td>

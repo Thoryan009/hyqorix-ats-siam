@@ -177,7 +177,7 @@
                   {{ item.row.particulars }}
                 </td>
                 <td class="whitespace-nowrap border border-slate-200 px-3 py-2 text-slate-700">
-                  {{ item.row.party_ref }}
+                  {{ partyDisplayLabel(item.row) }}
                 </td>
                 <td class="whitespace-nowrap border border-slate-200 px-3 py-2 text-right tabular-nums text-slate-800">
                   {{ formatAmount(item.row.debit) }}
@@ -270,6 +270,18 @@ const accountPlaceholder = computed(() =>
 )
 
 const rows = computed(() => data.value?.data?.data ?? [])
+
+const partyDisplayLabel = (row) => {
+  const code = String(row?.party_code || row?.party_ref || '').trim()
+  const name = String(row?.party_name || '').trim()
+
+  if (code && name && code.toLowerCase() !== name.toLowerCase()) {
+    return `${code} – ${name}`
+  }
+
+  if (code === '—' || code === '-') return '—'
+  return code || name || '—'
+}
 
 const displayRows = computed(() => {
   const items = []
