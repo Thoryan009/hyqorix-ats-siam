@@ -2,7 +2,7 @@
 <template>
   <BaseModal
     :isVisible="store.isViewModal"
-    :title="`View ${store.moduleName} Details`"
+    :title="t('departments.view')"
     @close="store.handleToggleModal"
     :className="'max-w-[95vw] xl:max-w-[55vw]'"
   >
@@ -31,11 +31,11 @@
                 <h2 class="text-xl font-bold text-white leading-tight">{{ store.item?.name }}</h2>
                 <p class="text-slate-400 text-xs mt-1 flex items-center gap-1">
                   <i class="fa fa-hashtag text-slate-500"></i>
-                  Department ID: <span class="text-slate-200 font-semibold ml-1">{{ store.item?.id }}</span>
+                  {{ t('departments.department_id') }}: <span class="text-slate-200 font-semibold ml-1">{{ store.item?.id }}</span>
                 </p>
                 <p class="text-violet-300 text-xs mt-0.5 flex items-center gap-1">
                   <i class="fa fa-users"></i>
-                  {{ employeeList.length }} {{ employeeList.length === 1 ? 'employee' : 'employees' }} assigned
+                  {{ t('departments.employees_assigned', employeeList.length, { count: employeeList.length }) }}
                 </p>
               </div>
             </div>
@@ -44,7 +44,7 @@
             <div class="flex flex-col items-center justify-center w-16 h-16 rounded-2xl shadow-lg shrink-0"
               style="background: linear-gradient(135deg, #7c3aed, #4f46e5)">
               <span class="text-2xl font-bold text-white leading-none">{{ employeeList.length }}</span>
-              <span class="text-[8px] text-violet-200 uppercase tracking-wide mt-0.5">Employees</span>
+              <span class="text-[8px] text-violet-200 uppercase tracking-wide mt-0.5">{{ t('departments.employees') }}</span>
             </div>
           </div>
         </div>
@@ -57,6 +57,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useTranslate } from '@/shared/composables/useTranslate'
+
+const { t } = useTranslate()
 
 const props = defineProps({
   store: {

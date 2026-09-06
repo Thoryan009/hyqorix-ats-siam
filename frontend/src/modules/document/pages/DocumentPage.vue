@@ -2,11 +2,11 @@
   <SectionHeader>
     <PageHeader>
       <div>
-        <PageTitle>{{ store.moduleName }} Management</PageTitle>
-        <p class="mt-1 text-sm text-gray-500">Upload and manage company documents</p>
+        <PageTitle>{{ t('documents.management') }}</PageTitle>
+        <p class="mt-1 text-sm text-gray-500">{{ t('documents.subtitle') }}</p>
       </div>
       <BaseButton v-can="'document.create'" class="bg-primary text-white hover:opacity-90" @click="store.handleToggleModal('add')">
-        <i class="fa fa-plus mr-1"></i> Add Document
+        <i class="fa fa-plus mr-1"></i> {{ t('documents.add') }}
       </BaseButton>
     </PageHeader>
 
@@ -19,21 +19,21 @@
           :disabled="removeItemsLoading"
           @click="bulkDelete"
         >
-          <span v-if="removeItemsLoading">Deleting...</span>
-          <span v-else>Delete Selected ({{ selectedIds.length }})</span>
+          <span v-if="removeItemsLoading">{{ t('shared.messages.deleting') }}</span>
+          <span v-else>{{ t('shared.messages.delete_selected', { count: selectedIds.length }) }}</span>
         </BaseButton>
       </div>
 
       <TableFilters :filters="filters" :has-active-filters="hasActiveFilters" @reset="resetFilters">
         <div class="flex flex-col">
-          <label class="text-gray-800 text-[15px]">Category</label>
+          <label class="text-gray-800 text-[15px]">{{ t('documents.category') }}</label>
           <select
             v-model="filters.category"
             class="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
           >
-            <option value="">All Categories</option>
+            <option value="">{{ t('documents.all_categories') }}</option>
             <option v-for="category in documentCategories" :key="category" :value="category">
-              {{ category }}
+              {{ categoryLabel(category) }}
             </option>
           </select>
         </div>
@@ -57,7 +57,7 @@
       >
         <template #cell-category="{ row }">
           <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
-            {{ row.category }}
+            {{ categoryLabel(row.category) }}
           </span>
         </template>
 
@@ -66,28 +66,28 @@
             v-can="'document.view'"
             icon="fa fa-eye"
             variant="info"
-            title="View"
+            :title="t('shared.actions.view')"
             @click="onView(row)"
           />
           <BaseTableButton
             v-can="'document.download'"
             icon="fa fa-download"
             variant="primary"
-            title="Download"
+            :title="t('shared.actions.download')"
             @click="handleDownload(row)"
           />
           <BaseTableButton
             v-can="'document.edit'"
             icon="fa fa-pencil"
             variant="success"
-            title="Edit"
+            :title="t('shared.actions.edit')"
             @click="onEdit(row)"
           />
           <BaseTableButton
             v-can="'document.delete'"
             icon="fa fa-trash"
             variant="danger"
-            title="Delete"
+            :title="t('shared.actions.delete')"
             @click="confirmDelete(row.id)"
           />
         </template>
@@ -130,6 +130,7 @@ import { useBulkDelete } from '@/shared/composables/useBulkDelete'
 import { useCrudTable } from '@/shared/composables/useCrudTable'
 import { useTableFilters } from '@/shared/composables/useTableFilters'
 import { useDeleteWithConfirm } from '@/shared/composables/useDeleteWithConfirm'
+import { useTranslate } from '@/shared/composables/useTranslate'
 import { documentCategories } from '../data/documentCategories'
 import { downloadDocument } from '../services/documentService'
 import { toast } from '@/shared/config/toastConfig'
@@ -139,6 +140,7 @@ const EditModal = defineAsyncComponent(() => import('./components/EditModal.vue'
 const ViewModal = defineAsyncComponent(() => import('./components/ViewModal.vue'))
 const DeleteModal = defineAsyncComponent(() => import('./components/DeleteModal.vue'))
 
+const { t } = useTranslate()
 const store = useDocumentStore()
 
 const { filters, hasActiveFilters, resetFilters } = useTableFilters({
@@ -156,27 +158,34 @@ pagination.bindMeta(data)
 
 const { remove, removeItems, removeItemsLoading } = useDocumentMutations(store.moduleName)
 const { selectedIds, toggleAll, toggleRow, bulkDelete } = useBulkDelete(removeItems, {
-  confirmText: 'Are you sure you want to delete selected documents?',
+  confirmText: t('documents.bulk_delete_confirm'),
 })
 const { confirmDelete } = useDeleteWithConfirm(remove)
 
 const { columns, onView, onEdit } = useCrudTable(store, [
-  { key: 'document_no', label: 'Document No' },
-  { key: 'name', label: 'Name' },
-  { key: 'category', label: 'Category' },
-  { key: 'file_name', label: 'File' },
-  { key: 'created_by', label: 'Uploaded By' },
-  { key: 'created_at', label: 'Created At' },
+  { key: 'document_no', label: t('documents.document_no') },
+  { key: 'name', label: t('shared.labels.name') },
+  { key: 'category', label: t('documents.category') },
+  { key: 'file_name', label: t('documents.file') },
+  { key: 'created_by', label: t('documents.uploaded_by') },
+  { key: 'created_at', label: t('shared.labels.created_at') },
 ])
 
 const rows = computed(() => data.value?.data?.data ?? [])
+
+function categoryLabel(category) {
+  if (!category) return '—'
+  const key = `documents.categories.${category}`
+  const translated = t(key)
+  return translated === key ? category : translated
+}
 
 async function handleDownload(row) {
   try {
     await downloadDocument(row.id, row.file_name || row.name)
   } catch (error) {
     console.error(error)
-    toast.error('Failed to download document.')
+    toast.error(t('documents.download_failed'))
   }
 }
 </script>

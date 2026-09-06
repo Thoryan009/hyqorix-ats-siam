@@ -24,8 +24,8 @@
         <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
           <i class="fa fa-users text-4xl text-gray-300"></i>
         </div>
-        <p class="text-base font-semibold text-gray-500">No employees found</p>
-        <p class="text-sm mt-1 text-gray-400">Try adjusting your filters or adding a new employee.</p>
+        <p class="text-base font-semibold text-gray-500">{{ t('employees.empty') }}</p>
+        <p class="text-sm mt-1 text-gray-400">{{ t('employees.empty_hint') }}</p>
       </div>
 
       <!-- Employee rows -->
@@ -53,7 +53,7 @@
               <img
                 v-if="row.image_url || row.image || row.avatar"
                 :src="row.image_url || row.image || row.avatar"
-                :alt="row.name || 'Employee'"
+                :alt="row.name || t('employees.module')"
                 class="w-full h-full object-cover"
                 @error="(e) => (e.target.style.display = 'none')"
               />
@@ -82,7 +82,7 @@
                     class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full capitalize border shrink-0"
                   >
                     <i class="fa fa-circle" style="font-size: 6px"></i>
-                    {{ row.status || 'N/A' }}
+                    {{ row.status || t('employees.na') }}
                   </span>
                 </div>
 
@@ -101,7 +101,7 @@
                   v-can="'employee.view'"
                   @click="$emit('onView', row)"
                   class="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 flex items-center justify-center transition-colors"
-                  title="View"
+                  :title="t('shared.actions.view')"
                 >
                   <i class="fa fa-eye text-xs"></i>
                 </button>
@@ -109,7 +109,7 @@
                   v-can="'employee.edit'"
                   @click="$emit('onEdit', row)"
                   class="w-8 h-8 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 flex items-center justify-center transition-colors"
-                  title="Edit"
+                  :title="t('shared.actions.edit')"
                 >
                   <i class="fa fa-pencil text-xs"></i>
                 </button>
@@ -117,7 +117,7 @@
                   v-can="'employee.delete'"
                   @click="$emit('onDelete', row.id)"
                   class="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center transition-colors"
-                  title="Delete"
+                  :title="t('shared.actions.delete')"
                 >
                   <i class="fa fa-trash text-xs"></i>
                 </button>
@@ -145,14 +145,14 @@
                 v-if="row.tasks_count != null"
                 class="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full"
               >
-                <i class="fa fa-tasks"></i> {{ row.tasks_count }} Tasks
+                <i class="fa fa-tasks"></i> {{ t('employees.tasks_count', { count: row.tasks_count }) }}
               </span>
 
               <span
                 v-if="row.pending_tasks_count"
                 class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 bg-amber-50 border border-amber-100 px-2.5 py-0.5 rounded-full"
               >
-                <i class="fa fa-hourglass-half"></i> {{ row.pending_tasks_count }} Pending
+                <i class="fa fa-hourglass-half"></i> {{ t('employees.pending_count', { count: row.pending_tasks_count }) }}
               </span>
             </div>
           </div>
@@ -184,6 +184,10 @@
 </template>
 
 <script setup>
+import { useTranslate } from '@/shared/composables/useTranslate'
+
+const { t } = useTranslate()
+
 defineProps({
   rows: {
     type: Array,

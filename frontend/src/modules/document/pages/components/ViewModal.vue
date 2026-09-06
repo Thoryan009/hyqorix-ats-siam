@@ -1,7 +1,7 @@
 <template>
   <BaseModal
     :isVisible="store.isViewModal"
-    :title="`View ${store.moduleName} Details`"
+    :title="t('documents.view')"
     :className="'max-w-[95vw] xl:max-w-[90vw]'"
     @close="store.handleToggleModal"
   >
@@ -30,7 +30,7 @@
                   class="mt-2 inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-sky-800 shadow-sm"
                 >
                   <i class="fa fa-folder-open-o mr-1.5"></i>
-                  {{ store.item.category }}
+                  {{ categoryLabel(store.item.category) }}
                 </span>
               </div>
             </div>
@@ -42,7 +42,7 @@
                 @click="handleDownload"
               >
                 <i class="fa fa-download mr-1.5"></i>
-                Download
+                {{ t('shared.actions.download') }}
               </BaseButton>
               <a
                 :href="store.item.path_url"
@@ -51,7 +51,7 @@
                 class="inline-flex items-center rounded-lg border border-sky-300 bg-white px-4 py-2 text-sm font-medium text-sky-700 shadow-sm transition-colors hover:bg-sky-50"
               >
                 <i class="fa fa-external-link mr-1.5"></i>
-                Open in New Tab
+                {{ t('documents.open_in_new_tab') }}
               </a>
             </div>
           </div>
@@ -62,14 +62,14 @@
               <div class="rounded-lg bg-linear-to-br from-sky-500 to-blue-600 p-2.5 text-white shadow-sm">
                 <i class="fa fa-file-text-o text-lg"></i>
               </div>
-              <h4 class="text-lg font-bold text-sky-900">Document Information</h4>
+              <h4 class="text-lg font-bold text-sky-900">{{ t('documents.information') }}</h4>
             </div>
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div class="rounded-lg bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
                 <div class="mb-1 flex items-center gap-2 text-gray-600">
                   <i class="fa fa-hashtag text-sky-500"></i>
-                  <span class="text-sm font-medium">Document No</span>
+                  <span class="text-sm font-medium">{{ t('documents.document_no') }}</span>
                 </div>
                 <p class="font-semibold text-gray-800">{{ store.item.document_no || '—' }}</p>
               </div>
@@ -77,15 +77,15 @@
               <div class="rounded-lg bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
                 <div class="mb-1 flex items-center gap-2 text-gray-600">
                   <i class="fa fa-tag text-sky-500"></i>
-                  <span class="text-sm font-medium">Category</span>
+                  <span class="text-sm font-medium">{{ t('documents.category') }}</span>
                 </div>
-                <p class="font-semibold text-gray-800">{{ store.item.category || '—' }}</p>
+                <p class="font-semibold text-gray-800">{{ categoryLabel(store.item.category) }}</p>
               </div>
 
               <div class="rounded-lg bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:col-span-2">
                 <div class="mb-1 flex items-center gap-2 text-gray-600">
                   <i class="fa fa-file-o text-sky-500"></i>
-                  <span class="text-sm font-medium">File Name</span>
+                  <span class="text-sm font-medium">{{ t('documents.file_name') }}</span>
                 </div>
                 <p class="truncate font-semibold text-gray-800" :title="store.item.file_name">
                   {{ store.item.file_name || '—' }}
@@ -95,7 +95,7 @@
               <div class="rounded-lg bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:col-span-2">
                 <div class="mb-1 flex items-center gap-2 text-gray-600">
                   <i class="fa fa-header text-sky-500"></i>
-                  <span class="text-sm font-medium">Name</span>
+                  <span class="text-sm font-medium">{{ t('shared.labels.name') }}</span>
                 </div>
                 <p class="font-semibold text-gray-800">{{ store.item.name || '—' }}</p>
               </div>
@@ -103,7 +103,7 @@
               <div class="rounded-lg bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
                 <div class="mb-1 flex items-center gap-2 text-gray-600">
                   <i class="fa fa-user-plus text-sky-500"></i>
-                  <span class="text-sm font-medium">Uploaded By</span>
+                  <span class="text-sm font-medium">{{ t('documents.uploaded_by') }}</span>
                 </div>
                 <p class="font-semibold text-gray-800">{{ store.item.created_by || '—' }}</p>
               </div>
@@ -111,7 +111,7 @@
               <div class="rounded-lg bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
                 <div class="mb-1 flex items-center gap-2 text-gray-600">
                   <i class="fa fa-calendar-plus-o text-sky-500"></i>
-                  <span class="text-sm font-medium">Created At</span>
+                  <span class="text-sm font-medium">{{ t('shared.labels.created_at') }}</span>
                 </div>
                 <p class="font-semibold text-gray-800">{{ store.item.created_at || '—' }}</p>
               </div>
@@ -119,7 +119,7 @@
               <div class="rounded-lg bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
                 <div class="mb-1 flex items-center gap-2 text-gray-600">
                   <i class="fa fa-pencil text-sky-500"></i>
-                  <span class="text-sm font-medium">Updated By</span>
+                  <span class="text-sm font-medium">{{ t('shared.labels.updated_by') }}</span>
                 </div>
                 <p class="font-semibold text-gray-800">{{ store.item.updated_by || '—' }}</p>
               </div>
@@ -127,7 +127,7 @@
               <div class="rounded-lg bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
                 <div class="mb-1 flex items-center gap-2 text-gray-600">
                   <i class="fa fa-calendar-check-o text-sky-500"></i>
-                  <span class="text-sm font-medium">Updated At</span>
+                  <span class="text-sm font-medium">{{ t('shared.labels.updated_at') }}</span>
                 </div>
                 <p class="font-semibold text-gray-800">{{ store.item.updated_at || '—' }}</p>
               </div>
@@ -140,7 +140,7 @@
           <div class="flex h-full min-h-[50vh] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:min-h-[72vh]">
             <div class="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-5 py-3">
               <i class="fa fa-eye text-sky-600"></i>
-              <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-700">File Preview</h4>
+              <h4 class="text-sm font-semibold uppercase tracking-wide text-gray-700">{{ t('documents.file_preview') }}</h4>
             </div>
 
             <div class="flex flex-1 flex-col p-5">
@@ -149,7 +149,7 @@
                 class="flex flex-1 flex-col items-center justify-center text-gray-400"
               >
                 <i class="fa fa-file-o mb-3 text-4xl opacity-40"></i>
-                <p class="text-sm">No file attached to this document.</p>
+                <p class="text-sm">{{ t('documents.no_file_attached') }}</p>
               </div>
 
               <template v-else>
@@ -160,7 +160,7 @@
                   <iframe
                     :src="store.item.path_url"
                     class="h-full min-h-[45vh] w-full lg:min-h-[65vh]"
-                    title="PDF preview"
+                    :title="t('documents.pdf_preview')"
                   ></iframe>
                 </div>
 
@@ -170,7 +170,7 @@
                 >
                   <img
                     :src="store.item.path_url"
-                    :alt="store.item.name || 'Document preview'"
+                    :alt="store.item.name || t('documents.document_preview_alt')"
                     class="max-h-[65vh] max-w-full rounded-lg object-contain shadow-sm"
                   />
                 </div>
@@ -185,7 +185,7 @@
                     <i :class="fileIcon" class="text-3xl"></i>
                   </div>
                   <p class="text-sm font-medium text-gray-700">{{ store.item.file_name || store.item.name }}</p>
-                  <p class="mt-1 text-xs text-gray-500">Preview is not available for this file type.</p>
+                  <p class="mt-1 text-xs text-gray-500">{{ t('documents.preview_unavailable') }}</p>
                   <div class="mt-4 flex flex-wrap justify-center gap-2">
                     <BaseButton
                       v-can="'document.download'"
@@ -193,7 +193,7 @@
                       @click="handleDownload"
                     >
                       <i class="fa fa-download mr-1.5"></i>
-                      Download File
+                      {{ t('documents.download_file') }}
                     </BaseButton>
                     <a
                       :href="store.item.path_url"
@@ -202,7 +202,7 @@
                       class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                     >
                       <i class="fa fa-external-link mr-1.5"></i>
-                      Open File
+                      {{ t('documents.open_file') }}
                     </a>
                   </div>
                 </div>
@@ -217,6 +217,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useTranslate } from '@/shared/composables/useTranslate'
 import BaseModal from '@/shared/components/base/BaseModal.vue'
 import BaseButton from '@/shared/components/base/BaseButton.vue'
 import ViewModalLayout from '@/shared/components/ui/ViewModalLayout.vue'
@@ -224,7 +225,15 @@ import { useDocumentStore } from '../../store/documentStore'
 import { downloadDocument } from '../../services/documentService'
 import { toast } from '@/shared/config/toastConfig'
 
+const { t } = useTranslate()
 const store = useDocumentStore()
+
+function categoryLabel(category) {
+  if (!category) return '—'
+  const key = `documents.categories.${category}`
+  const translated = t(key)
+  return translated === key ? category : translated
+}
 
 function getExtension(url) {
   return (url || '').split('?')[0].toLowerCase().split('.').pop() || ''
@@ -266,7 +275,7 @@ async function handleDownload() {
     await downloadDocument(store.item.id, store.item.file_name || store.item.name)
   } catch (error) {
     console.error(error)
-    toast.error('Failed to download document.')
+    toast.error(t('documents.download_failed'))
   }
 }
 </script>

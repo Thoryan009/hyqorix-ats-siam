@@ -1,7 +1,7 @@
 <template>
   <BaseModal
     :isVisible="store.isModal"
-    title="Add Permissions by Module"
+    :title="t('permission.add_by_module_title')"
     @close="closeModal"
     :className="'w-full xl:max-w-[50vw]'"
   >
@@ -16,10 +16,12 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useTranslate } from '@/shared/composables/useTranslate'
 import CommonForm from './ModulePermissionForm.vue'
 import { usePermissionMutations } from '@/modules/access-control/queries/usePermissionMutations'
 import { usepermissionStore } from '@/modules/access-control/stores/permissionStore'
 
+const { t } = useTranslate()
 const store = usepermissionStore()
 
 const defaultFormData = {

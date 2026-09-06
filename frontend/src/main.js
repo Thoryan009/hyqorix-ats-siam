@@ -37,7 +37,8 @@ app.use(VueQueryPlugin, {
 
 app.use(i18n)
 app.directive('can', canDirective)
-app.mount('#app')
 
 const authStore = useAuthStore()
 authStore.initAuth()
+
+app.mount('#app')

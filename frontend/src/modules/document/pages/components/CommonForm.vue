@@ -2,26 +2,26 @@
   <BaseForm :onSubmit="onSubmit">
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <div class="space-y-2">
-        <BaseLabel for="name">Document Name</BaseLabel>
+        <BaseLabel for="name">{{ t('documents.document_name') }}</BaseLabel>
         <BaseInput
           id="name"
           v-model="localForm.name"
-          placeholder="Enter document name"
+          :placeholder="t('documents.placeholder_name')"
           :required="true"
         />
       </div>
 
       <div class="space-y-2">
-        <BaseLabel for="category">Category</BaseLabel>
+        <BaseLabel for="category">{{ t('documents.category') }}</BaseLabel>
         <select
           id="category"
           v-model="localForm.category"
           class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           required
         >
-          <option value="" disabled>Select category</option>
+          <option value="" disabled>{{ t('documents.select_category') }}</option>
           <option v-for="category in documentCategories" :key="category" :value="category">
-            {{ category }}
+            {{ categoryLabel(category) }}
           </option>
         </select>
       </div>
@@ -62,21 +62,21 @@
             @cancelImage="cancelImage('document')"
           />
           <div v-else class="rounded-lg border bg-gray-50 px-4 py-3 text-sm text-gray-600">
-            Current file: {{ store.item.file_name }}
+            {{ t('documents.current_file', { name: store.item.file_name }) }}
           </div>
         </template>
       </div>
 
       <div class="mt-4">
         <BaseLabel for="document_file">
-          Upload Document {{ isEdit ? '(leave empty to keep current file)' : '' }}
+          {{ t('documents.upload_document') }} {{ isEdit ? t('documents.keep_current_file') : '' }}
         </BaseLabel>
         <BaseFileInput
           accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
           @change="handleFileChange($event, 'document_file', 'document_preview', maxFileSize)"
           :fileName="fileName.document_file"
         />
-        <p class="mt-1 text-xs text-gray-500">Max file size: 2 MB</p>
+        <p class="mt-1 text-xs text-gray-500">{{ t('documents.max_file_size') }}</p>
         <div v-if="fileError.document_file" class="mt-1 text-sm text-red-600">
           {{ fileError.document_file }}
         </div>
@@ -85,11 +85,11 @@
 
     <div class="flex justify-end gap-2 pt-4">
       <BaseButton class="bg-yellow-600 hover:bg-yellow-700" type="button" @click="onCancel">
-        Cancel
+        {{ t('shared.actions.cancel') }}
       </BaseButton>
       <BaseButton type="submit" :disabled="loading">
-        <span v-if="loading">Saving...</span>
-        <span v-else>Save</span>
+        <span v-if="loading">{{ t('shared.messages.saving') }}</span>
+        <span v-else>{{ t('shared.actions.save') }}</span>
       </BaseButton>
     </div>
   </BaseForm>
@@ -103,9 +103,12 @@ import BaseLabel from '@/shared/components/base/BaseLabel.vue'
 import BaseFileInput from '@/shared/components/base/BaseFileInput.vue'
 import BaseImagePreview from '@/shared/components/base/BaseImagePreview.vue'
 import { ref, watch } from 'vue'
+import { useTranslate } from '@/shared/composables/useTranslate'
 import { useFileHandler } from '@/shared/composables/useFileHandler'
 import { useDocumentStore } from '../../store/documentStore'
 import { documentCategories } from '../../data/documentCategories'
+
+const { t } = useTranslate()
 
 const props = defineProps({
   formData: { type: Object, required: true },
@@ -130,6 +133,13 @@ watch(
   },
   { deep: true },
 )
+
+function categoryLabel(category) {
+  if (!category) return '—'
+  const key = `documents.categories.${category}`
+  const translated = t(key)
+  return translated === key ? category : translated
+}
 
 function isImageUrl(url) {
   return /\.(jpg|jpeg|png|webp)$/i.test((url || '').split('?')[0])

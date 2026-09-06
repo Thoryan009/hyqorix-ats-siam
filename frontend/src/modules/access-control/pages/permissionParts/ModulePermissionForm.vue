@@ -8,14 +8,13 @@
         >
           <i class="fa fa-bolt text-white text-sm"></i>
           <span class="text-white text-sm font-semibold tracking-wide uppercase">
-            Quick Module Permissions
+            {{ t('permission.quick_module_title') }}
           </span>
         </div>
 
         <div class="p-4 bg-white space-y-4">
           <div class="rounded-lg border border-violet-100 bg-violet-50 px-3 py-2 text-sm text-violet-800">
-            Enter a module name (e.g. <strong>country</strong>) and we will auto-create
-            <strong> create / edit / view / delete </strong> permissions.
+            {{ t('permission.quick_module_help') }}
           </div>
 
           <div class="space-y-1.5">
@@ -23,13 +22,13 @@
               for="module_name"
               class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
             >
-              <i class="fa fa-cube text-violet-400"></i> Module Name
+              <i class="fa fa-cube text-violet-400"></i> {{ t('permission.module_name') }}
               <span class="text-red-400">*</span>
             </label>
             <BaseInput
               id="module_name"
               v-model="localForm.module"
-              placeholder="Eg: country, agent, flight_summary"
+              :placeholder="t('permission.placeholder_module')"
               :required="true"
             />
           </div>
@@ -39,15 +38,15 @@
               for="module_label"
               class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
             >
-              <i class="fa fa-tag text-violet-400"></i> Display Label (optional)
+              <i class="fa fa-tag text-violet-400"></i> {{ t('permission.display_label') }}
             </label>
             <BaseInput
               id="module_label"
               v-model="localForm.label"
-              placeholder="Eg: Country"
+              :placeholder="t('permission.placeholder_label')"
             />
             <p class="text-xs text-gray-400">
-              Used in permission names. Leave empty to use the module name.
+              {{ t('permission.display_label_hint') }}
             </p>
           </div>
 
@@ -55,7 +54,7 @@
             <p
               class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
             >
-              <i class="fa fa-check-square-o text-violet-400"></i> Actions
+              <i class="fa fa-check-square-o text-violet-400"></i> {{ t('permission.actions') }}
             </p>
             <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <label
@@ -80,14 +79,14 @@
               for="extra_actions"
               class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
             >
-              <i class="fa fa-plus-circle text-violet-400"></i> Extra Actions (optional)
+              <i class="fa fa-plus-circle text-violet-400"></i> {{ t('permission.extra_actions') }}
             </label>
             <BaseInput
               id="extra_actions"
               v-model="localForm.extraActions"
-              placeholder="Eg: export, view_summary, collect"
+              :placeholder="t('permission.placeholder_extra_actions')"
             />
-            <p class="text-xs text-gray-400">Comma-separated. Example: export, view_summary</p>
+            <p class="text-xs text-gray-400">{{ t('permission.extra_actions_hint') }}</p>
           </div>
 
           <label class="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
@@ -96,7 +95,7 @@
               type="checkbox"
               class="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
             />
-            Also assign these permissions to Admin role
+            {{ t('permission.assign_to_admin') }}
           </label>
         </div>
       </div>
@@ -111,7 +110,7 @@
         >
           <i class="fa fa-list text-white text-sm"></i>
           <span class="text-white text-sm font-semibold tracking-wide uppercase">
-            Preview ({{ previewItems.length }})
+            {{ t('permission.preview', { count: previewItems.length }) }}
           </span>
         </div>
         <div class="divide-y divide-gray-100 bg-white">
@@ -133,14 +132,14 @@
           :className="'bg-yellow-700 hover:bg-yellow-800 text-white border border-gray-200 gap-2 cursor-pointer'"
           @click="onCancel"
         >
-          <i class="fa fa-times"></i> Cancel
+          <i class="fa fa-times"></i> {{ t('shared.actions.cancel') }}
         </BaseButton>
         <BaseButton type="submit" :disabled="loading || !previewItems.length" class="gap-2">
           <span v-if="loading" class="flex items-center gap-2">
-            <i class="fa fa-spinner fa-spin"></i> Creating...
+            <i class="fa fa-spinner fa-spin"></i> {{ t('permission.creating') }}
           </span>
           <span v-else class="flex items-center gap-2">
-            <i class="fa fa-magic"></i> Create {{ previewItems.length || '' }} Permissions
+            <i class="fa fa-magic"></i> {{ t('permission.create_count', { count: previewItems.length || '' }) }}
           </span>
         </BaseButton>
       </div>
@@ -150,6 +149,9 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useTranslate } from '@/shared/composables/useTranslate'
+
+const { t } = useTranslate()
 
 const defaultActions = ['create', 'edit', 'view', 'delete']
 

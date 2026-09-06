@@ -1,7 +1,7 @@
 <template>
   <BaseModal
     :isVisible="store.isModal"
-    :title="`Add ${store.moduleName}`"
+    :title="t('designations.add')"
     @close="store.handleToggleModal"
   >
     <CommonForm
@@ -22,6 +22,10 @@ import CommonForm from './CommonForm.vue'
 import app from '@/shared/config/appConfig'
 import { useDesignationStore } from '../../stores/designationStore'
 import { useDesignationMutations } from '../../queries/useDesignationMutations'
+
+import { useTranslate } from '@/shared/composables/useTranslate'
+
+const { t } = useTranslate()
 
 // Store
 const store = useDesignationStore()

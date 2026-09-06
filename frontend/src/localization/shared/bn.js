@@ -241,6 +241,7 @@ export default {
     party_type_management: 'পার্টি টাইপ ব্যবস্থাপনা',
     party_management: 'পার্টি ব্যবস্থাপনা',
     transaction_type_management: 'লেনদেনের ধরন ব্যবস্থাপনা',
+    finance_journal: 'জার্নাল',
     finance_ledgers: 'লেজার',
     finance_statements: 'স্টেটমেন্ট',
     finance_setup: 'সেটআপ',

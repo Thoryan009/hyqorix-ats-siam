@@ -1,18 +1,15 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Page Header -->
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div class="capitalize">
-        <PageTitle>{{ store.moduleName }} Management</PageTitle>
+        <PageTitle>{{ t('permission.management') }}</PageTitle>
       </div>
       <BaseButton v-can="'permission.create'" @click="store.handleToggleModal('add')">
-        Add by Module
+        {{ t('permission.add_by_module') }}
       </BaseButton>
     </div>
 
-    <!-- Bulk Delete & Filters -->
     <div class="flex justify-between items-center my-4">
-      <!-- BULK DELETE -->
       <div>
         <BaseButton
           v-can="'permission.delete'"
@@ -21,12 +18,11 @@
           @click="bulkDelete"
           :disabled="removeItemsLoading"
         >
-          <span v-if="removeItemsLoading">Deleting...</span>
-          <span v-else>Delete Selected ({{ selectedIds.length }})</span>
+          <span v-if="removeItemsLoading">{{ t('shared.messages.deleting') }}</span>
+          <span v-else>{{ t('shared.messages.delete_selected', { count: selectedIds.length }) }}</span>
         </BaseButton>
       </div>
 
-      <!-- FILTERS -->
       <TableFilters
         :filters="filters"
         :has-active-filters="hasActiveFilters"
@@ -34,7 +30,6 @@
       />
     </div>
 
-    <!-- Content Card -->
     <div class="rounded-lg bg-white shadow-sm">
       <BaseTableSkeleton v-if="isLoading" :columns="columns.length" :rows="perPage" />
       <BaseTable
@@ -52,6 +47,7 @@
             v-can="'permission.view'"
             @click="onView(row)"
             class="text-blue-600 cursor-pointer"
+            :title="t('shared.actions.view')"
           >
             <i class="fa fa-eye"></i>
           </button>
@@ -60,6 +56,7 @@
             v-can="'permission.edit'"
             @click="onEdit(row)"
             class="text-green-600 cursor-pointer"
+            :title="t('shared.actions.edit')"
           >
             <i class="fa fa-pencil"></i>
           </button>
@@ -68,13 +65,13 @@
             v-can="'permission.delete'"
             @click="confirmDelete(row.id)"
             class="text-red-600 cursor-pointer"
+            :title="t('shared.actions.delete')"
           >
             <i class="fa fa-trash"></i>
           </button>
         </template>
       </BaseTable>
 
-      <!-- Pagination -->
       <BasePagination
         v-if="!isLoading"
         :total="total"
@@ -97,6 +94,7 @@ import { defineAsyncComponent } from 'vue'
 import { usepermissionStore } from '@/modules/access-control/stores/permissionStore'
 import { usePermissionQuery } from '@/modules/access-control/queries/usePermissionQuery'
 import { usePermissionMutations } from '@/modules/access-control/queries/usePermissionMutations'
+import { useTranslate } from '@/shared/composables/useTranslate'
 
 import { usePagination } from '@/shared/composables/usePagination'
 import { useBulkDelete } from '@/shared/composables/useBulkDelete'
@@ -110,39 +108,34 @@ const ViewModal = defineAsyncComponent(() => import('./permissionParts/ViewModal
 const AddModal = defineAsyncComponent(() => import('./permissionParts/AddModal.vue'))
 const EditModal = defineAsyncComponent(() => import('./permissionParts/EditModal.vue'))
 
+const { t } = useTranslate()
 const store = usepermissionStore()
 
-/* ---------------- Filters ---------------- */
 const { filters, hasActiveFilters, resetFilters } = useTableFilters({
   searchQuery: '',
   from_date: null,
   to_date: null,
 })
 
-/* ---------------- Pagination ---------------- */
 const pagination = usePagination()
 const { page, perPage, total, showing, links, setPage, setPerPage } = pagination
 
-/* ---------------- Query ---------------- */
 const { data, rows, isLoading } = usePermissionQuery(page, perPage, filters)
 pagination.bindMeta(data)
 
-/* ---------------- Mutations ---------------- */
 const { remove, removeItems, removeItemsLoading } = usePermissionMutations(store.moduleName)
 
-/* ---------------- Bulk Delete ---------------- */
 const { selectedIds, toggleAll, toggleRow, bulkDelete } = useBulkDelete(removeItems, {
-  confirmText: 'Are you sure to delete selected records?',
+  confirmText: t('permission.bulk_delete_confirm'),
 })
 
-/* ---------------- Table ---------------- */
 const { confirmDelete } = useDeleteWithConfirm(remove)
 
 const { columns, onView, onEdit } = useCrudTable(
   store,
   [
-    { key: 'name', label: 'Permission' },
-    { key: 'slug', label: 'Slug' },
+    { key: 'name', label: t('permission.permission') },
+    { key: 'slug', label: t('permission.slug') },
   ],
   {
     timestamps: false,

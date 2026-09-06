@@ -1,7 +1,7 @@
 <template>
   <BaseModal
     :isVisible="store.isViewModal"
-    :title="`View ${store.moduleName} Details`"
+    :title="t('designations.view')"
     @close="store.handleToggleModal"
     :className="'xl:max-w-[55vw]'"
   >
@@ -23,7 +23,7 @@
               <p class="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
                 <i class="fa fa-hashtag text-gray-400 text-xs"></i>
                 <span
-                  >ID: <strong class="text-gray-700">{{ store.item?.id }}</strong></span
+                  >{{ t('shared.labels.id') }}: <strong class="text-gray-700">{{ store.item?.id }}</strong></span
                 >
               </p>
             </div>
@@ -36,7 +36,7 @@
                 store.item?.employees_count ?? 0
               }}</span>
               <span class="text-[8px] text-green-100 uppercase tracking-wide mt-0.5"
-                >Employees</span
+                >{{ t('designations.employees') }}</span
               >
             </div>
           </div>
@@ -51,7 +51,9 @@
 <script setup>
 import { ref } from 'vue'
 import { useDesignationStore } from '../../stores/designationStore'
+import { useTranslate } from '@/shared/composables/useTranslate'
 
+const { t } = useTranslate()
 const store = useDesignationStore()
 
 const activeTab = ref('summary')
@@ -59,14 +61,14 @@ const activeTab = ref('summary')
 const tabs = [
   {
     key: 'summary',
-    label: 'Summary',
+    label: t('designations.summary'),
     icon: 'fa-file-text-o',
     iconColor: 'text-indigo-500',
     color: ['#6366f1', '#8b5cf6'],
   },
   {
     key: 'employees',
-    label: 'Employees',
+    label: t('designations.employees'),
     icon: 'fa-users',
     iconColor: 'text-green-500',
     color: ['#10b981', '#059669'],

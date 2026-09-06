@@ -1,19 +1,25 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { submitData, updateData, deleteItem, bulkDelete } from '../services/documentService'
 import { toast } from '@/shared/config/toastConfig'
+import { useTranslate } from '@/shared/composables/useTranslate'
 
 export function useDocumentMutations(moduleName, options = {}) {
   const queryClient = useQueryClient()
+  const { t } = useTranslate()
 
   const handleSuccess = (data, variables) => {
-    toast.success(`${moduleName} operation successful`)
+    toast.success(t('documents.operation_successful'))
     queryClient.invalidateQueries(['documents'])
     options.onSuccess?.(data, variables)
   }
 
   const handleError = (error) => {
     console.error(error)
-    toast.error(`Request Failed: ${error?.message || 'Unknown error'}`)
+    toast.error(
+      t('documents.request_failed', {
+        message: error?.message || t('documents.unknown_error'),
+      }),
+    )
     options.onError?.(error)
   }
 

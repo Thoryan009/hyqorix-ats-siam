@@ -2,7 +2,7 @@
 <template>
   <BaseModal
     :isVisible="store.isModal || store.isEditModal"
-    :title="store.title"
+    :title="modalTitle"
     @close="store.handleToggleModal"
     :className="'w-full xl:max-w-[50vw]'"
   >
@@ -11,11 +11,11 @@
      <form @submit.prevent="handleSubmit" class="space-y-4">
 
         <div class="space-y-2">
-          <BaseLabel for="name">Name</BaseLabel>
+          <BaseLabel for="name">{{ t('departments.name') }}</BaseLabel>
           <BaseInput
             id="name"
             v-model="formData.name"
-            :placeholder="'Enter Department name'"
+            :placeholder="t('departments.placeholder_name')"
             :required="true"
           />
         </div>
@@ -28,7 +28,7 @@
             class="bg-yellow-600 hover:bg-yellow-700"
             type="button"
             @click="store.handleToggleModal"
-          >Cancel</BaseButton>
+          >{{ t('shared.actions.cancel') }}</BaseButton>
           <BaseButton type="submit" :disabled="submitLoading || updateLoading">
             <span v-if="submitLoading || updateLoading">{{ submitSavingText }}</span>
             <span v-else>{{ submitText }}</span>
@@ -41,10 +41,13 @@
 </template>
 
 <script setup>
-
+import { computed } from 'vue'
 import { useCrudForm } from '@/shared/composables/useCrudForm'
 import { useCrudSubmit } from '@/shared/composables/useCrudSubmit'
 import { useCrudMutations } from '@/shared/composables/useCrudMutations'
+import { useTranslate } from '@/shared/composables/useTranslate'
+
+const { t } = useTranslate()
 
 const props = defineProps({
   extraData: {
@@ -57,6 +60,9 @@ const props = defineProps({
   },
 })
 
+const modalTitle = computed(() =>
+  props.store.isEditModal ? t('departments.edit') : t('departments.add')
+)
 
 const defaultFormData = {
   name: 'Test Name',

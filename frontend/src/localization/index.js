@@ -37,6 +37,10 @@ import parties_en from '../modules/parties/localization/en'
 import parties_bn from '../modules/parties/localization/bn'
 import journals_en from '../modules/journals/localization/en'
 import journals_bn from '../modules/journals/localization/bn'
+import employee_en from '../modules/employee/localization/en'
+import employee_bn from '../modules/employee/localization/bn'
+import document_en from '../modules/document/localization/en'
+import document_bn from '../modules/document/localization/bn'
 const savedLang = localStorage.getItem(import.meta.env.VITE_LANG) || 'en'
 
 const i18n = createI18n({
@@ -64,6 +68,8 @@ const i18n = createI18n({
     ...accounts_en,
     ...parties_en,
     ...journals_en,
+    ...employee_en,
+    ...document_en,
   },
   bn: {
     ...shared_bn,
@@ -85,6 +91,8 @@ const i18n = createI18n({
     ...accounts_bn,
     ...parties_bn,
     ...journals_bn,
+    ...employee_bn,
+    ...document_bn,
   },
   },
 })

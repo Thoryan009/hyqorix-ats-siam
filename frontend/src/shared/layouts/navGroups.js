@@ -274,6 +274,7 @@ export const navGroups = [
         icon: 'fa fa-pencil-square-o',
         featured: true,
         permission: 'journal.bill_entry',
+        section: 'navigation.finance_journal',
       },
 
       {
@@ -281,7 +282,7 @@ export const navGroups = [
         path: '/journals',
         icon: 'fa fa-book',
         permission: 'journal.view',
-        section: 'navigation.finance_ledgers',
+        section: 'navigation.finance_journal',
       },
 
       {

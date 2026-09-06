@@ -1,7 +1,7 @@
 <template>
   <BaseModal
     :isVisible="store.isViewModal"
-    :title="`View ${store.moduleName} Details`"
+    :title="t('employees.view')"
     :className="'max-w-[95vw] xl:max-w-[80vw]'"
     @close="store.handleToggleModal"
   >
@@ -41,22 +41,22 @@
                   <h2 class="text-xl font-bold text-white leading-tight">{{ store.item?.name }}</h2>
                   <p class="text-slate-300 text-xs mt-0.5 flex items-center gap-1">
                     <i class="fa fa-user-circle-o mr-0.5"></i>
-                    {{ store.item?.username || 'Not Provided' }}
+                    {{ store.item?.username || t('employees.not_provided') }}
                   </p>
                   <p class="text-teal-300 text-xs mt-0.5 flex items-center gap-1">
                     <i class="fa fa-briefcase"></i>
-                    {{ store.item?.designation || 'N/A' }}
+                    {{ store.item?.designation || t('employees.na') }}
                   </p>
 
                   <p class="text-indigo-300 text-xs mt-0.5 flex items-center gap-1">
 
                     <i class="fa fa-building"></i>
-                    {{ store.item?.departments || 'N/A' }}
+                    {{ store.item?.departments || t('employees.na') }}
                   </p>
 
                   <p class="text-slate-500 text-[11px] mt-0.5">
                     <i class="fa fa-hashtag mr-0.5"></i>
-                    Employee ID: {{ store.item?.employee_id || 'N/A' }}
+                    {{ t('employees.employee_id_label') }}: {{ store.item?.employee_id || t('employees.na') }}
                     &nbsp;·&nbsp;
                     <i
                       class="fa fa-shield mr-0.5"
@@ -110,7 +110,7 @@
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div class="rounded-xl px-4 py-3" style="background: rgba(255, 255, 255, 0.07)">
                 <p class="text-slate-400 text-[11px] font-semibold uppercase tracking-wide">
-                  <i class="fa fa-envelope-o mr-1"></i>Email
+                  <i class="fa fa-envelope-o mr-1"></i>{{ t('shared.labels.email') }}
                 </p>
                 <p
                   class="text-white text-sm font-medium mt-0.5 truncate"
@@ -118,14 +118,14 @@
               </div>
               <div class="rounded-xl px-4 py-3" style="background: rgba(255, 255, 255, 0.07)">
                 <p class="text-slate-400 text-[11px] font-semibold uppercase tracking-wide">
-                  <i class="fa fa-phone mr-1"></i>Phone
+                  <i class="fa fa-phone mr-1"></i>{{ t('shared.labels.phone') }}
                 </p>
                 <p class="text-white text-sm font-medium mt-0.5">{{ store.item?.phone || '—' }}</p>
               </div>
 
               <div class="rounded-xl px-4 py-3" style="background: rgba(255, 255, 255, 0.07)">
                 <p class="text-slate-400 text-[11px] font-semibold uppercase tracking-wide">
-                  <i class="fa fa-whatsapp mr-1"></i>WhatsApp
+                  <i class="fa fa-whatsapp mr-1"></i>{{ t('shared.labels.whatsapp') }}
                 </p>
                 <p class="text-white text-sm font-medium mt-0.5">{{ store.item?.whatsapp_no || '—' }}</p>
               </div>
@@ -142,17 +142,16 @@
 </template>
 
 <script setup>
+import { useTranslate } from '@/shared/composables/useTranslate'
 
-const props = defineProps({
+const { t } = useTranslate()
+
+defineProps({
   store: {
     type: Object,
     required: true,
   },
 })
-
-
-
-
 </script>
 
 <style scoped>

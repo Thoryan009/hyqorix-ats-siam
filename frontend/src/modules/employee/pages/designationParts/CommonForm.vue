@@ -8,7 +8,7 @@
       >
         <i class="fa fa-id-badge text-white text-sm"></i>
         <span class="text-white text-sm font-semibold tracking-wide uppercase"
-          >Designation Info</span
+          >{{ t('designations.info') }}</span
         >
       </div>
       <div class="p-4 bg-white space-y-4">
@@ -18,12 +18,12 @@
             for="name"
             class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
           >
-            <i class="fa fa-tag text-blue-400"></i> Name <span class="text-red-400">*</span>
+            <i class="fa fa-tag text-blue-400"></i> {{ t('designations.name') }} <span class="text-red-400">*</span>
           </label>
           <BaseInput
             id="name"
             v-model="localForm.name"
-            placeholder="Eg: Manager"
+            :placeholder="t('designations.placeholder_name')"
             :required="true"
           />
         </div>
@@ -34,13 +34,13 @@
             for="description"
             class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
           >
-            <i class="fa fa-align-left text-blue-400"></i> Description
+            <i class="fa fa-align-left text-blue-400"></i> {{ t('designations.description') }}
           </label>
 
           <BaseQuillEditor
             id="description"
             v-model="formData.description"
-            :placeholder="'Enter designation description'"
+            :placeholder="t('designations.placeholder_description')"
           />
         </div>
         <!-- Description -->
@@ -59,15 +59,18 @@
         class="bg-yellow-700 hover:bg-yellow-800 text-white border border-gray-200 gap-2 cursor-pointer"
         @click="onCancel"
       >
-        <i class="fa fa-times"></i> Cancel
+        <i class="fa fa-times"></i> {{ t('shared.actions.cancel') }}
       </BaseButton>
-      <BaseButton type="submit" class="gap-2"> <i class="fa fa-check"></i> Save </BaseButton>
+      <BaseButton type="submit" class="gap-2"> <i class="fa fa-check"></i> {{ t('shared.actions.save') }} </BaseButton>
     </div>
   </form>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useTranslate } from '@/shared/composables/useTranslate'
+
+const { t } = useTranslate()
 
 // Props
 const props = defineProps({

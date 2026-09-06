@@ -3,10 +3,10 @@
     <!-- Page Header -->
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <PageTitle>{{ store.moduleName }} Management</PageTitle>
+        <PageTitle>{{ t('designations.management') }}</PageTitle>
       </div>
       <BaseButton v-can="'designation.create'" @click="store.handleToggleModal('add')"
-        >Add {{ store.moduleName }}</BaseButton
+        >{{ t('designations.add') }}</BaseButton
       >
     </div>
 
@@ -19,7 +19,7 @@
           v-can="'designation.delete'"
           class="bg-red-600 text-white hover:bg-red-700"
           @click="bulkDelete"
-          >Delete Selected ({{ selectedIds.length }})</BaseButton
+          >{{ t('shared.messages.delete_selected', { count: selectedIds.length }) }}</BaseButton
         >
       </div>
 
@@ -119,6 +119,10 @@ const AddModal = defineAsyncComponent(() => import('./designationParts/AddModal.
 const EditModal = defineAsyncComponent(() => import('./designationParts/EditModal.vue'))
 const DeleteModal = defineAsyncComponent(() => import('./designationParts/DeleteModal.vue'))
 
+import { useTranslate } from '@/shared/composables/useTranslate'
+
+const { t } = useTranslate()
+
 // Store
 const store = useDesignationStore()
 
@@ -147,13 +151,13 @@ const { confirmDelete } = useDeleteWithConfirm(remove)
 
 // Bulk Delete
 const { selectedIds, toggleAll, toggleRow, bulkDelete } = useBulkDelete(removeItems, {
-  confirmText: 'Are you sure to delete selected records?',
+  confirmText: t('designations.bulk_delete_confirm'),
 })
 
 // Table Columns & Actions
 const { columns, onView, onEdit } = useCrudTable(store, [
-  { key: 'name', label: 'Designation' },
-  { key: 'employees_count', label: 'Employees' },
+  { key: 'name', label: t('designations.module') },
+  { key: 'employees_count', label: t('designations.employees') },
 ])
 
 // Rows

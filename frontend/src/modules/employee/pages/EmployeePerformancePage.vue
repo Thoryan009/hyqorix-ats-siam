@@ -4,14 +4,14 @@
     <PageHeader>
       <div>
         <!-- Responsive Heading -->
-        <PageTitle>Employee Performance</PageTitle>
+        <PageTitle>{{ t('employees.performance') }}</PageTitle>
       </div>
     </PageHeader>
 <!-- <pre>{{ employeeData }}</pre> -->
     <!-- Bulk Delete & All Kinds of Filters -->
  <router-link to="/employees" class="no-underline">
         <div class="px-4 py-2 my-5 rounded-xl border cursor-pointer transition-all bg-white text-gray-700 w-fit shadow-sm hover:shadow-md hover:-translate-y-0.5">
-          Employee Management
+          {{ t('employees.management') }}
         </div>
       </router-link>
     <div class="mb-4 underline flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -89,6 +89,9 @@ import { computed } from 'vue'
 import { useApi } from '@/shared/composables/useApi'
 import { buildUrl } from '@/shared/utils/buildUrl'
 
+import { useTranslate } from '@/shared/composables/useTranslate'
+
+const { t } = useTranslate()
 const store = useEmployeeStore()
 
 const response = (api) => ({
@@ -127,9 +130,9 @@ onMounted(async () => {
 pagination.bindMeta(employeeData)
 
 const { columns} = useCrudTable(store, [
-  { key: 'image_url', label: 'Image' },
-  { key: 'name', label: 'Employee Name' },
-  { key: 'points', label: 'Points' },
+  { key: 'image_url', label: t('shared.labels.image') },
+  { key: 'name', label: t('employees.employee_name') },
+  { key: 'points', label: t('employees.points') },
 ])
 
 const rows = computed(() => employeeData.value?.data?.data ?? [])

@@ -1,0 +1,53 @@
+export default {
+  documents: {
+    module: 'ডকুমেন্ট',
+    management: 'ডকুমেন্ট ম্যানেজমেন্ট',
+    subtitle: 'কোম্পানির ডকুমেন্ট আপলোড ও ব্যবস্থাপনা করুন',
+    add: 'ডকুমেন্ট যোগ করুন',
+    edit: 'ডকুমেন্ট সম্পাদনা',
+    view: 'ডকুমেন্টের বিস্তারিত',
+    delete: 'ডকুমেন্ট মুছুন',
+    information: 'ডকুমেন্ট তথ্য',
+
+    document_name: 'ডকুমেন্টের নাম',
+    document_no: 'ডকুমেন্ট নম্বর',
+    category: 'ক্যাটাগরি',
+    file: 'ফাইল',
+    file_name: 'ফাইলের নাম',
+    uploaded_by: 'আপলোড করেছেন',
+    all_categories: 'সব ক্যাটাগরি',
+    select_category: 'ক্যাটাগরি নির্বাচন করুন',
+    placeholder_name: 'ডকুমেন্টের নাম লিখুন',
+
+    upload_document: 'ডকুমেন্ট আপলোড',
+    keep_current_file: '(বর্তমান ফাইল রাখতে খালি রাখুন)',
+    max_file_size: 'সর্বোচ্চ ফাইল সাইজ: ২ এমবি',
+    current_file: 'বর্তমান ফাইল: {name}',
+
+    file_preview: 'ফাইল প্রিভিউ',
+    open_in_new_tab: 'নতুন ট্যাবে খুলুন',
+    open_file: 'ফাইল খুলুন',
+    download_file: 'ফাইল ডাউনলোড',
+    no_file_attached: 'এই ডকুমেন্টে কোনো ফাইল সংযুক্ত নেই।',
+    preview_unavailable: 'এই ফাইল টাইপের জন্য প্রিভিউ পাওয়া যায়নি।',
+    pdf_preview: 'পিডিএফ প্রিভিউ',
+    document_preview_alt: 'ডকুমেন্ট প্রিভিউ',
+
+    delete_confirm: 'আপনি কি নিশ্চিত যে "{name}" মুছে ফেলতে চান?',
+    bulk_delete_confirm: 'নির্বাচিত ডকুমেন্টগুলো মুছে ফেলতে চান?',
+    download_failed: 'ডকুমেন্ট ডাউনলোড করা যায়নি।',
+    operation_successful: 'ডকুমেন্ট অপারেশন সফল হয়েছে',
+    request_failed: 'অনুরোধ ব্যর্থ: {message}',
+    unknown_error: 'অজানা ত্রুটি',
+
+    categories: {
+      License: 'লাইসেন্স',
+      Profile: 'প্রোফাইল',
+      NID: 'এনআইডি',
+      'Passport Copy': 'পাসপোর্ট কপি',
+      Picture: 'ছবি',
+      Certificate: 'সনদ',
+      Other: 'অন্যান্য',
+    },
+  },
+}

@@ -3,10 +3,10 @@
     <!-- Page Header -->
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div class="capitalize">
-        <PageTitle>{{ store.moduleName }} Management</PageTitle>
+        <PageTitle>{{ t('departments.management') }}</PageTitle>
       </div>
       <BaseButton v-can="'department.create'" @click="store.handleToggleModal('add')">
-        Add {{ store.moduleName }}
+        {{ t('departments.add') }}
       </BaseButton>
     </div>
 
@@ -21,8 +21,8 @@
           @click="bulkDelete"
           :disabled="removeItemsLoading"
         >
-          <span v-if="removeItemsLoading">Deleting...</span>
-          <span v-else>Delete Selected ({{ selectedIds.length }})</span>
+          <span v-if="removeItemsLoading">{{ t('shared.messages.deleting') }}</span>
+          <span v-else>{{ t('shared.messages.delete_selected', { count: selectedIds.length }) }}</span>
         </BaseButton>
       </div>
 
@@ -103,6 +103,9 @@ const ViewModal = defineAsyncComponent(() => import('./DepartmentParts/ViewModal
 const FormModal = defineAsyncComponent(() => import('./DepartmentParts/FormModal.vue'))
 
 
+import { useTranslate } from '@/shared/composables/useTranslate'
+
+const { t } = useTranslate()
 const store = useDepartmentStore()
 
 /* ---------------- Filters ---------------- */

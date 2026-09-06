@@ -1,18 +1,18 @@
 <template>
   <BaseModal
     :isVisible="store.isDeleteModal"
-    :title="`Are you sure you want to delete this ${store.moduleName}?`"
+    :title="t('designations.delete_confirm')"
     @close="store.handleToggleModal"
   >
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div class="space-y-2 text-gray-700">
         <p class="text-lg">
-          <strong>ID:</strong>
+          <strong>{{ t('shared.labels.id') }}:</strong>
           {{ store.item?.id }}
         </p>
 
         <p class="text-lg">
-          <strong>Name:</strong>
+          <strong>{{ t('shared.labels.name') }}:</strong>
           {{ store.item?.name }}
         </p>
       </div>
@@ -24,10 +24,10 @@
           type="button"
           @click="store.handleToggleModal"
         >
-          Cancel
+          {{ t('shared.actions.cancel') }}
         </BaseButton>
 
-        <BaseButton type="submit" class="bg-red-600 hover:bg-red-700"> Delete </BaseButton>
+        <BaseButton type="submit" class="bg-red-600 hover:bg-red-700"> {{ t('shared.actions.delete') }} </BaseButton>
       </div>
     </form>
   </BaseModal>
@@ -37,6 +37,9 @@
 // Designation Imports
 import { useDesignationMutations } from '../../queries/useDesignationMutations'
 import { useDesignationStore } from '../../stores/designationStore'
+import { useTranslate } from '@/shared/composables/useTranslate'
+
+const { t } = useTranslate()
 
 // Store
 const store = useDesignationStore()

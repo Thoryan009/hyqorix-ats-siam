@@ -1,7 +1,7 @@
 <template>
   <BaseModal
     :isVisible="store.isEditModal"
-    title="Edit Permission"
+    :title="t('permission.edit')"
     @close="store.handleToggleModal"
     :className="'w-full xl:max-w-[50vw]'"
   >
@@ -16,10 +16,12 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useTranslate } from '@/shared/composables/useTranslate'
 import CommonForm from './CommonForm.vue'
 import { usePermissionMutations } from '@/modules/access-control/queries/usePermissionMutations'
 import { usepermissionStore } from '@/modules/access-control/stores/permissionStore'
 
+const { t } = useTranslate()
 const store = usepermissionStore()
 
 const formData = ref({

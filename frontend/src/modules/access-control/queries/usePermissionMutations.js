@@ -7,19 +7,25 @@ import {
   generateModulePermissions,
 } from '../services/permissionService'
 import { toast } from '@/shared/config/toastConfig'
+import { useTranslate } from '@/shared/composables/useTranslate'
 
 export function usePermissionMutations(moduleName, options = {}) {
   const queryClient = useQueryClient()
+  const { t } = useTranslate()
 
   const handleSuccess = (data, variables) => {
-    toast.success(`${moduleName} operation successful`)
+    toast.success(t('permission.operation_successful'))
     queryClient.invalidateQueries(['permissions'])
     options.onSuccess?.(data, variables)
   }
 
   const handleError = (error) => {
     console.error(error)
-    toast.error(`Request Failed: ${error?.message || 'Unknown error'}`)
+    toast.error(
+      t('permission.request_failed', {
+        message: error?.message || t('permission.unknown_error'),
+      }),
+    )
     options.onError?.(error)
   }
 
@@ -36,10 +42,12 @@ export function usePermissionMutations(moduleName, options = {}) {
       const skipped = data?.data?.skipped_count ?? 0
       toast.success(
         created > 0
-          ? `Created ${created} permission${created === 1 ? '' : 's'}${skipped ? ` (${skipped} already existed)` : ''}`
+          ? skipped
+            ? t('permission.created_with_skipped', { created, skipped })
+            : t('permission.created_count', { created })
           : skipped > 0
-            ? `All selected permissions already exist (${skipped})`
-            : `${moduleName} operation successful`
+            ? t('permission.all_exist', { skipped })
+            : t('permission.operation_successful'),
       )
       queryClient.invalidateQueries(['permissions'])
       options.onSuccess?.(data, variables)

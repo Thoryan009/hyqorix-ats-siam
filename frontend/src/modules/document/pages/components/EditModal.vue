@@ -1,5 +1,5 @@
 <template>
-  <BaseModal :isVisible="store.isEditModal" :title="`Edit ${store.moduleName}`" @close="store.handleToggleModal">
+  <BaseModal :isVisible="store.isEditModal" :title="t('documents.edit')" @close="store.handleToggleModal">
     <CommonForm
       v-model:formData="formData"
       :onSubmit="handleSubmit"
@@ -12,11 +12,13 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useTranslate } from '@/shared/composables/useTranslate'
 import BaseModal from '@/shared/components/base/BaseModal.vue'
 import CommonForm from './CommonForm.vue'
 import { useDocumentMutations } from '../../queries/useDocumentMutations'
 import { useDocumentStore } from '../../store/documentStore'
 
+const { t } = useTranslate()
 const store = useDocumentStore()
 
 const formData = ref({

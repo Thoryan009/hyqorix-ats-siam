@@ -1,7 +1,7 @@
 <template>
   <BaseModal
     :isVisible="store.isViewModal"
-    :title="`View ${store.moduleName} Details`"
+    :title="t('permission.view')"
     @close="store.handleToggleModal"
     :className="'max-w-[95vw] xl:max-w-[40vw]'"
   >
@@ -27,7 +27,7 @@
               <p class="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
                 <i class="fa fa-hashtag text-gray-400"></i>
                 <span
-                  >ID: <strong class="text-gray-700">{{ store.item?.id }}</strong></span
+                  >{{ t('shared.labels.id') }}: <strong class="text-gray-700">{{ store.item?.id }}</strong></span
                 >
               </p>
             </div>
@@ -41,7 +41,7 @@
             style="background: linear-gradient(90deg, #374151, #4b5563)"
           >
             <i class="fa fa-info-circle text-white text-sm"></i>
-            <span class="text-white text-sm font-semibold tracking-wide uppercase">Audit Info</span>
+            <span class="text-white text-sm font-semibold tracking-wide uppercase">{{ t('permission.audit_info') }}</span>
           </div>
           <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <!-- Created At -->
@@ -53,7 +53,7 @@
                 <i class="fa fa-clock-o text-white"></i>
               </div>
               <div>
-                <p class="text-xs text-gray-400 uppercase tracking-wide">Created At</p>
+                <p class="text-xs text-gray-400 uppercase tracking-wide">{{ t('shared.labels.created_at') }}</p>
                 <p class="text-sm font-semibold text-gray-700">
                   {{ store.item?.created_at || '—' }}
                 </p>
@@ -68,7 +68,7 @@
                 <i class="fa fa-refresh text-white"></i>
               </div>
               <div>
-                <p class="text-xs text-gray-400 uppercase tracking-wide">Updated At</p>
+                <p class="text-xs text-gray-400 uppercase tracking-wide">{{ t('shared.labels.updated_at') }}</p>
                 <p class="text-sm font-semibold text-gray-700">
                   {{ store.item?.updated_at || '—' }}
                 </p>
@@ -82,7 +82,9 @@
 </template>
 
 <script setup>
+import { useTranslate } from '@/shared/composables/useTranslate'
 import { usepermissionStore } from '@/modules/access-control/stores/permissionStore'
 
+const { t } = useTranslate()
 const store = usepermissionStore()
 </script>

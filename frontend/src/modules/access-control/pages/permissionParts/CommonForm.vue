@@ -8,7 +8,7 @@
         >
           <i class="fa fa-key text-white text-sm"></i>
           <span class="text-white text-sm font-semibold tracking-wide uppercase"
-            >Permission Info</span
+            >{{ t('permission.info') }}</span
           >
         </div>
         <div class="p-4 bg-white space-y-4">
@@ -17,13 +17,13 @@
               for="permission_name"
               class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
             >
-              <i class="fa fa-tag text-violet-400"></i> Name
+              <i class="fa fa-tag text-violet-400"></i> {{ t('permission.name') }}
               <span class="text-red-400">*</span>
             </label>
             <BaseInput
               id="permission_name"
               v-model="localForm.name"
-              placeholder="Eg: Create Permission"
+              :placeholder="t('permission.placeholder_name')"
               :required="true"
             />
           </div>
@@ -33,16 +33,16 @@
               for="permission_slug"
               class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
             >
-              <i class="fa fa-link text-violet-400"></i> Slug
+              <i class="fa fa-link text-violet-400"></i> {{ t('permission.slug') }}
               <span class="text-red-400">*</span>
             </label>
             <BaseInput
               id="permission_slug"
               v-model="localForm.slug"
-              placeholder="Eg: permission.create"
+              :placeholder="t('permission.placeholder_slug')"
               :required="true"
             />
-            <p class="text-xs text-gray-400">Use module.action format (e.g. permission.create)</p>
+            <p class="text-xs text-gray-400">{{ t('permission.slug_hint') }}</p>
           </div>
         </div>
       </div>
@@ -52,14 +52,14 @@
           :className="'bg-yellow-700 hover:bg-yellow-800 text-white border border-gray-200 gap-2 cursor-pointer'"
           @click="onCancel"
         >
-          <i class="fa fa-times"></i> Cancel
+          <i class="fa fa-times"></i> {{ t('shared.actions.cancel') }}
         </BaseButton>
         <BaseButton type="submit" :disabled="loading" class="gap-2">
           <span v-if="loading" class="flex items-center gap-2">
-            <i class="fa fa-spinner fa-spin"></i> Saving...
+            <i class="fa fa-spinner fa-spin"></i> {{ t('shared.messages.saving') }}
           </span>
           <span v-else class="flex items-center gap-2">
-            <i class="fa fa-check"></i> Save
+            <i class="fa fa-check"></i> {{ t('shared.actions.save') }}
           </span>
         </BaseButton>
       </div>
@@ -69,6 +69,9 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useTranslate } from '@/shared/composables/useTranslate'
+
+const { t } = useTranslate()
 
 const props = defineProps({
   formData: { type: Object, required: true },

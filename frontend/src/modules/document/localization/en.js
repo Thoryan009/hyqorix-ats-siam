@@ -1,0 +1,53 @@
+export default {
+  documents: {
+    module: 'Document',
+    management: 'Document Management',
+    subtitle: 'Upload and manage company documents',
+    add: 'Add Document',
+    edit: 'Edit Document',
+    view: 'View Document Details',
+    delete: 'Delete Document',
+    information: 'Document Information',
+
+    document_name: 'Document Name',
+    document_no: 'Document No',
+    category: 'Category',
+    file: 'File',
+    file_name: 'File Name',
+    uploaded_by: 'Uploaded By',
+    all_categories: 'All Categories',
+    select_category: 'Select category',
+    placeholder_name: 'Enter document name',
+
+    upload_document: 'Upload Document',
+    keep_current_file: '(leave empty to keep current file)',
+    max_file_size: 'Max file size: 2 MB',
+    current_file: 'Current file: {name}',
+
+    file_preview: 'File Preview',
+    open_in_new_tab: 'Open in New Tab',
+    open_file: 'Open File',
+    download_file: 'Download File',
+    no_file_attached: 'No file attached to this document.',
+    preview_unavailable: 'Preview is not available for this file type.',
+    pdf_preview: 'PDF preview',
+    document_preview_alt: 'Document preview',
+
+    delete_confirm: 'Are you sure you want to delete {name}?',
+    bulk_delete_confirm: 'Are you sure you want to delete selected documents?',
+    download_failed: 'Failed to download document.',
+    operation_successful: 'Document operation successful',
+    request_failed: 'Request Failed: {message}',
+    unknown_error: 'Unknown error',
+
+    categories: {
+      License: 'License',
+      Profile: 'Profile',
+      NID: 'NID',
+      'Passport Copy': 'Passport Copy',
+      Picture: 'Picture',
+      Certificate: 'Certificate',
+      Other: 'Other',
+    },
+  },
+}

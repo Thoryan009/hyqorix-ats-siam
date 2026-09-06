@@ -234,6 +234,7 @@ export default {
     party_type_management: 'Party Type Management',
     party_management: 'Party Management',
     transaction_type_management: 'Transaction Type Management',
+    finance_journal: 'Journal',
     finance_ledgers: 'Ledgers',
     finance_statements: 'Statements',
     finance_setup: 'Setup',

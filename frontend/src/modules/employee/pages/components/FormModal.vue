@@ -1,8 +1,8 @@
 <template>
   <BaseModal
     :isVisible="store.isModal || store.isEditModal"
-    :title="store.title"
-    @close="store.handleToggleModal"
+    :title="modalTitle"
+    @close="closeModal"
     :className="'w-full xl:max-w-[50vw]'"
 
   >
@@ -15,7 +15,7 @@
             style="background: linear-gradient(90deg, #3b82f6, #6366f1)"
           >
             <i class="fa fa-user text-white text-sm"></i>
-            <span class="text-white text-sm font-semibold tracking-wide uppercase">Personal Info</span>
+            <span class="text-white text-sm font-semibold tracking-wide uppercase">{{ t('employees.personal_info') }}</span>
           </div>
           <div class="p-4 bg-white grid grid-cols-1 sm:grid-cols-2 gap-4">
             <!-- Name -->
@@ -24,13 +24,13 @@
                 for="name"
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-id-card text-blue-400"></i> Name
+                <i class="fa fa-id-card text-blue-400"></i> {{ t('shared.labels.name') }}
                 <span class="text-red-400">*</span>
               </label>
               <BaseInput
                 id="name"
                 v-model="formData.name"
-                placeholder="Eg: Abdul Alim"
+                :placeholder="t('employees.placeholder_name')"
                 :required="true"
               />
             </div>
@@ -40,13 +40,13 @@
                 for="username"
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-user text-blue-400"></i> Username
+                <i class="fa fa-user text-blue-400"></i> {{ t('employees.username') }}
                 <span class="text-red-400">*</span>
               </label>
               <BaseInput
                 id="username"
                 v-model="formData.username"
-                placeholder="Eg: johndoe"
+                :placeholder="t('employees.placeholder_username')"
                 :required="true"
               />
             </div>
@@ -56,14 +56,14 @@
                 for="email"
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-envelope text-blue-400"></i> Email
+                <i class="fa fa-envelope text-blue-400"></i> {{ t('shared.labels.email') }}
                 <span class="text-red-400">*</span>
               </label>
               <BaseInput
                 id="email"
                 type="email"
                 v-model="formData.email"
-                placeholder="Eg: rabit@example.com"
+                :placeholder="t('employees.placeholder_email')"
                 :required="true"
               />
             </div>
@@ -73,14 +73,14 @@
                 for="phone"
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-phone text-blue-400"></i> Phone
+                <i class="fa fa-phone text-blue-400"></i> {{ t('shared.labels.phone') }}
                 <span class="text-red-400">*</span>
               </label>
               <BaseInput
                 id="phone"
                 type="tel"
                 v-model="formData.phone"
-                placeholder="Eg: +1234567890"
+                :placeholder="t('employees.placeholder_phone')"
                 :required="true"
               />
             </div>
@@ -91,14 +91,14 @@
                 for="whatsapp_no"
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-phone text-blue-400"></i> WhatsApp No
+                <i class="fa fa-phone text-blue-400"></i> {{ t('shared.labels.whatsapp_no') }}
                 <span class="text-red-400">*</span>
               </label>
               <BaseInput
                 id="whatsapp_no"
                 type="tel"
                 v-model="formData.whatsapp_no"
-                placeholder="Eg: +1234567890"
+                :placeholder="t('employees.placeholder_phone')"
                 :required="false"
               />
             </div>
@@ -108,14 +108,14 @@
                 for="designation"
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-briefcase text-blue-400"></i> Designation
+                <i class="fa fa-briefcase text-blue-400"></i> {{ t('shared.labels.designation') }}
                 <span class="text-red-400">*</span>
               </label>
               <BaseSelect
                 id="designation"
                 v-model="formData.designation_id"
-                :options="extraData.designations"
-                placeholder="Select"
+                :options="designationOptions"
+                :placeholder="t('employees.select')"
                 :required="true"
               />
             </div>
@@ -125,11 +125,11 @@
               <label
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-key text-violet-400"></i> Department
+                <i class="fa fa-key text-violet-400"></i> {{ t('employees.department') }}
               </label>
               <div class="flex flex-wrap gap-3 pt-1">
                 <label
-                  v-for="department in extraData.departments"
+                  v-for="department in departmentOptions"
                   :key="department.id"
                   class="flex items-center gap-2 cursor-pointer"
                 >
@@ -139,7 +139,7 @@
                     v-model="formData.department_ids"
                     class="rounded border-gray-300 text-violet-500"
                   />
-                  <span class="text-sm text-gray-700">{{ department . name }}</span>
+                  <span class="text-sm text-gray-700">{{ department.name }}</span>
                 </label>
               </div>
             </div>
@@ -183,7 +183,7 @@
               </template>
 
               <div>
-                <BaseLabel for="image_path">Upload document (Optional)</BaseLabel>
+                <BaseLabel for="image_path">{{ t('employees.upload_document') }}</BaseLabel>
                 <BaseFileInput
                   accept=".jpg, .jpeg, .png"
                   @change="handleFileChange($event, 'image_path', 'image_preview')"
@@ -208,7 +208,7 @@
             style="background: linear-gradient(90deg, #8b5cf6, #a855f7)"
           >
             <i class="fa fa-shield text-white text-sm"></i>
-            <span class="text-white text-sm font-semibold tracking-wide uppercase">Access & Status</span>
+            <span class="text-white text-sm font-semibold tracking-wide uppercase">{{ t('employees.access_status') }}</span>
           </div>
           <div class="p-4 bg-white grid grid-cols-1 sm:grid-cols-2 gap-4">
             <!-- Assign Roles -->
@@ -216,11 +216,11 @@
               <label
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-key text-violet-400"></i> Assign Roles
+                <i class="fa fa-key text-violet-400"></i> {{ t('employees.assign_roles') }}
               </label>
               <div class="flex flex-wrap gap-3 pt-1">
                 <label
-                  v-for="role in extraData.roles"
+                  v-for="role in roleOptions"
                   :key="role.id"
                   class="flex items-center gap-2 cursor-pointer"
                 >
@@ -230,7 +230,7 @@
                     v-model="formData.role_ids"
                     class="rounded border-gray-300 text-violet-500"
                   />
-                  <span class="text-sm text-gray-700">{{ role . name }}</span>
+                  <span class="text-sm text-gray-700">{{ role.name }}</span>
                 </label>
               </div>
             </div>
@@ -240,15 +240,15 @@
                 for="status"
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-toggle-on text-violet-400"></i> Status
+                <i class="fa fa-toggle-on text-violet-400"></i> {{ t('shared.labels.status') }}
                 <span class="text-red-400">*</span>
               </label>
 
               <BaseSelect
                 id="status"
                 v-model="formData.status"
-                :options="extraData.statuses"
-                placeholder="Select"
+                :options="statusOptions"
+                :placeholder="t('employees.select')"
                 :required="true"
               />
             </div>
@@ -258,7 +258,7 @@
               <label
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-paper-plane text-emerald-400"></i> Show ATS Summary
+                <i class="fa fa-paper-plane text-emerald-400"></i> {{ t('employees.show_ats_summary') }}
               </label>
               <div class="flex items-center gap-6 pt-1">
                 <label class="flex items-center gap-2 cursor-pointer">
@@ -269,7 +269,7 @@
                     v-model="formData.show_ats_summary"
                     :required="true"
                   />
-                  <span class="text-sm font-medium text-gray-700">Yes</span>
+                  <span class="text-sm font-medium text-gray-700">{{ t('shared.labels.yes') }}</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
                   <BaseInput
@@ -278,7 +278,7 @@
                     :value="0"
                     v-model="formData.show_ats_summary"
                   />
-                  <span class="text-sm font-medium text-gray-700">No</span>
+                  <span class="text-sm font-medium text-gray-700">{{ t('shared.labels.no') }}</span>
                 </label>
               </div>
             </div>
@@ -288,7 +288,7 @@
               <label
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-check-circle text-violet-400"></i> Manager Approval
+                <i class="fa fa-check-circle text-violet-400"></i> {{ t('employees.manager_approval') }}
               </label>
               <div class="flex items-center gap-6 pt-1">
                 <label class="flex items-center gap-2 cursor-pointer">
@@ -299,7 +299,7 @@
                     v-model="formData.manager_approval"
                     :required="true"
                   />
-                  <span class="text-sm font-medium text-gray-700">Yes</span>
+                  <span class="text-sm font-medium text-gray-700">{{ t('shared.labels.yes') }}</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
                   <BaseInput
@@ -308,7 +308,7 @@
                     :value="0"
                     v-model="formData.manager_approval"
                   />
-                  <span class="text-sm font-medium text-gray-700">No</span>
+                  <span class="text-sm font-medium text-gray-700">{{ t('shared.labels.no') }}</span>
                 </label>
               </div>
             </div>
@@ -322,7 +322,7 @@
             style="background: linear-gradient(90deg, #10b981, #059669)"
           >
             <i class="fa fa-lock text-white text-sm"></i>
-            <span class="text-white text-sm font-semibold tracking-wide uppercase">Credentials</span>
+            <span class="text-white text-sm font-semibold tracking-wide uppercase">{{ t('employees.credentials') }}</span>
           </div>
           <div class="p-4 bg-white grid grid-cols-1 sm:grid-cols-2 gap-4">
             <!-- Password -->
@@ -331,7 +331,7 @@
                 for="password"
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-key text-emerald-400"></i> Password
+                <i class="fa fa-key text-emerald-400"></i> {{ t('shared.labels.password') }}
                 <span v-if="store.isModal" class="text-red-400">*</span>
               </label>
               <div class="relative">
@@ -339,12 +339,12 @@
                   id="password"
                   type="text"
                   v-model="formData.password"
-                  placeholder="Auto-generate password"
+                  :placeholder="t('employees.auto_generate_password')"
                   :required="store.isModal ? true : false"
                 />
                 <i
                   class="fa fa-refresh absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-gray-500 hover:text-emerald-600"
-                  title="Generate Password"
+                  :title="t('employees.generate_password')"
                   @click="handleGeneratePassword"
                 ></i>
               </div>
@@ -354,7 +354,7 @@
               <label
                 class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"
               >
-                <i class="fa fa-paper-plane text-emerald-400"></i> Sent Credentials
+                <i class="fa fa-paper-plane text-emerald-400"></i> {{ t('employees.send_credentials') }}
               </label>
               <div class="flex items-center gap-6 pt-1">
                 <label class="flex items-center gap-2 cursor-pointer">
@@ -365,7 +365,7 @@
                     v-model="formData.send_credentials"
                     :required="true"
                   />
-                  <span class="text-sm font-medium text-gray-700">Yes</span>
+                  <span class="text-sm font-medium text-gray-700">{{ t('shared.labels.yes') }}</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
                   <BaseInput
@@ -374,7 +374,7 @@
                     :value="0"
                     v-model="formData.send_credentials"
                   />
-                  <span class="text-sm font-medium text-gray-700">No</span>
+                  <span class="text-sm font-medium text-gray-700">{{ t('shared.labels.no') }}</span>
                 </label>
               </div>
             </div>
@@ -390,9 +390,10 @@
         <div class="flex justify-end gap-3 pt-2 pb-4">
           <BaseButton
             :className="'bg-yellow-700 hover:bg-yellow-800 text-white border border-gray-200 gap-2 cursor-pointer'"
-            @click="store.handleToggleModal"
+            type="button"
+            @click="closeModal"
           >
-            <i class="fa fa-times"></i> Cancel
+            <i class="fa fa-times"></i> {{ t('shared.actions.cancel') }}
           </BaseButton>
           <BaseButton
             class="gap-2"
@@ -400,7 +401,7 @@
             :className="'bg-green-600 hover:bg-green-700 text-white border border-gray-200 cursor-pointer'"
             @click="handleCopyCredentials"
           >
-            <i class="fa fa-copy"></i> Copy Credentials
+            <i class="fa fa-copy"></i> {{ t('shared.actions.copy_credentials') }}
           </BaseButton>
           <BaseButton type="submit" :disabled="submitLoading || updateLoading" class="gap-2">
             <span v-if="submitLoading || updateLoading" class="flex items-center gap-2">
@@ -419,6 +420,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useCrudForm } from '@/shared/composables/useCrudForm'
 import { useCrudSubmit } from '@/shared/composables/useCrudSubmit'
 import { useCrudMutations } from '@/shared/composables/useCrudMutations'
@@ -427,7 +429,11 @@ import { useToast } from 'vue-toastification'
 import appConfig from '@/shared/config/appConfig'
 import { useFileHandler } from '@/shared/composables/useFileHandler2'
 import CreatePartyAccountCheckbox from '@/modules/parties/components/CreatePartyAccountCheckbox.vue'
+import { useTranslate } from '@/shared/composables/useTranslate'
+import { useEmployeeStore } from '../../stores/employeeStore'
 
+const { t } = useTranslate()
+const store = useEmployeeStore()
 const appUrl = appConfig.appUrl
 
 const props = defineProps({
@@ -435,28 +441,37 @@ const props = defineProps({
     type: Object,
     default: () => ({}),
   },
-  store: {
-    type: Object,
-    required: true,
-  },
 })
+
+const designationOptions = computed(() => props.extraData?.designations ?? [])
+const departmentOptions = computed(() => props.extraData?.departments ?? [])
+const roleOptions = computed(() => props.extraData?.roles ?? [])
+const statusOptions = computed(() => props.extraData?.statuses ?? [])
+
+const modalTitle = computed(() =>
+  store.isEditModal ? t('employees.edit') : t('employees.add'),
+)
+
+const closeModal = () => {
+  store.handleToggleModal()
+}
 
 // Copy to Clipboard Handler
 const handleCopyCredentials = async () => {
   const toast = useToast()
   try {
     const textToCopy = `
-Credentials for ${formData.value.name}:
-Login URL: ${appUrl}/login
-Email: ${formData.value.email}
-Password: ${formData.value.password}
+${t('employees.credentials_for', { name: formData.value.name })}
+${t('employees.login_url')}: ${appUrl}/login
+${t('shared.labels.email')}: ${formData.value.email}
+${t('shared.labels.password')}: ${formData.value.password}
     `.trim()
 
     await navigator.clipboard.writeText(textToCopy)
-    toast.success('Credentials copied!')
+    toast.success(t('employees.credentials_copied'))
   } catch (err) {
     console.error('Failed to copy credentials:', err)
-    alert('Failed to copy credentials. Please try manually.')
+    alert(t('employees.credentials_copy_failed'))
   }
 }
 
@@ -518,14 +533,14 @@ const buildPayload = () => {
 }
 
 // API
-const api = useCrudMutations(props.store.moduleName, {
+const api = useCrudMutations(store.moduleName, {
   onSuccess() {
-    props.store.handleToggleModal()
+    closeModal()
     resetForm()
   },
 })
 
-const { formData, resetForm } = useCrudForm(props.store, defaultFormData, [
+const { formData, resetForm } = useCrudForm(store, defaultFormData, [
   'role_ids',
   'department_ids',
   'status',
@@ -535,7 +550,6 @@ const { formData, resetForm } = useCrudForm(props.store, defaultFormData, [
   'manager_approval',
 ])
 
-
 const { handleFileChange, fileName, cancelImage, fileError, fileType } = useFileHandler(formData)
 
 const handleGeneratePassword = () => {
@@ -544,9 +558,8 @@ const handleGeneratePassword = () => {
 
 // SUBMIT
 const { handleSubmit, submitLoading, updateLoading, submitText, submitSavingText } = useCrudSubmit(
-  props.store,
+  store,
   api,
   buildPayload,
-  resetForm
 )
 </script>
