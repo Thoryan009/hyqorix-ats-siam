@@ -8,7 +8,7 @@
     </PageHeader>
 
     <div
-      class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 print:hidden"
       v-if="!loading && !loadError"
     >
       <div
@@ -23,7 +23,7 @@
       </div>
     </div>
 
-    <div class="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div class="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm print:hidden">
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         <div class="flex flex-col">
           <label class="mb-1 text-sm font-medium text-gray-700">{{ t('accounts.from_date') }}</label>
@@ -107,6 +107,14 @@
           {{ t('accounts.reset_filters') }}
         </BaseButton>
         <BaseButton
+          class="bg-emerald-700 text-white hover:bg-emerald-800"
+          :disabled="isBusy || loading || !!loadError || !tableRows.length"
+          @click="printStatement"
+        >
+          <i class="fa fa-print mr-1"></i>
+          {{ printing ? t('accounts.preparing_print') : t('accounts.print') }}
+        </BaseButton>
+        <BaseButton
           class="bg-slate-900 text-white hover:bg-slate-800"
           :disabled="isBusy"
           @click="viewBreakdownReport"
@@ -125,7 +133,7 @@
       </div>
     </div>
 
-    <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div id="gross-profit-print" class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div class="border-b border-slate-200 bg-slate-50 px-4 py-3 text-center">
         <h3 class="text-lg font-bold text-slate-900">{{ t('accounts.gross_profit') }}</h3>
         <p class="mt-0.5 text-sm text-slate-600">{{ periodLabel }}</p>
@@ -260,9 +268,11 @@ import {
 } from '../services/grossProfitService'
 import GrossProfitBreakdownPdfPreviewModal from './components/GrossProfitBreakdownPdfPreviewModal.vue'
 import { localizeAccountType } from '../utils/localizeAccountType'
+import { useStatementPrint } from '../composables/useStatementPrint'
 import { toast } from '@/shared/config/toastConfig'
 
 const { t } = useTranslate()
+const { printing, printStatement } = useStatementPrint('gross-profit-print')
 
 const currentYear = new Date().getFullYear()
 const fromDate = ref(`${currentYear}-01-01`)
@@ -594,5 +604,29 @@ onUnmounted(() => {
 .export-fade-enter-from,
 .export-fade-leave-to {
   opacity: 0;
+}
+</style>
+
+<style>
+@media print {
+  #gross-profit-print,
+  #gross-profit-print * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #gross-profit-print .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  #gross-profit-print table {
+    width: 100%;
+    font-size: 11px;
+  }
+
+  #gross-profit-print th,
+  #gross-profit-print td {
+    padding: 4px 6px;
+  }
 }
 </style>

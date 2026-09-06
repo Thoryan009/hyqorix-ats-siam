@@ -53,6 +53,7 @@ export default {
     breakdown_pdf_load_error: 'Failed to load breakdown PDF.',
     download: 'Download',
     print: 'Print',
+    preparing_print: 'Preparing print...',
     close: 'Close',
     progress: 'Progress',
     please_wait_preview: 'Please wait. Do not close this page.',

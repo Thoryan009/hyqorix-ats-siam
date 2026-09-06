@@ -33,4 +33,18 @@ class GeneralLedgerController extends Controller
             'message' => 'General ledger fetched successfully.',
         ]);
     }
+
+    public function export(GeneralLedgerIndexRequest $request): JsonResponse
+    {
+        $rows = $this->service->getExportLedger($request->filters());
+
+        return response()->json([
+            'data' => $rows,
+            'meta' => [
+                'total' => $rows->count(),
+            ],
+            'success' => true,
+            'message' => 'General ledger export fetched successfully.',
+        ]);
+    }
 }

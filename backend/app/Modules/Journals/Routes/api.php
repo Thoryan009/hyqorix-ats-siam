@@ -19,7 +19,9 @@ Route::prefix('journal-transaction-types')->group(function () {
 Route::prefix('journals')->group(function () {
     Route::get('/', [JournalController::class, 'index'])->middleware('permission:journal.view')->middleware('permission:journal.view');
     Route::get('party-ledger', [PartyLedgerController::class, 'index'])->middleware('permission:ledger.party');
+    Route::get('party-ledger/export', [PartyLedgerController::class, 'export'])->middleware('permission:ledger.party');
     Route::get('general-ledger', [GeneralLedgerController::class, 'index'])->middleware('permission:ledger.general');
+    Route::get('general-ledger/export', [GeneralLedgerController::class, 'export'])->middleware('permission:ledger.general');
     Route::get('job-options', [JournalController::class, 'jobOptions'])->middleware('permission:journal.bill_entry');
     Route::get('demand-letter-options', [JournalController::class, 'demandLetterOptions'])->middleware('permission:journal.bill_entry');
     Route::get('sub-ledger-applicants', [JournalController::class, 'subLedgerApplicants'])->middleware('permission:journal.bill_entry');

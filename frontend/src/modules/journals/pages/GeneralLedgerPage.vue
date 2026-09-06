@@ -104,12 +104,22 @@
         <h2 class="text-base font-semibold text-slate-800">
           {{ t('journals.general_ledger_sheet_title') }}
         </h2>
-        <span
-          v-if="!isLoading && rows.length"
-          class="inline-flex items-center rounded-full bg-slate-200/70 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700"
-        >
-          {{ t('journals.general_ledger_results', { count: total || rows.length }) }}
-        </span>
+        <div class="flex flex-wrap items-center gap-2">
+          <span
+            v-if="!isLoading && rows.length"
+            class="inline-flex items-center rounded-full bg-slate-200/70 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700"
+          >
+            {{ t('journals.general_ledger_results', { count: total || rows.length }) }}
+          </span>
+          <BaseButton
+            className="bg-emerald-700 text-white hover:bg-emerald-800"
+            :disabled="isLoading || isPrinting"
+            @click="handlePrint"
+          >
+            <i class="fa fa-print mr-1.5"></i>
+            {{ isPrinting ? t('journals.preparing_print') : t('journals.print') }}
+          </BaseButton>
+        </div>
       </div>
 
       <div v-if="isLoading" class="px-4 py-10 text-center text-sm text-slate-500">
@@ -210,16 +220,22 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import SectionHeader from '@/shared/components/ui/SectionHeader.vue'
 import PageHeader from '@/shared/components/ui/PageHeader.vue'
 import { useTranslate } from '@/shared/composables/useTranslate'
 import { usePagination } from '@/shared/composables/usePagination'
 import { useTableFilters } from '@/shared/composables/useTableFilters'
+import { removeEmptyKeys } from '@/shared/helpers/objectHelper'
+import { toast } from '@/shared/config/toastConfig'
+import { closePrintWindow, openPrintWindow } from '@/shared/utils/printHtmlDocument'
 import { useGeneralLedgerQuery } from '../queries/useGeneralLedgerQuery'
 import { useAccountOptionsQuery } from '../queries/useAccountOptionsQuery'
+import { fetchGeneralLedgerExport } from '../services/journalService'
+import { printGeneralLedgerReport } from '../utils/ledgerPrint'
 
 const { t } = useTranslate()
+const isPrinting = ref(false)
 
 const { filters, hasActiveFilters, resetFilters } = useTableFilters({
   searchQuery: '',
@@ -321,5 +337,73 @@ const formatRunningBalance = (row) => {
     return `(${formatted})`
   }
   return formatted
+}
+
+async function handlePrint() {
+  if (isPrinting.value) return
+
+  // Open synchronously from the click — browsers block window.open after await.
+  const popup = openPrintWindow({
+    title: t('journals.general_ledger_sheet_title'),
+    loadingText: t('journals.preparing_print'),
+    orientation: 'landscape',
+    margin: '8mm',
+  })
+
+  if (!popup) {
+    toast.error(t('journals.allow_popups_to_print'))
+    return
+  }
+
+  isPrinting.value = true
+
+  try {
+    const exportFilters = removeEmptyKeys({
+      search: filters.searchQuery || undefined,
+      from_date: filters.from_date || undefined,
+      to_date: filters.to_date || undefined,
+      account_id: filters.account_id || undefined,
+      party_ref: filters.party_ref || undefined,
+    })
+
+    const { data: payload, error } = await fetchGeneralLedgerExport(exportFilters)
+    if (error) {
+      throw error
+    }
+
+    const exportRows = payload?.data ?? []
+    const opened = printGeneralLedgerReport({
+      popup,
+      rows: exportRows,
+      filters: exportFilters,
+      labels: {
+        title: t('journals.general_ledger_sheet_title'),
+        subtitle: t('journals.general_ledger_subtitle'),
+        period: t('journals.print_period'),
+        total: t('journals.general_ledger_results', { count: exportRows.length }),
+        empty: t('journals.general_ledger_empty'),
+        account_code: t('journals.account_code'),
+        account_name: t('journals.account_name'),
+        date: t('journals.date'),
+        je_no: t('journals.je_no'),
+        particulars: t('journals.particulars'),
+        party_ref: t('journals.party_ref'),
+        debit: t('journals.debit'),
+        credit: t('journals.credit'),
+        running_balance: t('journals.running_balance'),
+        balance_type: t('journals.balance_type'),
+      },
+    })
+
+    if (!opened) {
+      closePrintWindow(popup)
+      toast.error(t('journals.print_failed'))
+    }
+  } catch (error) {
+    closePrintWindow(popup)
+    toast.error(error?.message || t('journals.print_failed'))
+  } finally {
+    isPrinting.value = false
+  }
 }
 </script>

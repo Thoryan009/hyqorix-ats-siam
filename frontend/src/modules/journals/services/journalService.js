@@ -40,6 +40,14 @@ export async function fetchPartyLedger(page = 1, perPage = 50, filters = {}) {
   return response(api)
 }
 
+/** One-shot export of all filtered party-ledger rows (for print). */
+export async function fetchPartyLedgerExport(filters = {}) {
+  const api = useApi()
+  const url = buildUrl(`${BASE_URL}/party-ledger/export`, filters)
+  await api.sendRequest(url)
+  return response(api)
+}
+
 export async function fetchGeneralLedger(page = 1, perPage = 50, filters = {}) {
   const api = useApi()
   const url = buildUrl(`${BASE_URL}/general-ledger`, {
@@ -48,6 +56,14 @@ export async function fetchGeneralLedger(page = 1, perPage = 50, filters = {}) {
     ...filters,
   })
 
+  await api.sendRequest(url)
+  return response(api)
+}
+
+/** One-shot export of all filtered general-ledger rows (for print). */
+export async function fetchGeneralLedgerExport(filters = {}) {
+  const api = useApi()
+  const url = buildUrl(`${BASE_URL}/general-ledger/export`, filters)
   await api.sendRequest(url)
   return response(api)
 }

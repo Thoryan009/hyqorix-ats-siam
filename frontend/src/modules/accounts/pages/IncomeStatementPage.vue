@@ -9,7 +9,7 @@
 
     <div
       v-if="!loading && !loadError"
-      class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 print:hidden"
     >
       <div
         v-for="card in summaryCards"
@@ -24,7 +24,7 @@
     </div>
 
     <div
-      class="mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-end"
+      class="mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm print:hidden sm:flex-row sm:flex-wrap sm:items-end"
     >
       <div class="flex flex-col sm:min-w-[150px]">
         <label class="mb-1 text-sm font-medium text-gray-700">{{ t('accounts.from_date') }}</label>
@@ -46,9 +46,17 @@
         <i class="fa fa-refresh mr-1"></i>
         {{ loading ? t('accounts.loading_income_statement') : t('accounts.refresh') }}
       </BaseButton>
+      <BaseButton
+        class="bg-emerald-700 text-white hover:bg-emerald-800"
+        :disabled="loading || !!loadError || !hasContent"
+        @click="printStatement"
+      >
+        <i class="fa fa-print mr-1"></i>
+        {{ printing ? t('accounts.preparing_print') : t('accounts.print') }}
+      </BaseButton>
     </div>
 
-    <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div id="income-statement-print" class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div class="border-b border-slate-200 bg-slate-50 px-4 py-3 text-center">
         <h3 class="text-lg font-bold text-slate-900">{{ t('accounts.income_statement') }}</h3>
         <p class="mt-0.5 text-sm text-slate-600">{{ periodLabel }}</p>
@@ -136,9 +144,11 @@ import PageHeader from '@/shared/components/ui/PageHeader.vue'
 import { useTranslate } from '@/shared/composables/useTranslate'
 import { fetchIncomeStatement } from '../services/incomeStatementService'
 import { localizeAccountType } from '../utils/localizeAccountType'
+import { useStatementPrint } from '../composables/useStatementPrint'
 import { toast } from '@/shared/config/toastConfig'
 
 const { t } = useTranslate()
+const { printing, printStatement } = useStatementPrint('income-statement-print')
 
 const currentYear = new Date().getFullYear()
 const fromDate = ref(`${currentYear}-01-01`)
@@ -260,3 +270,27 @@ async function loadReport() {
 
 onMounted(loadReport)
 </script>
+
+<style>
+@media print {
+  #income-statement-print,
+  #income-statement-print * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #income-statement-print .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  #income-statement-print table {
+    width: 100%;
+    font-size: 11px;
+  }
+
+  #income-statement-print th,
+  #income-statement-print td {
+    padding: 4px 6px;
+  }
+}
+</style>

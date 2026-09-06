@@ -33,4 +33,18 @@ class PartyLedgerController extends Controller
             'message' => 'Party ledger fetched successfully.',
         ]);
     }
+
+    public function export(PartyLedgerIndexRequest $request): JsonResponse
+    {
+        $rows = $this->service->getExportLedger($request->filters());
+
+        return response()->json([
+            'data' => $rows,
+            'meta' => [
+                'total' => $rows->count(),
+            ],
+            'success' => true,
+            'message' => 'Party ledger export fetched successfully.',
+        ]);
+    }
 }

@@ -13,6 +13,11 @@ class PartyLedgerService
 {
     private const LEDGER_STATUSES = ['posted', 'approved', 'reversed'];
 
+    public function getExportLedger(array $filters = []): Collection
+    {
+        return $this->buildLedgerRows($filters)->values();
+    }
+
     public function getPaginatedLedger(array $filters = []): LengthAwarePaginator
     {
         $rows = $this->buildLedgerRows($filters);

@@ -53,6 +53,7 @@ export default {
     breakdown_pdf_load_error: 'বিস্তারিত PDF লোড করা যায়নি।',
     download: 'ডাউনলোড',
     print: 'প্রিন্ট',
+    preparing_print: 'প্রিন্ট প্রস্তুত হচ্ছে...',
     close: 'বন্ধ',
     progress: 'অগ্রগতি',
     please_wait_preview: 'অনুগ্রহ করে অপেক্ষা করুন। এই পৃষ্ঠা বন্ধ করবেন না।',
