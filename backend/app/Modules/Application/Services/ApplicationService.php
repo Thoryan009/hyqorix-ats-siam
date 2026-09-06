@@ -257,6 +257,8 @@ class ApplicationService extends BaseCachedService
 
     public function update(int $id, array $data)
     {
+        unset($data['create_party_account']);
+
         $record = $this->mutate(function () use ($id, $data) {
             $application = $this->model->findOrFail($id);
             $application->update($data);

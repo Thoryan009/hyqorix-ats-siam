@@ -259,6 +259,7 @@ import {
   fetchGrossProfitBreakdownPdf,
 } from '../services/grossProfitService'
 import GrossProfitBreakdownPdfPreviewModal from './components/GrossProfitBreakdownPdfPreviewModal.vue'
+import { localizeAccountType } from '../utils/localizeAccountType'
 import { toast } from '@/shared/config/toastConfig'
 
 const { t } = useTranslate()
@@ -365,7 +366,7 @@ const tableRows = computed(() =>
       {
         kind: 'header',
         key: `header-${group.type}`,
-        label: group.type_label,
+        label: localizeAccountType(group.type, t, group.type_label),
         sectionTotal: group.section_total,
       },
       ...group.rows.map((row) => ({

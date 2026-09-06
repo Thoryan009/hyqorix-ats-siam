@@ -265,80 +265,107 @@ export const navGroups = [
   // },
 
   {
-    label: 'FiNANCE',
+    label: 'navigation.finance',
     icon: 'fa fa-calculator',
     items: [
+
+
       {
-        name: 'Chart of Accounts',
-        path: '/accounts/chart-of-accounts',
-        icon: 'fa fa-list-alt',
-        permission: 'chart_of_account.view',
-      },
-      {
-        name: 'Party Type Management',
-        path: '/party-types',
-        icon: 'fa fa-tags',
-        permission: 'party_type.view',
-      },
-      {
-        name: 'Party Management',
-        path: '/parties',
-        icon: 'fa fa-handshake-o',
-        permission: 'party.view',
-      },
-      {
-        name: 'Transaction Type Management',
-        path: '/journal-transaction-types',
-        icon: 'fa fa-exchange',
-        permission: 'transaction_type.view',
-      },
-      {
-        name: 'Journal Management',
-        path: '/journals',
-        icon: 'fa fa-book',
+      name: 'navigation.journal_management',
+       path: '/journals',
+       icon: 'fa fa-book',
         permission: 'journal.view',
+        section: 'navigation.finance_ledgers',
+
       },
+      // {
+      //   name: 'Party Ledger',
+      //   path: '/journals/party-ledger',
+      //   icon: 'fa fa-address-book-o',
+      //   permission: 'ledger.party',
+      // },
+      // {
+      //   name: 'General Ledger',
+      //   path: '/journals/general-ledger',
+      //   icon: 'fa fa-list-alt',
+      //   permission: 'ledger.general',
+      // },
       {
-        name: 'Party Ledger',
-        path: '/journals/party-ledger',
-        icon: 'fa fa-address-book-o',
-        permission: 'ledger.party',
-      },
-      {
-        name: 'General Ledger',
-        path: '/journals/general-ledger',
-        icon: 'fa fa-list-alt',
-        permission: 'ledger.general',
-      },
-      {
-        name: 'Post Journal',
+        name: 'navigation.post_journal',
         path: '/journals/post',
         icon: 'fa fa-pencil-square-o',
         permission: 'journal.bill_entry',
       },
+
       {
-        name: 'accounts.trial_balance',
-        path: '/accounts/trial-balance',
-        icon: 'fa fa-balance-scale',
-        permission: 'accounts.trial_balance',
+        name: 'navigation.party_ledger',
+        path: '/journals/party-ledger',
+        icon: 'fa fa-address-book-o',
+        section: 'navigation.finance_ledgers',
+        permission: 'ledger.party',
       },
       {
-        name: 'accounts.gross_profit',
+        name: 'navigation.general_ledger',
+        path: '/journals/general-ledger',
+        icon: 'fa fa-list-alt',
+        section: 'navigation.finance_ledgers',
+        permission: 'ledger.general',
+      },
+      {
+        name: 'navigation.gross_profit',
         path: '/accounts/gross-profit',
         icon: 'fa fa-line-chart',
         permission: 'accounts.gross_profit',
+        section: 'navigation.finance_statements',
       },
       {
-        name: 'accounts.income_statement',
+        name: 'navigation.income_statement',
         path: '/accounts/income-statement',
         icon: 'fa fa-file-text-o',
         permission: 'accounts.income_statement',
+        section: 'navigation.finance_statements',
       },
       {
-        name: 'accounts.balance_sheet',
+        name: 'navigation.balance_sheet',
         path: '/accounts/balance-sheet',
         icon: 'fa fa-bank',
         permission: 'accounts.balance_sheet',
+        section: 'navigation.finance_statements',
+      },
+      {
+        name: 'navigation.trial_balance',
+        path: '/accounts/trial-balance',
+        icon: 'fa fa-balance-scale',
+        section: 'navigation.finance_statements',
+        permission: 'accounts.trial_balance',
+      },
+      {
+        name: 'navigation.chart_of_accounts',
+        path: '/accounts/chart-of-accounts',
+        icon: 'fa fa-list-alt',
+        section: 'navigation.finance_setup',
+        permission: 'chart_of_account.view',
+      },
+      {
+        name: 'navigation.party_type_management',
+        path: '/party-types',
+        icon: 'fa fa-tags',
+        section: 'navigation.finance_setup',
+        permission: 'party_type.view',
+      },
+      {
+        name: 'navigation.party_management',
+        path: '/parties',
+        icon: 'fa fa-handshake-o',
+        section: 'navigation.finance_setup',
+        permission: 'party.view',
+      },
+      {
+        name: 'navigation.transaction_type_management',
+        path: '/journal-transaction-types',
+        icon: 'fa fa-exchange',
+        section: 'navigation.finance_setup',
+         permission: 'transaction_type.view',
       },
     ],
   },
@@ -513,15 +540,6 @@ export const navGroups = [
       },
     ],
   },
-
-
-
-
-
-
-
-
-
 
   {
     label: 'navigation.system_settings',

@@ -130,20 +130,36 @@
                 class="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-white/80"
                 :class="itemIndex === 0 ? 'pt-1' : ''"
               >
-                {{ item.section }}
+                {{ t(item.section) }}
               </p>
 
               <router-link
                 :to="navItemTo(item)"
                 :class="[
-                  'flex items-center ms-2 gap-3 rounded-xl px-3 py-2 text-base font-medium transition-all duration-200',
-                  isNavItemActive(item)
-                    ? 'bg-primary text-white shadow-[0_2px_8px_rgba(0,0,0,0.2)]'
-                    : 'text-white hover:bg-white/10',
+                  'flex items-center ms-2 gap-3 rounded-xl px-3 py-2.5 text-base font-medium transition-all duration-200',
+                  item.featured
+                    ? isNavItemActive(item)
+                      ? 'bg-white text-primary-dark shadow-md font-semibold'
+                      : 'bg-white/15 text-white ring-1 ring-inset ring-white/40 hover:bg-white/25 font-semibold'
+                    : isNavItemActive(item)
+                      ? 'bg-primary text-white shadow-[0_2px_8px_rgba(0,0,0,0.2)]'
+                      : 'text-white hover:bg-white/10',
                   isSidebarCollapsed ? 'justify-center' : '',
                 ]"
               >
-                <i :class="[item.icon, 'text-sm w-5 text-center shrink-0']"></i>
+                <span
+                  v-if="item.featured"
+                  :class="[
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+                    isNavItemActive(item) ? 'bg-primary/15 text-primary' : 'bg-white/20 text-white',
+                  ]"
+                >
+                  <i :class="[item.icon, 'text-sm']"></i>
+                </span>
+                <i
+                  v-else
+                  :class="[item.icon, 'text-sm w-5 text-center shrink-0']"
+                ></i>
 
                 <span v-if="!isSidebarCollapsed" class="truncate">
                  {{ t(item.name) }}
