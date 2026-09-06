@@ -11,7 +11,7 @@ export const navGroups = [
       },
     ],
   },
-   {
+  {
     label: 'navigation.recruitment',
     icon: 'fa fa-users',
     items: [
@@ -53,7 +53,7 @@ export const navGroups = [
       },
     ],
   },
-   {
+  {
     label: 'navigation.ats_workflow',
     icon: 'fa fa-list',
     items: [
@@ -78,7 +78,7 @@ export const navGroups = [
     ],
   },
 
-   {
+  {
     label: 'navigation.ksa_visa_processing',
     icon: 'fa fa-building',
     items: [
@@ -268,33 +268,20 @@ export const navGroups = [
     label: 'navigation.finance',
     icon: 'fa fa-calculator',
     items: [
-
-
-      {
-      name: 'navigation.journal_management',
-       path: '/journals',
-       icon: 'fa fa-book',
-        permission: 'journal.view',
-        section: 'navigation.finance_ledgers',
-
-      },
-      // {
-      //   name: 'Party Ledger',
-      //   path: '/journals/party-ledger',
-      //   icon: 'fa fa-address-book-o',
-      //   permission: 'ledger.party',
-      // },
-      // {
-      //   name: 'General Ledger',
-      //   path: '/journals/general-ledger',
-      //   icon: 'fa fa-list-alt',
-      //   permission: 'ledger.general',
-      // },
       {
         name: 'navigation.post_journal',
         path: '/journals/post',
         icon: 'fa fa-pencil-square-o',
+        featured: true,
         permission: 'journal.bill_entry',
+      },
+
+      {
+        name: 'navigation.journal_management',
+        path: '/journals',
+        icon: 'fa fa-book',
+        permission: 'journal.view',
+        section: 'navigation.finance_ledgers',
       },
 
       {
@@ -365,12 +352,12 @@ export const navGroups = [
         path: '/journal-transaction-types',
         icon: 'fa fa-exchange',
         section: 'navigation.finance_setup',
-         permission: 'transaction_type.view',
+        permission: 'transaction_type.view',
       },
     ],
   },
 
-    {
+  {
     label: 'navigation.hr_access_control',
     icon: 'fa fa-users',
     items: [
@@ -407,7 +394,6 @@ export const navGroups = [
     ],
   },
 
-
   {
     label: 'navigation.document',
     icon: 'fa fa-folder-open',
@@ -421,7 +407,7 @@ export const navGroups = [
     ],
   },
 
-   {
+  {
     label: 'navigation.reports_analytics',
     icon: 'fa fa-bar-chart',
     items: [
@@ -458,8 +444,6 @@ export const navGroups = [
       },
     ],
   },
-
-
 
   {
     label: 'navigation.core_setup',
