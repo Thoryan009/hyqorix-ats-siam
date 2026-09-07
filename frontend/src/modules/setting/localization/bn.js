@@ -72,6 +72,7 @@ export default {
       embassy_name: 'এমবাসির নাম',
       embassy_address: 'এমবাসির ঠিকানা',
       agency_name: 'এমবাসির জন্য এজেন্সির নাম',
+      embassy_company_name: 'এমবাসির কোম্পানির নাম',
       company_rl: 'কোম্পানির RL',
       save_settings: 'সেটিংস সংরক্ষণ করুন',
     },

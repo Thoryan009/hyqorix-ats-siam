@@ -72,6 +72,7 @@ export default {
       embassy_name: 'Embassy Name',
       embassy_address: 'Embassy Address',
       agency_name: 'Agency Name for Embassy',
+      embassy_company_name: 'Embassy Company Name',
       company_rl: 'Company RL',
       save_settings: 'Save Settings',
     },

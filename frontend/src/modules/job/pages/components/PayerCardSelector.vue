@@ -44,7 +44,7 @@
     </div>
     <p v-if="showError" class="text-xs text-red-500">Select at least one payer.</p>
     <p v-else-if="modelValue.length" class="text-xs text-gray-500">
-      {{ t('shared.messages.Selected') }}: {{ formatJobPayers(modelValue, t) }}
+      {{ t('shared.messages.selected') }}: {{ formatJobPayers(modelValue, t) }}
     </p>
   </div>
 </template>

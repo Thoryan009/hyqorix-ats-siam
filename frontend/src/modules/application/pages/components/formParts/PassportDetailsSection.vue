@@ -86,7 +86,7 @@
 
           <!-- Passport Number -->
           <div>
-            <BaseLabel for="passport_no">{{ t('shared.labels.passport_no') }} ({{ t('application.optional') }})</BaseLabel>
+            <BaseLabel for="passport_no">{{ t('shared.labels.passport_no') }} ({{ t('application.required') }})</BaseLabel>
             <BaseInput
               id="passport_no"
               v-model="store.formData.passport_no"
